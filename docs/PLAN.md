@@ -64,7 +64,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 
 ## Phase 0 — Foundation (no sim)
 
-### T0.0 `[ ]` Environment bootstrap
+### T0.0 `[x]` Environment bootstrap
 
 - **Context:** The kit python lacks the API SDKs the agent loop needs; without
   this every Phase-3/4 task fails at import. Verified 2026-07-26:
@@ -72,17 +72,44 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   `rsl_rl True`, `yaml True`, `dotenv True`.
 - **Read first:** the Interpreter policy above; `pyproject.toml`.
 - **Depends on:** nothing (first task).
-- **Steps:** add `python-dotenv` to `pyproject.toml` dependencies; install the
-  package into the kit python:
-  `~/IsaacLab/isaaclab.sh -p -m pip install -e ".[dev]"`; verify `ffmpeg`
-  (`~/.local/bin/ffmpeg`, present) and matplotlib in the kit python (present).
-- **Deliverables:** kit python can import anthropic, openai, pyyaml, PIL,
-  matplotlib, pytest, dotenv, isaaclab, rsl_rl; `pip list` output saved as
-  evidence in the task entry.
+- **Steps:** ~~add `python-dotenv` to `pyproject.toml`~~ (**plan correction: it was
+  already listed** — the skeleton commit included it); install the package into the
+  kit python: `~/IsaacLab/isaaclab.sh -p -m pip install -e ".[dev]"`; verify
+  `ffmpeg` (`~/.local/bin/ffmpeg`, present) and matplotlib in the kit python.
+- **Plan corrections applied (rule 10.1):**
+  1. **The prescribed install command failed as written.** `pyproject.toml` had no
+     package-discovery config, so setuptools' flat-layout autodiscovery saw
+     `assets/ policy/ results/ configs/` next to `duck_embody/` and aborted with
+     *"Multiple top-level packages discovered in a flat-layout"*. Added
+     `[build-system]` + `[tool.setuptools.packages.find] include = ["duck_embody*"]`.
+  2. **`numpy` pinned to `<2`.** The kit python ships numpy 1.26.0 and Isaac Sim
+     5.1.0's compiled extensions use the 1.x ABI; the unpinned requirement would
+     let any future resolve pull numpy 2.x and silently break the sim.
+  3. **Smoke test upgraded from `[no sim]` to a real kit launch.** The task
+     installs into the kit python's own site-packages, so "did this break Isaac
+     Sim?" is precisely the question T0.0 must answer — an import-only check
+     cannot. Discovering it at T1.3 instead would cost a re-plan.
+- **Deliverables:** `pyproject.toml` (discovery + numpy pin + `[tool.duck-embody]`
+  parent-pin block); `scripts/smoke_env.py`; `results/logs/t0_0_smoke_env.log`.
 - **Unit tests:** none.
-- **Smoke test [no sim]:** one-liner importing all of the above via
-  `isaaclab.sh -p` printing OK.
-- **Acceptance:** import check passes; `pyproject.toml` committed.
+- **Smoke test:** `PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p scripts/smoke_env.py`
+- **Acceptance:** PASSED. `exit=0`. Imports without a kit app: isaaclab 0.54.3,
+  rsl_rl, torch 2.9.0+cu130, yaml 6.0.2, dotenv, anthropic 0.120.0, openai 2.48.0,
+  PIL 11.3.0, matplotlib 3.10.3, pytest 9.0.2, numpy 1.26.0, duck_embody — all OK.
+  Kit app launched headless; inside it `pxr` OK (USD `(0, 24, 5)`) and
+  `isaaclab_tasks` 0.11.14 OK. `ffmpeg 7.0.2-static` at `~/.local/bin/ffmpeg`.
+  `rsl-rl-lib 5.0.1` (matches doc 02 §3's shim requirement).
+- **Notes for later tasks (verified here, recorded in AGENTS.md §5):**
+  - `isaaclab_tasks` and `pxr` import **only inside a running kit app** — plain
+    `isaaclab.sh -p -c "import isaaclab_tasks"` fails with `No module named 'pxr'`.
+  - **kit buffers stdout**: run every sim script with `PYTHONUNBUFFERED=1`.
+  - **`SimulationApp.close()` terminates the process** — statements after it never
+    execute. Every sim script must write artifacts and print verdicts *before*
+    closing. (Cost two wasted runs here; retired for all later tasks.)
+  - `pip` warns that `anthropic` pulled `docstring-parser` 0.16 → 0.18, which
+    `nvidia-srl-base` pins. Harmless: `nvidia_srl` is not importable from the kit
+    python at all (extension-bundled, resolved separately), and the kit-launch
+    check above passes. Downgrading is not an option — `anthropic` requires 0.18.
 
 ### T0.1 `[ ]` Vendor the policy artifacts
 

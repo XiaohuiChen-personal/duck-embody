@@ -205,6 +205,22 @@ Robot / policy (paths in parent repo or `~/IsaacLab`):
   NOT `inference_mode()`, if the env resets afterwards).
 - **Pausing is safe**: physics advances ONLY inside `env.step()`. Not stepping = frozen.
 
+Kit process / tooling (verified 2026-07-26 during PLAN T0.0):
+- **`SimulationApp.close()` terminates the process.** Statements after it never
+  execute — a script that closes the app and *then* prints its summary or writes
+  its artifacts loses both, silently, with exit code 0. Write artifacts and print
+  verdicts BEFORE closing. (Cost two wasted runs before it was identified.)
+- **kit buffers stdout aggressively.** Run every sim script with
+  `PYTHONUNBUFFERED=1`, or output produced during the run is discarded at exit.
+- **`isaaclab_tasks` and `pxr` import only inside a running kit app.** Plain
+  `isaaclab.sh -p -c "import isaaclab_tasks"` fails (`No module named 'pxr'`);
+  after `AppLauncher(...)` both import fine (USD `(0, 24, 5)`). Offline USD
+  inspection uses the pinned packman invocation in PLAN T0.2 instead.
+- **numpy is pinned `<2`** in `pyproject.toml`: the kit python ships 1.26.0 and
+  Isaac Sim 5.1.0's compiled extensions are built against the 1.x ABI.
+- `pyproject.toml` needs explicit `[tool.setuptools.packages.find]` — flat-layout
+  autodiscovery otherwise aborts on `assets/ policy/ results/ configs/`.
+
 Scene / rendering:
 - `UsdFileCfg(scale=0.4)` applies scale at spawn BEFORE PhysX parses → static
   colliders cook correctly. Runtime rescaling does NOT propagate. Uniform scale only.

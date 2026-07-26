@@ -11,3 +11,5 @@ assets/textures/
 # scratch
 *.tmp
 _staging/
+# kit run logs (large, regenerated); curated evidence lives in the task entry
+results/logs/

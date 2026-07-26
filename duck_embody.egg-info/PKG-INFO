@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: duck-embody
+Version: 0.1.0
+Summary: LLM-as-SLAM: language models navigate a bipedal robot through an unknown apartment in Isaac Sim
+Requires-Python: >=3.11
+Requires-Dist: anthropic
+Requires-Dist: openai
+Requires-Dist: python-dotenv
+Requires-Dist: pyyaml
+Requires-Dist: numpy<2
+Requires-Dist: pillow
+Requires-Dist: matplotlib
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

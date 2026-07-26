@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "duck-embody"
 version = "0.1.0"
@@ -10,7 +14,10 @@ dependencies = [
   "openai",
   "python-dotenv",
   "pyyaml",
-  "numpy",
+  # numpy is PINNED <2: the kit python ships numpy 1.26.0 and Isaac Sim 5.1.0's
+  # compiled extensions are built against the 1.x ABI. An unpinned requirement
+  # lets pip pull numpy 2.x on any future resolve and silently breaks the sim.
+  "numpy<2",
   "pillow",
   "matplotlib",
 ]
@@ -18,5 +25,20 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest"]
 
+# Explicit package discovery. Without this, setuptools' flat-layout autodiscovery
+# sees assets/ policy/ results/ configs/ alongside duck_embody/ and refuses to
+# build ("Multiple top-level packages discovered in a flat-layout") — which made
+# the plain `pip install -e .` in PLAN T0.0 fail. Verified 2026-07-26.
+[tool.setuptools.packages.find]
+include = ["duck_embody*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.duck-embody]
+# Parent robot repo (read-only dependency) pinned commit — AGENTS.md §4 / rule 8.
+# Only duck_embody/env/embody_env_cfg.py may import from it.
+parent_repo = "https://github.com/XiaohuiChen-personal/Open_Duck_Mini_Jetson"
+parent_repo_path = "~/Projects/Open_Duck_Mini_Jetson"
+parent_repo_branch = "v2"
+parent_repo_commit = "PENDING_T0_1"

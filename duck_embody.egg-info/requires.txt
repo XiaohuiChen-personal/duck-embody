@@ -1,0 +1,10 @@
+anthropic
+openai
+python-dotenv
+pyyaml
+numpy<2
+pillow
+matplotlib
+
+[dev]
+pytest
