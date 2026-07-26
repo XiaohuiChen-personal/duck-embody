@@ -163,7 +163,19 @@ deviate, update the doc in the same commit:
     see design doc 03 §5/§10) — sofas/beds/fridge/oven/kitchen —
     **visual-only, no colliders** (verified by USD inspection); add bbox collider proxies.
   - `Assets/simready_content/common_assets/props/` — armchair, sofa, tables, chairs,
-    desks, cabinets — **colliders + semantic labels included**; no bed/fridge/TV.
+    desks, cabinets — semantic labels included; no bed/fridge/TV. **Colliders are
+    NOT active by default** (corrected 2026-07-26 by T0.2 measurement): they sit
+    behind a `PhysicsVariant` variant set whose default selection is `None`, so a
+    naive spawn has ZERO collision prims and the robot walks through. The builder
+    must pass `UsdFileCfg(variants={"PhysicsVariant": "RigidBody"})` **and**
+    `rigid_props=RigidBodyPropertiesCfg(kinematic_enabled=True)` (the only other
+    variant option makes furniture dynamic). `desk_01` is a catalog defect — zero
+    colliders under either option; it needs a bbox proxy. See design doc 03 §5.
+  - **Units differ per catalog** (measured): SimReady + Isaac Props are metres
+    (`metersPerUnit = 1`), **all ArchVis is centimetres (`0.01`)**. Effective
+    spawn scale = `metersPerUnit × 0.4`, published per asset in
+    `assets/manifest.json` as `scale_for_duck_scale`. A hardcoded 0.4 would spawn
+    the 1.87 m fridge at 187 m.
   - `…/Isaac/Props/Sektion_Cabinet/` — kitchen cabinet WITH dedicated collision USD.
   - Mirror every fetched asset into `assets/` immediately (`fetch_assets.sh`);
     the batch must never depend on the bucket mid-run.

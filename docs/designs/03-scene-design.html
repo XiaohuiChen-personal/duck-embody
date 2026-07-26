@@ -323,7 +323,7 @@ ourselves.</p>
 <td>Kitchen-counter anchor: a run of 2 Sektion_Cabinet units — the scored target region sits in front of it</td>
 <td><code>.../Isaac/5.1/Isaac/Props/Sektion_Cabinet/sektion_cabinet_instanceable.usd</code> <span class="src">(HTTP 200, 2026-07-26)</span></td></tr>
 <tr><td><strong>SimReady props</strong></td><td><code>Assets/simready_content/common_assets/props/</code></td>
-<td>Colliders + semantic labels INCLUDED</td>
+<td>Colliders present but <strong>behind a variant</strong> (see the correction box below); semantic labels included</td>
 <td>First choice for everything it covers: <code>armchair</code>, <code>crestwood_sofa</code>, tables (<code>appleseed_coffeetable</code>), chairs, <code>bar_stool</code>, desks, cabinets, plants</td>
 <td><code>.../props/armchair/armchair.usd</code> <span class="src">(HTTP 200)</span>; <code>crestwood_sofa/crestwood_sofa.usd</code> listed in the same prefix <span class="src">(list-type=2, 2026-07-26)</span></td></tr>
 <tr><td><strong>ArchVis Residential</strong></td><td><code>Assets/ArchVis/Residential/</code></td>
@@ -331,6 +331,45 @@ ourselves.</p>
 <td>Room-identity items SimReady lacks: bed, fridge, oven, kitchen clutter. Every ArchVis asset gets an invisible bbox collider proxy (§6)</td>
 <td><code>.../ArchVis/Residential/Furniture/Sofas/Arnold.usd</code> <span class="src">(HTTP 200, 2026-07-26)</span></td></tr>
 </table>
+
+<div class="warning"><strong>CORRECTION (T0.2, 2026-07-26) — SimReady colliders are OFF by default.</strong>
+This doc originally stated that SimReady props ship with colliders included. Measured
+against the mirrored assets, that is only half true: the colliders exist, but behind a
+USD variant set named <code>PhysicsVariant</code> whose <strong>default selection is
+<code>None</code></strong>. As spawned out of the box, every SimReady prop has
+<strong>zero</strong> <code>UsdPhysics.CollisionAPI</code> prims — precisely the
+walk-straight-through failure §7 warns about, and one that
+<code>collision_props</code> cannot repair.
+<ul>
+<li><strong>Fix:</strong> the builder passes
+<code>UsdFileCfg(variants={"PhysicsVariant": "RigidBody"})</code> (Isaac Lab supports
+variant selection at spawn <span class="src">from_files_cfg.py:104</span>). Selecting it
+yields <code>convexDecomposition</code> colliders (armchair: 3 prims; measured).</li>
+<li><strong>…plus static:</strong> the only other option is <code>RigidBody</code>, which
+also applies <code>UsdPhysics.RigidBodyAPI</code> — furniture would become dynamic and a
+leaning duck could shove the sofa across the room. The builder therefore also sets
+<code>rigid_props=RigidBodyPropertiesCfg(kinematic_enabled=True)</code>: solid, immovable
+obstacles, which is what the navigation task needs.</li>
+<li><strong>One genuine catalog defect:</strong> <code>desk_01</code> carries the variant
+set but ships zero collision prims under <em>either</em> option (each was selected and
+counted). It is reclassified <code>bbox_proxy</code> in
+<code>assets/asset_list.tsv</code>.</li>
+</ul>
+<code>scripts/inspect_assets.py</code> applies each asset's variants <em>before</em>
+measuring, so <code>manifest.json</code> describes the asset as it will actually be
+spawned, and a declared-vs-measured mismatch is a hard error.</div>
+
+<div class="warning"><strong>CORRECTION (T0.2, 2026-07-26) — ArchVis is authored in
+CENTIMETRES.</strong> Measured <code>metersPerUnit</code>: SimReady and Isaac Props =
+<code>1.0</code> (metres), <strong>every ArchVis asset = <code>0.01</code></strong>. Isaac
+Lab's stage is metres and does not auto-convert layer units, so the
+<code>scale=(0.4, 0.4, 0.4)</code> hardcoded in §6.4's sketch would spawn a 1.87 m fridge
+as a <strong>187 m</strong> one. §7 anticipated this risk ("the builder computes the
+effective scale"); this records the measured numbers. The correct factor is
+<code>effective_scale = metersPerUnit × 0.4</code> — i.e. <code>0.4</code> for
+SimReady/Isaac Props and <code>0.004</code> for ArchVis — and
+<code>manifest.json</code> publishes it per asset as
+<code>scale_for_duck_scale</code>, so the builder never recomputes it.</div>
 
 <div class="decision"><strong>Locked:</strong> <code>assets/fetch_assets.sh</code> mirrors every
 referenced USD (plus textures) into <code>assets/</code> and records SHA-256 checksums; the scene
@@ -415,14 +454,26 @@ def furniture_asset(item: dict) -&gt; AssetBaseCfg:
                                                 rot=yaw_to_quat(item["yaw_deg"])),
         spawn=sim_utils.UsdFileCfg(
             usd_path=str(ASSETS_DIR / MANIFEST[item["asset"]]["local_path"]),  # mirror only
-            scale=(0.4, 0.4, 0.4),                     # authored pre-PhysX-parse (§6.2)
+            # PER-ASSET scale, NOT a hardcoded 0.4: metersPerUnit x duck_scale.
+            # 0.4 for SimReady/Isaac Props (metres), 0.004 for ArchVis
+            # (centimetres). Authored pre-PhysX-parse (§6.2). See the units
+            # correction box in §5.
+            scale=(s, s, s) if (s := MANIFEST[item["asset"]]["scale_for_duck_scale"]) else None,
+            # SimReady colliders live behind PhysicsVariant, default "None" (§5).
+            variants=MANIFEST[item["asset"]]["variants"] or None,
+            # ...and RigidBody would make furniture dynamic, so pin it static.
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True)
+                        if item["collision"] == "native" else None,
             semantic_tags=[("class", item["name"])],
             collision_props=OFFSET_OVERRIDE if item["collision"] == "native" else None,
         ),
         collision_group=-1,
     )
     # if item["collision"] == "bbox_proxy": emit an additional invisible CuboidCfg
-    # sized from MANIFEST[item["asset"]]["aabb"] * 0.4 at the same pose (§6.3)
+    # sized from MANIFEST[item["asset"]]["size_m_at_duck_scale"] at the same pose
+    # (§6.3). Note flat assets (blue_rug measures 0.002 m tall) need either a
+    # minimum proxy thickness or — better, for a rug — no proxy at all: a rug is
+    # not an obstacle.
 </code></pre>
 
 <h2 id="risks">7. Risks and mitigations</h2>

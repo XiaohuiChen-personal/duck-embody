@@ -4,10 +4,14 @@ __pycache__/
 .env
 .env.local
 !.env.example
-# fetched asset mirror (checksums are committed, binaries are not)
-assets/*.usd*
-assets/**/*.usd*
-assets/textures/
+# Fetched asset mirror: ~1.1 GB of USDs, textures and MDLs downloaded by
+# assets/fetch_assets.sh, which reproduces it exactly from asset_list.tsv.
+# fetch_assets.sh mirrors bucket keys verbatim, so EVERYTHING lands under
+# assets/Assets/ — ignoring the whole directory is what actually keeps binaries
+# out (the earlier *.usd*/textures/ patterns missed .png/.jpg under
+# assets/Assets/**/Textures/ and staged 1.1 GB).
+# Tracked instead: asset_list.tsv, checksums.txt, manifest.json (AGENTS.md rule 7).
+assets/Assets/
 # scratch
 *.tmp
 _staging/

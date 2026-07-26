@@ -172,7 +172,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   `34f70fda182120369f954a4b1ccfa1edf58190ea` recorded in `pyproject.toml`
   `[tool.duck-embody]` **and** AGENTS.md §4; `scripts/smoke_policy_artifacts.py`.
 
-### T0.2 `[ ]` Fetch + inspect scene assets
+### T0.2 `[x]` Fetch + inspect scene assets
 
 - **Context:** ArchVis pieces have NO colliders (bbox proxies needed); SimReady
   pieces have colliders + semantics. Everything mirrored locally so the batch
@@ -203,8 +203,58 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 - **Smoke test [no sim]:** run both; every planned asset present in manifest;
   `hasCollision=false` for ArchVis, `true` for SimReady + Sektion collision USD;
   all aabb non-degenerate.
-- **Acceptance:** manifest committed; every authored contactOffset listed in the
-  evidence with its planned override (doc 03 §7).
+- **Acceptance:** PASSED (`bash scripts/inspect_assets.sh`, exit 0 — "every asset
+  mirrored, non-degenerate, and collision class as expected").
+  - **Mirror:** 221 files, 1.1 GB, 15 root assets + dependencies.
+    `assets/checksums.txt` committed; `bash assets/fetch_assets.sh --verify`
+    re-checks it. Reproducibility proven: deleting a file and re-running
+    regenerates a **byte-identical** `checksums.txt`.
+  - **`assets/manifest.json` committed** (doc 03's name, not `inspection.json`)
+    with per asset: `local_path`, `aabb`, `size_m`, `size_m_at_duck_scale`,
+    `metersPerUnit`, `scale_for_duck_scale`, `variants`, collision prims,
+    authored offsets.
+  - **`hasCollision` as doc 03 predicts, after the variant fix below:** native
+    for `sektion_cabinet` (21 prims) + 7 SimReady props; `bbox_proxy` for all 6
+    ArchVis assets + `desk_01`. **All AABBs non-degenerate.**
+  - **Authored contactOffset/restOffset: NONE in any mirrored asset.** Doc 03
+    §7's "invisible force field" risk does not arise for this asset set, so no
+    per-asset override is needed — only the blanket
+    `CollisionPropertiesCfg` value T2.2/T2.4 tune.
+- **Findings that change later tasks (rule 10.1; design docs updated this commit):**
+  1. **SimReady colliders are OFF by default.** They sit behind a
+     `PhysicsVariant` variant set defaulting to `None` → **zero** collision prims
+     as spawned. Fix: `UsdFileCfg(variants={"PhysicsVariant":"RigidBody"})` plus
+     `RigidBodyPropertiesCfg(kinematic_enabled=True)` (the only other option makes
+     furniture *dynamic*, so a leaning duck would shove the sofa). Doc 03 §5 and
+     AGENTS.md §4 corrected. **T2.2 must implement both.**
+  2. **ArchVis is authored in centimetres** (`metersPerUnit = 0.01`) vs metres for
+     SimReady/Isaac Props. Doc 03 §6.4's hardcoded `scale=(0.4,0.4,0.4)` would
+     spawn the 1.87 m fridge at **187 m**. Manifest publishes
+     `scale_for_duck_scale` (0.4 vs 0.004) per asset. Doc 03 §5/§6.4 corrected.
+  3. **`desk_01` is a catalog defect** — zero colliders under *either* variant
+     option (each selected and counted). Reclassified `bbox_proxy`. This is the
+     mismatch check earning its keep.
+  4. **`blue_rug` is 0.002 m tall at duck scale.** T2.2 must not give it a bbox
+     proxy — a rug is not an obstacle. Noted in doc 03 §6.4.
+  5. **The fridge is 0.73 m tall at duck scale — taller than the 0.5 m walls.**
+     Visible over walls from the hallway; a strong kitchen landmark but also a
+     possible confound for T2.3's room-recognition gate. Flagged for T2.1/T2.3.
+  6. Two fetcher bugs found and fixed, both silent-data-loss class: kit **core MDL
+     modules** (`OmniPBR.mdl` etc.) are renderer-resolved, not bucket objects, and
+     must be skipped — but the skip must be *download-driven*, because
+     `SimPBR.mdl` exists in both places and a name-based skip left
+     `checksums.txt` referencing a file a clean run never fetches; and
+     `UsdUtils.ExtractExternalReferences`'s **unresolved** list was being dropped,
+     which lost `Sektion_Cabinet/configurations/*.usd`.
+- **Deliverables (done):** `assets/asset_list.tsv` (asset table incl. variants),
+  `assets/fetch_assets.sh` (dependency-driven mirror, idempotent, `--verify`),
+  `scripts/usd_deps.py`, `scripts/inspect_assets.py` + `scripts/inspect_assets.sh`
+  (pinned pxr wrapper), `assets/manifest.json`, `assets/checksums.txt`.
+- **Measured duck-scale footprints** (for T2.1 layout authoring, metres):
+  sofa 0.39×0.98, armchair 0.45×0.39, coffeetable 0.30×0.53, bar_stool 0.17×0.20,
+  diningtable 0.43×0.73, diningchair 0.25×0.25, desk 0.26×0.77, planter 0.14×0.14,
+  sektion_cabinet 0.27×0.31 (h 0.31), daybed 0.99×0.61, fridge 0.75×0.28 (h 0.73),
+  stove 0.49×0.27, microwave 0.30×0.22, plant 0.28×0.27, rug 0.98×1.22.
 
 ---
 

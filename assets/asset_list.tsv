@@ -1,0 +1,64 @@
+# Duck Embody asset table — the roots that fetch_assets.sh mirrors.
+#
+# Columns:  key <TAB> s3_key <TAB> collision <TAB> variants
+#   key        stable name used by apartment_layout.py / manifest.json
+#   s3_key     object key under
+#              https://omniverse-content-production.s3-us-west-2.amazonaws.com/
+#   collision  EXPECTED collision class, per design doc 03 §5:
+#                native      collider ships in the USD (after `variants` below)
+#                bbox_proxy  visual-only, needs an invisible cuboid proxy
+#              This column is an EXPECTATION, not a fact: scripts/inspect_assets.py
+#              measures the truth and the manifest records what it found. A
+#              mismatch is a hard error there (doc 03 §7 — `collision_props` can
+#              only MODIFY an existing collider, never add one, so a visual-only
+#              asset declared "native" renders fine and the robot walks through).
+#   variants   USD variant selections to apply, `set=value` comma-separated, or `-`.
+#              The scene builder passes these to UsdFileCfg(variants=...) and
+#              inspect_assets.py applies them before measuring, so the manifest
+#              describes the asset AS SPAWNED.
+#
+# Catalog notes (all verified live 2026-07-26):
+#   * SimReady props ship colliders behind a `PhysicsVariant` variant set whose
+#     DEFAULT SELECTION IS `None`. Out of the box they have ZERO collision prims
+#     and the robot walks straight through them. Selecting `RigidBody` yields
+#     convexDecomposition colliders (armchair: 3 prims). The builder additionally
+#     sets kinematic_enabled=True so furniture is solid but immovable — we want
+#     obstacles, not a sofa that slides when a 42 cm duck leans on it.
+#     (Design doc 03 §5 originally said "colliders INCLUDED" — corrected there.)
+#   * SimReady props are authored in METRES (metersPerUnit = 1).
+#   * ArchVis Residential is render-only: zero physics, no physics variant. Also
+#     authored in CENTIMETRES (metersPerUnit = 0.01) — a naive scale=0.4 would
+#     make them 100x too large. See manifest `scale_for_duck_scale`.
+#   * Sektion_Cabinet's *_instanceable.usd already REFERENCES its
+#     sektion_cabinet_collisions.usd (21 collision prims, purpose=guide), so the
+#     collisions file arrives as a dependency and is not a root entry here.
+#
+# This is a deliberate SUPERSET of what the final layout uses: T2.1 picks the
+# final furniture from measured AABBs, and re-fetching mid-layout-iteration would
+# be a waste. Unused entries cost only disk (assets/ is gitignored).
+
+# --- Isaac Props: kitchen counter run (the scored target anchor) --------------
+sektion_cabinet	Assets/Isaac/5.1/Isaac/Props/Sektion_Cabinet/sektion_cabinet_instanceable.usd	native	-
+
+# --- SimReady props: colliders behind PhysicsVariant (see note above) ---------
+armchair	Assets/simready_content/common_assets/props/armchair/armchair.usd	native	PhysicsVariant=RigidBody
+crestwood_sofa	Assets/simready_content/common_assets/props/crestwood_sofa/crestwood_sofa.usd	native	PhysicsVariant=RigidBody
+appleseed_coffeetable	Assets/simready_content/common_assets/props/appleseed_coffeetable/appleseed_coffeetable.usd	native	PhysicsVariant=RigidBody
+bar_stool	Assets/simready_content/common_assets/props/bar_stool/bar_stool.usd	native	PhysicsVariant=RigidBody
+dellwood_diningtable	Assets/simready_content/common_assets/props/dellwood_diningtable/dellwood_diningtable.usd	native	PhysicsVariant=RigidBody
+dellwood_diningchair	Assets/simready_content/common_assets/props/dellwood_diningchair/dellwood_diningchair.usd	native	PhysicsVariant=RigidBody
+# desk_01 is a SimReady CATALOG DEFECT: it carries the PhysicsVariant set on
+# /RootNode but ships zero collision prims under EITHER option (verified by
+# selecting each in turn). Unlike its siblings it therefore needs a bbox proxy.
+# This is exactly the case doc 03 §7 warns about, and the reason the manifest
+# measures collision instead of trusting the catalog's reputation.
+desk_01	Assets/simready_content/common_assets/props/desk_01/desk_01.usd	bbox_proxy	PhysicsVariant=RigidBody
+gardenplanter_medium	Assets/simready_content/common_assets/props/gardenplanter_medium/gardenplanter_medium.usd	native	PhysicsVariant=RigidBody
+
+# --- ArchVis Residential: room-identity items SimReady lacks (visual only) -----
+daybed	Assets/ArchVis/Residential/Furniture/Beds/Daybed.usd	bbox_proxy	-
+fridge	Assets/ArchVis/Residential/Appliances/Refrigerators/fridge.usd	bbox_proxy	-
+stove	Assets/ArchVis/Residential/Appliances/Oven/stove.usd	bbox_proxy	-
+microwave	Assets/ArchVis/Residential/Appliances/Microwaves/microwave.usd	bbox_proxy	-
+plant_01	Assets/ArchVis/Residential/Plants/Plant_01.usd	bbox_proxy	-
+blue_rug	Assets/ArchVis/Residential/Decor/Rugs/Blue_Rugs.usd	bbox_proxy	-
