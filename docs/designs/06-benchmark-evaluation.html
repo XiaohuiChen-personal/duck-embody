@@ -108,7 +108,11 @@ nodes plus explicit adjacency lines and a one-line trajectory, from the MapGPT
 vision-and-language-navigation paper; specified in
 <a href="05-agent-harness.html">doc&nbsp;05</a> §5.2 — and plan re-injection). One
 prompt for all three
-models — <strong>no per-model prompt tuning</strong>.</td></tr>
+models — <strong>no per-model prompt tuning</strong>.
+<br><strong>File:</strong> <code>duck_embody/agent/prompts.py</code> (T3.1) — which also carries the
+§5.9 QA questions and rubric anchors and the §5.7 synonym table, all frozen together. §7's guard hashes
+whole <em>files</em>, so <code>SURVEY_ROOM_QUESTION</code> — a T2.3 scene-gate artifact, not a frozen item —
+is frozen by inclusion: re-run the scene survey before the freeze, never after.</td></tr>
 <tr><td>Tool schema</td><td>The full tool set and signatures: <code>get_observation</code>,
 <code>look_around</code>, <code>turn_to_heading</code>, <code>move</code>,
 <code>send_velocity</code>, <code>update_room</code>, <code>add_landmark</code>,
@@ -398,6 +402,43 @@ path + bearings; visited set = true trace ∩ room polygons; kitchen bearing = s
 centroid, 8-way bucketed; landmarks = per-room layout lists. See §11 for the
 executed check.</div>
 
+<div class="warning"><strong>Frozen by T3.1 (implementation note).</strong> The five question texts and all
+fifteen rubric anchors above live verbatim in
+<code>duck_embody/agent/prompts.py::LAYOUT_QA_QUESTIONS</code>, with the exchange preamble in
+<code>LAYOUT_QA_PREAMBLE</code> and <code>render_qa_prompt(memory_block)</code> assembling the single user
+message (free text + rubric parser, per §12's stated leaning). <code>tests/test_memory.py</code> asserts every
+one of those strings still appears in <em>this file</em>, so the code and the rubric cannot drift.
+<strong>Two gold answers must still be pinned by T4.1's fixtures before the freeze</strong>, and §11's
+"representative layout" check does not transfer to the committed one:
+<ul>
+<li><strong>Q2's oracle route is <code>living_room → kitchen</code>, not
+<code>living_room → hallway → kitchen</code>.</strong> The committed layout has a direct living_room↔kitchen
+doorway at (1.8, 1.2), so <code>room_path("living_room", "kitchen")</code> is the two-room path and
+<code>oracle_length(sofa (0.30, 1.60), fridge (3.10, 2.30))</code> = <strong>3.152 m</strong> direct, against
+<strong>3.611 m</strong> for the hallway route (the same oracle through the two doorway waypoints (0.9, 2.7)
+and (2.55, 2.7)) — only <strong>~15 % longer</strong>, so the hallway route is a plausible route for the robot
+to have actually walked, yet the rubric above scores an extra room 0. Decide before freeze whether Q2 accepts
+any collision-free route that reaches the fridge.</li>
+<li><strong>Q4's bucketing is pinned; seed 101's bearing merely sits near a boundary.</strong>
+<code>apartment_layout.compass_8</code> already fixes the convention deterministically
+(<code>COMPASS_8[int(((b % 360) + 22.5) // 45) % 8]</code>, i.e. half-open buckets with 22.5 rounding UP), and
+<code>tests/test_layout.py</code> asserts it at the cardinals and at 45°. So the gold answer for seed 101 is
+<strong>NE</strong>: spawn (0.5, 0.5) → kitchen centroid (2.55, 1.35) is <strong>22.521°</strong>, i.e.
+<strong>0.021°</strong> past the E/NE boundary. T4.1 must reuse <code>compass_8</code> rather than author a
+second bucketer. What remains genuinely open is only fairness at that margin: a model answering E is 0.021°
+from correct and scores 0.5 (adjacent bucket), which is the rubric working as intended but worth stating in
+the write-up. Seeds 102/103/104 are SW/SE/SE (clearing their boundaries by 3.4°/17.8°/15.4°), not the
+E/E/SE/SE of §11's fixture; a proposed <code>test_layout.py</code> assertion that every seed clears a bucket
+boundary by ≥1° would fail on seed 101 and is therefore NOT added.</li>
+</ul>
+<p class="src">All six numbers recomputed 2026-07-26 from the committed layout with the layout's own helpers
+(<code>oracle_length</code>, <code>room_path</code>, <code>room_centroid</code>, <code>bearing_deg</code>,
+<code>compass_8</code>) — the earlier revision of this note stated ≈3.23 m / ≈3.52 m / ~9 % / 22.53° / 0.03°,
+none of which reproduce, and cited no command (AGENTS.md rule 3). Command:
+<code>bash scripts/run_tests.sh tests/test_layout.py -q</code> covers the helpers; the values above were
+printed by a one-off script importing <code>duck_embody.env.apartment_layout</code> under the kit python.</p>
+</div>
+
 <h2 id="stats">6. Statistics</h2>
 
 <p>Every metric is reported as <strong>mean ± bootstrap 95% confidence
@@ -634,9 +675,22 @@ cost table's OpenAI row is TBD.</li>
 <li><strong>Sim wall-clock per policy-second on the GB10.</strong> The 5–25&nbsp;s/turn
 sim-stepping assumption (headless + camera rendering) is unmeasured; the smoke test
 should record real step throughput and tighten §8.</li>
-<li><strong>Synonym table contents for room-name matching (5.7).</strong> The
-matching rule is fixed, but the concrete frozen synonym list ("lounge",
-"living area", "hall", …) must be authored and frozen with the prompt template.</li>
+<li><strong class="src">RESOLVED (T3.1) — Synonym table contents for room-name
+matching (5.7).</strong> Authored and frozen as
+<code>duck_embody/agent/prompts.py::ROOM_SYNONYMS</code> (29 entries over the four canonical rooms), with <code>normalize_room_name</code> implementing 5.7's exact,
+case- and punctuation-insensitive match. <strong>"kitchenette" is deliberately
+absent</strong>: 9.1 names it as <em>the</em> non-synonym near-string that must not
+match, and an earlier revision listed it anyway — which would have made 9.1's
+fixture pass for the wrong reason, since that fixture's claim also fails the
+polygon half of the rule and so would never have exercised the name half.
+Removing it is evidence-neutral for T2.3's passed gate (<code>grep -rli
+kitchenette results/</code> matches nothing). <em>Owner call if you disagree:</em> a
+duck-scale kitchen genuinely invites the word, so a model that says "kitchenette"
+while standing in the kitchen now takes a precision hit. The sibling near-strings
+"galley" and "cooking area" are kept — neither is a near-string for a
+<em>different</em> room. <code>tests/test_memory.py</code> asserts every canonical
+value is a real layout room, that each true room self-maps, and that "kitchenette"
+does not match.</li>
 <li><strong>Q2 rubric operationalization.</strong> "Turn-by-turn directions" scoring
 requires parsing free-text directions into a room/turn sequence; the parse rules
 (accepted direction vocabulary, how to handle relative vs compass directions) need

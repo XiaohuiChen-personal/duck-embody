@@ -231,6 +231,20 @@ Kit process / tooling (verified 2026-07-26 during PLAN T0.0):
   `isaaclab.sh -p -c "import isaaclab_tasks"` fails (`No module named 'pxr'`);
   after `AppLauncher(...)` both import fine (USD `(0, 24, 5)`). Offline USD
   inspection uses the pinned packman invocation in PLAN T0.2 instead.
+- **Stale `.pyc` can make the suite report green on code that is no longer on
+  disk.** Python validates a cached module against (source mtime truncated to
+  *seconds*, source size), so an edit that keeps the byte count and lands in the
+  same second as the source it replaces silently runs the OLD module —
+  reproduced with the kit python during T3.1's review pass (`X = 40` →
+  `X = 25`: still imported as 40). Exactly the shape of a one-character constant
+  fix in a fast edit-then-test loop. `scripts/run_tests.sh` now exports
+  `PYTHONDONTWRITEBYTECODE=1`; **always run tests through that script**, and if
+  you ever invoke pytest directly, export it yourself or `find . -name
+  __pycache__ -prune -exec rm -rf {} +` first.
+- **This working tree carries large uncommitted work** (the owner commits, rule
+  7). `git checkout -- <file>` therefore DESTROYS implemented work, not stray
+  edits — it silently reverted T3.1's live `policy_wrapper` k fix during the
+  review pass. Back a file up before mutating it, and revert with the backup.
 - **numpy is pinned `<2`** in `pyproject.toml`: the kit python ships 1.26.0 and
   Isaac Sim 5.1.0's compiled extensions are built against the 1.x ABI.
 - `pyproject.toml` needs explicit `[tool.setuptools.packages.find]` — flat-layout

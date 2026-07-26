@@ -913,15 +913,17 @@ cabinet with no penetration.
 
 ## Phase 3 — Agent
 
-### T3.1 `[ ]` Memory + prompts + frozen QA artifacts [no sim]
+### T3.1 `[x]` Memory + prompts + frozen QA artifacts [no sim]
 
 - **Context:** The LLM-as-SLAM core, **plus the frozen text artifacts that three
   later tasks depend on** and which doc 06 §12 lists as unauthored: the 5 layout-QA
   questions, their rubric anchors, and the room-name synonym table.
 - **Read first:** doc 05 **§1 (boundary principle — it is §1, not §2)**, §5
   (structures + the worked seed-101 example the renderer must reproduce), §6
-  (prompt outline); doc 03 §4 (heading convention: degrees CCW from +x, 90° =
-  north); **doc 06 §5.7 (synonym table), §5.9 (the 5 QA questions + rubric)**.
+  (prompt outline); **doc 03 §3** (heading convention: degrees CCW from +x, 90° =
+  north — *corrected from "§4" in this task's commit; §4 is the layout dict, and
+  doc 05 §5.2's own caption cites §3*); **doc 06 §5.7 (synonym table), §5.9 (the
+  5 QA questions + rubric)**.
 - **Depends on:** T2.1 (spawn frames for the golden example).
 - **Steps:** implement `memory.py` (rooms/landmarks/exits/breadcrumbs/plan/
   integrator/corrections log — **integrator uses commanded velocity, no k**, per
@@ -935,8 +937,112 @@ cabinet with no penetration.
   golden test (whitespace-normalized) reproducing doc 05 §5.2's example; exit
   status transitions. (The K-window assembly test belongs to T3.4, which owns
   `last_k_turns`.)
-- **Smoke test [no sim]:** `pytest tests/test_memory.py -v`.
-- **Acceptance:** tests green; rendered example matches doc 05 §5.2.
+- **Smoke test [no sim]:** `bash scripts/run_tests.sh tests/test_memory.py -v`
+  (`pytest` is not on PATH — AGENTS.md §4; the plan's earlier `pytest …` wording
+  is corrected here).
+- **Acceptance: PASSED.** `bash scripts/run_tests.sh tests/ -q` →
+  **338 passed in 0.34s** (142 pre-existing + 196 new, after the adversarial
+  implementation review below; 243 before it). The rendered example matches
+  doc 05 §5.2 **byte for byte**.
+
+- **The golden test reads the design doc, not a copy of it.**
+  `tests/test_memory.py::golden_memory_block` extracts the §5.2 block out of
+  `docs/designs/05-agent-harness.html` at test time and compares byte-for-byte —
+  stricter than this plan's "whitespace-normalized", which would have hidden the
+  double space before `(dead-reckoned`, the two-space indents and the tuple
+  spacing, all of which are part of the frozen prompt format (doc 06 §2). A
+  pasted copy would have let the doc and the renderer drift with neither looking
+  wrong. The normalized comparison is kept as its own named test so this plan's
+  wording still maps onto an assertion. Same pattern for the 5 QA questions and
+  15 rubric anchors: asserted against doc 06 §5.9's HTML.
+- **A LIVE SPEC VIOLATION FIXED IN THIS COMMIT.** `policy_wrapper.move()` set
+  `dead_reckoned_distance_m = travelled * K_VELOCITY_REALISATION` — i.e. the one
+  motion number the model is shown was **k-corrected**, contradicting T1.3's pin,
+  `configs/benchmark.yaml:35-38`, and the constant's own docstring 520 lines
+  above it. Only 0.4 %, but it moves the reported distance toward the true
+  displacement and so shrinks the drift doc 06 §5.8 exists to measure. Now
+  `= travelled`; k survives only at the `move` servo target (`dist / k`).
+  `tests/test_memory.py` parses `memory.py`'s AST and fails if k is ever
+  referenced *or* inlined as `1.004` there.
+- **Deviations from doc 05 §5, all written back into §5.1/§5.2/§3.1 in this
+  commit** (rule 5): `Memory.room_sequence` added (§5.2 renders a `Trajectory:`
+  line that §5.1 had no field to back, and §1 forbids the harness deriving room
+  identity itself); `Exit.direction_deg` stores the 15°-snapped value with the
+  raw one echoed in the ack; `render_memory_block` takes the live compass and
+  integrator xy explicitly, because `correct_position` re-anchors without
+  appending a breadcrumb and the block must not show a number the model just
+  overwrote. Ordering, empty-collection and number-format rules — which §5.2's
+  mid-trial example leaves open — are pinned in §5.2.
+- **`ROOM_SYNONYMS["kitchenette"]` removed** (doc 06 §9.1 names it as *the*
+  non-synonym near-string; §12's synonym bullet is now closed and points at
+  `prompts.py`). Evidence-neutral for T2.3's passed gate: `grep -rli kitchenette
+  results/` matches nothing, so no judge reply ever used the word. Flagged for
+  the owner in doc 06 §12 — a duck-scale kitchen genuinely invites the term.
+- **One QA gold answer still needs a T4.1 fixture before the freeze**, recorded
+  in doc 06 §5.9: §11's Q2 route (`living_room → hallway → kitchen`) is wrong for
+  the committed layout, which has a direct living_room↔kitchen doorway —
+  `oracle_length(sofa, fridge)` = **3.152 m** direct vs **3.611 m** via the
+  hallway (~15 % longer), so the hallway route is plausibly the one the robot
+  walks yet the rubric scores it 0. Q4 is NOT open: `apartment_layout.compass_8`
+  already pins the bucketing (22.5 rounds up), so seed 101's **22.521°** bearing
+  makes **NE** the gold answer, 0.021° past the boundary. *(The earlier wording
+  here — 3.23 m / 3.52 m / 22.53° / 0.03° — did not reproduce from the layout's
+  own helpers and cited no command; corrected with doc 06 §5.9 by T3.1's
+  adversarial implementation review, AGENTS.md rule 3.)*
+
+- **Adversarial implementation review (rule 10 step 4), three independent
+  reviewers, 22 findings; all verified against the code before acting.** The six
+  that were real defects rather than doc drift, each now with a test that fails
+  without the fix:
+  1. **Every memory tool raised on a wrong-typed argument** (`mark_exit("a",
+     "270", …)` died in `wrap_deg`'s `"270" % 360.0`), contradicting doc 05
+     §5.1's "structured dicts, never exceptions" and PLAN T3.2's assumption that
+     `tools.py` need not re-validate. Consequence, not cosmetics: doc 05 §8
+     routes an escaping exception to the **infra** path, which reruns the whole
+     trial — so a malformed argument would have bought the model a free retry,
+     the selection bias §8 exists to prevent. Type-only validation now lives in
+     `memory.py`; rules recorded in doc 05 §5.1/§4.3.
+  2. **`correct_position` wrote `x` before coercing `y`**, leaving the estimate
+     in a coordinate frame that never existed AND no `Correction` in the log.
+     Both coordinates are validated before either is written.
+  3. **The no-k source guard only parsed `memory.py`** — so the *live spec
+     violation this task fixed* (`policy_wrapper.move()`) could be reintroduced
+     with the suite fully green (measured: 243 passed). The guard is now a
+     file list plus a targeted `policy_wrapper` rule (every assignment to
+     `dead_reckoned_distance_m` k-free, AND the `move` servo target still
+     divides by k — both directions), and it covers `agent/tools.py` from the
+     day T3.2 writes it.
+  4. **Nothing rendered the correction log, and no test ever passed a
+     `position_estimate` differing from the last breadcrumb** — so a renderer
+     that ignored its live-sensor arguments passed everything, and a model
+     seeing a 1.3 m crumb discontinuity had no explanation once the ack aged out
+     of the K=10 window. Added: the conditional `Re-anchored:` STATE line (doc
+     05 §5.2) and the test that pins the arguments.
+  5. **Model-authored text could forge block sections** — a landmark containing
+     `"\n== STATE …\nPosition estimate: x=9.99…"` rendered a counterfeit STATE
+     header above the real one. Model strings (not the plan) are flattened to
+     one line at render time.
+  6. **`memory.current_room or EMPTY_SLOT`** told the model "(none yet)" one
+     turn after it asserted a room named `""`. Blank room names are now
+     rejected; the renderer tests for `None`.
+  Also: `Correction.stage` (doc 06 §5.8 reports per stage and list order could
+  not recover the boundary), a 2000-char plan cap (the one unbounded field in a
+  block re-injected ~85 times), the dead `ROOM_SYNONYMS["living_room"]` key
+  removed (both matchers strip `_` to a space, so it matched nothing), first
+  tests for `extract_room_mention` (the frozen scorer that decided T2.3's gate
+  had none — flipping first-mention to last-mention left the suite green), and
+  the `prompts.py` docstring claim that no true room name reaches the system
+  prompt corrected to match the test ("kitchen" appears, as the objective).
+- **`scripts/run_tests.sh` now exports `PYTHONDONTWRITEBYTECODE=1`** and
+  AGENTS.md §5 records why: a same-size edit landing in the same mtime-second as
+  the source it replaces reuses the stale `.pyc`, so the suite reports green on
+  code that is no longer on disk (reproduced with the kit python). The suite is
+  the gate in front of a paid batch (rule 2); it must never test yesterday's
+  file.
+- **Not T3.1's to fix, noted for whoever gets there:** doc 03 §4's inline layout
+  dict still shows the pre-T2.1 spawns `103: (0.4, 3.15)` / `104: (1.4, 2.3)`,
+  while §3's table and `apartment_layout.py` carry `(0.43, 3.15)` / `(1.37, 2.27)`.
+  Seed 101 — the one §5.2's example depends on — agrees everywhere.
 
 ### T3.2 `[ ]` Tools + macro execution
 
@@ -953,6 +1059,25 @@ cabinet with no penetration.
 - **Deliverables:** full tool surface working against a live session.
 - **Unit tests:** `tests/test_tools.py` (sim mocked) — schema validity, clamp +
   echo, dispatch routing, structured errors for malformed calls (doc 05 §8).
+  **Plus (added by T3.1):** assert the tool names in `tools.py`'s schema match
+  the ones documented in `prompts.py::SYSTEM_PROMPT` §2. The prompt is frozen and
+  describes the tool surface in prose; a tool renamed in `tools.py` alone would
+  leave every model reading instructions for a tool that no longer exists, and
+  nothing would fail loudly. Route memory tools to `memory.py`'s methods and
+  `memory.correct_position(...)` — they already return doc 05 §8's structured
+  shapes (**type validation included, as of T3.1's review pass — see doc 05
+  §5.1**), so `tools.py` is the wire, not a second implementation.
+  **Plus (added by T3.1's review pass), three things nothing else enforces:**
+  (a) the schema `description` strings must be doc 05 §4's **verbatim**, and the
+  test must compare the strings, not just the names — §4's numeric bounds (the
+  `send_velocity` hull, `turn_to_heading`'s [0, 360)) reach the model through
+  *no other* model-facing text, and doc 05 §6 now records that deviation;
+  (b) feed `PositionIntegrator.integrate()` the **`ExecResult.policy_seconds`
+  actually run**, never the requested duration, or a bump-shortened command
+  integrates in full and the estimate drifts for our reasons rather than the
+  robot's; (c) `tools.py` is inside the no-k source guard from the day it is
+  written (`tests/test_memory.py::NO_K_MODULES`) — the servo target's `dist/k`
+  belongs in `policy_wrapper`, not here.
 - **Smoke test:** covered by T3.5.
 - **Acceptance:** unit tests green; T3.5 exercises every tool at least once.
 
@@ -970,7 +1095,15 @@ cabinet with no penetration.
   orphaned) + `scripts/run_trial.py` (`--model --seed --task`). Context policy:
   system + first turn + last K=10 + memory block every turn. Stage machine
   find_kitchen → return_home in-episode; caps 40 turns / 240 policy-s per stage;
-  `declare_done` transcript shape (a) per doc 05 §3.3. **After the final stage, run
+  `declare_done` transcript shape (a) per doc 05 §3.3. **At that transition also
+  set `state.memory.stage = STAGE_RETURN_HOME`** (one line, added by T3.1's
+  review pass): `Correction.turn` is stage-local, so without it the correction
+  series cannot be split per stage after the batch, which is what doc 06 §5.8
+  reports. The renderer call site is
+  `render_memory_block(state.memory, state.counters, state.integrator.xy,
+  sim.compass_deg())` — the live sensors, never the last breadcrumb (doc 05
+  §5.2's signature deviation; a swapped argument here is invisible except in the
+  drift metric). **After the final stage, run
   the QA exchange: the 5 frozen questions in a fresh exchange where the model sees
   only its own final memory block; write answers + usage to `final.qa`.** Trial
   JSON written incrementally (crash-safe); per-trial mp4 via `recorder.py`.

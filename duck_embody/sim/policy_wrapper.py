@@ -604,5 +604,15 @@ class PolicyPlayback:
         merged.true_displacement_m = math.dist(start_xy, end_xy)
         #: What the model is told it covered (dead-reckoned), vs the true
         #: displacement above, which is scoring-only.
-        merged.dead_reckoned_distance_m = travelled * K_VELOCITY_REALISATION
+        #:
+        #: NO k here. `travelled` is already the honest commanded-velocity
+        #: integral (see the accumulation above), and PLAN T1.3's pinned policy
+        #: — repeated in K_VELOCITY_REALISATION's own docstring and in
+        #: configs/benchmark.yaml — says the estimate the model sees is
+        #: commanded velocity with no correction factor. This line used to
+        #: multiply by k, which quietly moved the reported distance 0.4 % toward
+        #: the true displacement and so shrank the drift doc 06 §5.8 exists to
+        #: measure. Fixed by T3.1, which implements the same pin in
+        #: `agent/memory.py::PositionIntegrator`; the two must not disagree.
+        merged.dead_reckoned_distance_m = travelled
         return merged

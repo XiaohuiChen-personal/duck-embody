@@ -122,7 +122,8 @@ def run_stage(stage, state, sim, provider, tools):
         msgs = [state.first_turn] + last_k_turns(state.transcript[1:], K=10)  # [1:]: no duplicate
         #   first turn while it is still inside the K window (early turns would
         #   otherwise pay the spawn image's token cost twice)
-        mem  = render_memory_block(state.memory, state.counters)  # re-injected EVERY turn
+        mem  = render_memory_block(state.memory, state.counters,  # re-injected EVERY turn
+                                   state.integrator.xy, sim.compass_deg())  # live, see 5.2
         req  = build_request(SYSTEM_PROMPT, mem, msgs, tools)     # images older than K dropped
 
         # 2. Model call (deterministic decoding where supported; retry 429/5xx w/ backoff)
@@ -284,12 +285,12 @@ record in parent docs/jetson-mod/v4_comparison.md</span></p>
 <h3>4.3 Memory tools (write YOUR map)</h3>
 <table>
 <tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
-<tr><td><code>update_room(name, description)</code></td><td>Upsert a room node</td><td>ack + current room count</td><td>None; overwriting a description is legal (the model may revise)</td></tr>
+<tr><td><code>update_room(name, description)</code></td><td>Upsert a room node</td><td>ack + current room count</td><td>Overwriting a description is legal (the model may revise). Rejected only for the two reasons §5.1 lists for every memory tool: a wrong-typed argument, or a name that is empty/all-whitespace (T3.1 review)</td></tr>
 <tr><td><code>add_landmark(room, description)</code></td><td>Append a landmark string to a room</td><td>ack</td><td>Unknown <code>room</code> → structured error naming the known rooms (counts as a normal tool result, not a wasted turn)</td></tr>
 <tr><td><code>mark_exit(room, direction_deg, status)</code></td><td>Record/update an exit; keyed on (room, direction_deg rounded to nearest 15°)</td><td>ack</td><td>Unknown room → structured error; malformed <code>status</code> (not <code>unexplored</code> / <code>leads_to:&lt;room&gt;</code>) → structured error with the two legal forms</td></tr>
 <tr><td><code>set_current_room(name)</code></td><td>Assert current room</td><td>ack</td><td>Unknown room → structured error suggesting <code>update_room</code> first</td></tr>
-<tr><td><code>correct_position(x, y, reason)</code></td><td>Resets the integrator's (x, y); heading is never reset (compass is absolute). Appends to the correction log.</td><td>ack with old→new delta</td><td>None rejected — a bad anchor is the model's error to make; the log makes it measurable (§10)</td></tr>
-<tr><td><code>update_plan(text)</code></td><td>Replaces the standing plan verbatim</td><td>ack</td><td>None</td></tr>
+<tr><td><code>correct_position(x, y, reason)</code></td><td>Resets the integrator's (x, y); heading is never reset (compass is absolute). Appends to the correction log.</td><td>ack with old→new delta</td><td>No <em>anchor</em> rejected — a bad anchor is the model's error to make; the log makes it measurable (§10). Only §5.1's type check applies (a non-number is not an anchor), and it runs on both coordinates before either is written</td></tr>
+<tr><td><code>update_plan(text)</code></td><td>Replaces the standing plan verbatim</td><td>ack</td><td>Over 2000 characters → structured error naming the limit; the previous plan survives (T3.1 review — see §5.1/§5.2)</td></tr>
 </table>
 
 <h3>4.4 Control</h3>
@@ -311,7 +312,8 @@ class Room:                 # created only by update_room (model-asserted)
 @dataclass
 class Exit:                 # created only by mark_exit
     room: str
-    direction_deg: float    # absolute compass direction of the doorway
+    direction_deg: float    # absolute compass direction, STORED SNAPPED to the
+                            # 15 deg key grid of 4.3 (T3.1)
     status: str             # "unexplored" | "leads_to:&lt;room&gt;"
 
 @dataclass
@@ -321,6 +323,7 @@ class Crumb:                # appended by the HARNESS after every motion command
 @dataclass
 class Correction:           # appended on every correct_position call
     turn: int; old_xy: tuple; new_xy: tuple; reason: str
+    stage: str              # stamped from Memory.stage (T3.1 review)
 
 @dataclass
 class Memory:
@@ -330,6 +333,12 @@ class Memory:
     current_room: str | None
     plan: str
     corrections: list[Correction]
+    room_sequence: list[str]    # appended by set_current_room, consecutive
+                                # repeats collapsed; backs the Trajectory line
+                                # of 5.2 (added by T3.1 -- see note below)
+    stage: str                  # "find_kitchen" | "return_home"; set by the
+                                # loop at the 3.3 transition, never rendered,
+                                # never model-writable (T3.1 review)
 
 class PositionIntegrator:
     """Dead reckoning: per 50 Hz control step, rotate the COMMANDED body-frame
@@ -346,6 +355,78 @@ measured velocity, because the deployed observation stack has no linear-velocity
 base_lin_vel; BNO055 cannot measure it</span>. The breadcrumb trail is the harness's only autonomous write
 into memory, and it is pure sensor-realistic state (declared exception (b) in §1) — it records where the
 integrator <em>thinks</em> the robot has been, never where it truly is.</p>
+
+<div class="warning"><strong>Implementation deviations recorded by T3.1</strong> (AGENTS.md §3 rule 5 — these
+amend the listing above rather than living only in the code):
+<ul>
+<li><code>Memory.room_sequence</code> <strong>added</strong>. §5.2's worked example renders
+<code>Trajectory: living_room -&gt; hallway</code>, but the dataclass above had no temporal field at all, and §1
+forbids the harness deriving room identity itself — so the sequence must come from the model's own
+<code>set_current_room</code> assertions, and it must be stored somewhere. Consecutive repeats are collapsed
+(re-confirming the room you are already in would otherwise render
+<code>hallway -&gt; hallway -&gt; hallway</code>); a genuine revisit a→b→a keeps all three, because that is the
+trajectory. Not reset at the stage transition — §3.3 keeps the memory object intact.</li>
+<li><code>Exit.direction_deg</code> stores the <strong>snapped</strong> direction, not the raw assertion. §4.3
+keys exits on the 15° grid; storing the raw value would render <code>exit at 272 deg</code> for a record that a
+later <code>mark_exit(268)</code> silently overwrites, leaving the model unable to predict which of its own
+exits it was addressing. The ack echoes the raw value, so the snap is visible rather than silent — the way
+<code>clamp_command</code> echoes clamps. Snapping is half-up, not Python's banker's <code>round()</code>,
+which would snap 7.5° down to 0° but 22.5° up to 30°.</li>
+<li><code>PositionIntegrator</code> interface pinned: <code>__init__(x, y)</code> at the seed's spawn
+coordinates; attributes <code>x</code>/<code>y</code> plus an <code>xy</code> property;
+<code>step(vx, vy, heading_deg, dt=CONTROL_DT)</code> for one control step;
+<code>integrate(vx, vy, heading_deg, duration_s)</code>, whose step count comes from the sim's own
+<code>duration_to_steps</code> so the estimate cannot disagree with the commanded motion for reasons unrelated
+to drift; and <code>correct(x, y) -&gt; old_xy</code>. It holds no heading of its own — the caller passes the
+compass reading valid for each interval, which is what "heading is never reset" means in practice. No
+<code>k</code> appears anywhere in it (PLAN T1.3's pinned policy). <strong>The same commit removed a
+<code>* k</code></strong> from <code>policy_wrapper.move()</code>'s <code>dead_reckoned_distance_m</code>, which
+was moving the number the model is told 0.4 % toward the true displacement and so shrinking the drift doc
+<a href="06-benchmark-evaluation.html">06</a> §5.8 exists to measure.</li>
+<li><code>Correction.old_xy</code>/<code>new_xy</code> are typed <code>tuple[float, float]</code>, and every
+dataclass field takes a default so <code>Memory()</code> is the turn-0 state (<code>plan</code> starts
+<code>""</code>). <code>Correction.turn</code> is the <strong>stage-local</strong> turn index — §3.3 resets the
+counters while keeping this object, so two corrections in one trial can share a value.
+<strong>CORRECTED by T3.1's review pass:</strong> an earlier revision of this bullet claimed "list order
+disambiguates them". It does not — list order gives the sequence, not the stage boundary, so a stage-2
+correction on turn 12 was byte-identical to a stage-1 one and doc
+<a href="06-benchmark-evaluation.html">06</a> §5.8's per-stage reporting would have been unrecoverable after
+the batch. <code>Memory.stage</code> and <code>Correction.stage</code> (above) fix it: the loop sets
+<code>memory.stage</code> once at the §3.3 transition and <code>correct_position</code> stamps it.</li>
+<li>The memory tools return <strong>structured dicts, never exceptions</strong>: an ack
+<code>{ok: true, detail, …}</code> or the §8 error shape <code>{error: "invalid_args", detail, hint}</code>.
+Room lookups are <strong>exact</strong> — no case folding, no synonym table. The synonym table in
+<code>prompts.py</code> is a scoring artifact and applying it here would be the harness guessing the model's
+intent (§8: "the harness never guesses intent") and quietly repairing its graph (§1).</li>
+<li><strong>Argument validation lives HERE, and is type-only</strong> (added by T3.1's review pass, which
+found every memory tool raising an uncaught <code>TypeError</code>/<code>ValueError</code> on a wrong-typed
+argument — <code>mark_exit("hallway", "270", "unexplored")</code> died inside <code>wrap_deg</code>'s
+<code>"270" % 360.0</code>, and <code>correct_position</code> wrote <code>x</code> before coercing
+<code>y</code>, leaving the estimate half re-anchored with nothing in the correction log). That contradicted
+the bullet above, and it matters beyond tidiness: §8 classifies an escaping harness exception as an infra
+fault and reruns the trial <em>whole</em>, so a malformed argument would have bought the model a free retry —
+the selection bias §8 exists to prevent — while §8's own first row says args that fail validation come back as
+<code>invalid_args</code> and the turn still counts. The rules, which PLAN T3.2 relies on when it calls
+<code>tools.py</code> "the wire, not a second implementation":
+<ul>
+<li>String fields (room/name, description, status, reason, plan text) must be strings — required, never
+coerced: <code>str(None)</code> would create a room literally named <code>None</code>.</li>
+<li>Number fields (<code>direction_deg</code>, <code>x</code>, <code>y</code>) go through
+<code>float()</code>, so the numeric strings models emit for number-typed fields (<code>"270"</code>) parse —
+that is parsing, not intent-guessing, since the result is exactly what the schema asked for. <code>bool</code>
+is excluded; non-finite values are rejected (<code>json.loads</code> accepts the <code>NaN</code>/
+<code>Infinity</code> literals, and <code>inf % 360</code> is <code>nan</code>).</li>
+<li><code>correct_position</code> validates BOTH coordinates before writing EITHER.</li>
+<li>A room name that is empty or all-whitespace is rejected: it cannot be addressed by a later
+<code>set_current_room</code> and renders as <code>Place 1:  -- …</code> with a blank
+<code>Trajectory:</code> entry. This is the ONLY rule applied to a name — no trimming, no case folding.</li>
+<li><code>update_plan</code> rejects a plan over <strong>2000 characters</strong>
+(<code>memory.PLAN_MAX_CHARS</code>) — rejected rather than truncated, because §4.3 pins the plan as verbatim
+and a silent prefix would show the model a plan it never wrote. Rationale in §5.2's size note.</li>
+</ul>
+None of this inspects <em>meaning</em>: a wildly wrong but finite anchor, a forward-referencing
+<code>leads_to:</code>, a duplicate room under a new name all still go through untouched (§1, §4.3).</li>
+</ul></div>
 
 <h3>5.2 The rendered memory block — MapGPT grammar, concrete example</h3>
 
@@ -391,6 +472,81 @@ turn's image once it ages past K — are dropped. The memory block is the one ar
 it is regenerated fresh into every request, so a fact asserted on turn 3 is still in front of the model on
 turn 38, at constant token cost.</div>
 
+<div class="warning"><strong>Rendering rules pinned by T3.1</strong> (the example above is mid-trial and rich,
+so it leaves most of these open; the golden test in <code>tests/test_memory.py</code> extracts the block above
+from this file and asserts <code>render_memory_block</code> reproduces it <em>byte for byte</em>, so the doc and
+the renderer cannot drift):
+<ul>
+<li><strong>Signature.</strong> §3.1's pseudocode calls
+<code>render_memory_block(state.memory, state.counters)</code>; the implementation is
+<code>render_memory_block(memory, counters, position_estimate, compass_deg)</code>. The two live sensor
+readings are passed explicitly rather than read off the last breadcrumb because <code>correct_position</code>
+re-anchors the integrator <em>without</em> appending a crumb (§5.1: crumbs follow motion commands), and a block
+that rendered the pre-correction position immediately after the model corrected it would be showing the model a
+number it had just overwritten.</li>
+<li><strong>Ordering.</strong> <code>Place N</code> follows <code>rooms</code> insertion order, 1-based, and an
+<code>update_room</code> upsert keeps a room's slot, so its number is stable for the whole episode.
+<code>Connections:</code> renders one line per undirected edge, in <strong>exit-creation order</strong>, source
+room on the left; reciprocal assertions (a→b and b→a) collapse to one line. <em>(This clause said "in the
+order the model first asserted it" until T3.1's review pass, which found the implementation ordering by the
+position of the source exit in <code>Memory.exits</code> — where that exit was first <code>mark_exit</code>'d,
+not where its status later became <code>leads_to:</code>. Upgrading a long-standing <code>unexplored</code>
+frontier therefore renders its edge above an edge asserted earlier on a newer exit. Amended rather than fixed
+in code, per AGENTS.md rule 5: both rules are stable and deterministic, and the model sees only a fixed line
+order either way. The discriminating case is now tested — the example above, where no exit is ever upgraded,
+cannot tell them apart.)</em> <code>Unexplored exits</code> sorts by room name, then ascending direction — the
+only rule that reproduces the example above, where <code>living_room</code> is Place 1 yet renders last.</li>
+<li><strong>Which exits go where.</strong> <code>leads_to:</code> exits render as <code>Connections:</code> and
+are excluded from the unexplored list (doc <a href="06-benchmark-evaluation.html">06</a> §5.7: an unexplored
+exit is not an adjacency assertion). An edge whose target room the model never created still renders — dropping
+it would be the harness repairing the model's graph (§1).</li>
+<li><strong>Empty collections.</strong> The example pins exactly one case: a room with no landmarks omits its
+<code>landmarks:</code> line. The rest is T3.1's: <code>Connections:</code>, <code>Trajectory:</code> and the
+whole <code>Unexplored exits:</code> block are omitted when empty; the three <code>== … ==</code> headers and
+the five <code>STATE</code> lines always render (a sixth, <code>Re-anchored:</code>, is conditional — see
+below); and every fixed line with nothing to show renders the single
+token <code>(none yet)</code> — one signal everywhere rather than bespoke wording per slot, so the block's shape
+does not change under the model between turn 1 and turn 40.</li>
+<li><strong>Numbers.</strong> Positions 2 decimals always (<code>x=0.90</code> keeps its trailing zero), with
+<code>-0.00</code> folded to <code>0.00</code>. Compass, breadcrumb and exit headings are integers, half-up and
+wrapped to [0, 360) — 359.7 renders <code>0</code>, never <code>360</code>; half-up rather than Python's
+banker's <code>round()</code>, which would render 88.5 as 88 and 89.5 as 90 for reasons the model cannot see.
+Policy-seconds 1 decimal; turn counts and both caps bare integers. The breadcrumb window is fixed at 5 and the
+label stays <code>(last 5)</code> even when fewer exist: it names the window, not the count.</li>
+<li><strong>Conditional STATE line: <code>Re-anchored:</code></strong> (added by T3.1's review pass). After
+<code>correct_position</code>, the breadcrumb list legitimately mixes coordinate frames — crumbs are the
+honest record and are never rewritten — so the series contains a jump no motion command explains (1.30 m
+backwards inside a 0.5 m move, in the reviewed case), while <code>Position estimate:</code> shows the
+corrected value. The <code>tool_result</code> that explained it is dropped once its turn ages past the K=10
+window, after which the discontinuity is indistinguishable from a bad integration: noise in the exact metric
+(doc <a href="06-benchmark-evaluation.html">06</a> §5.8) that <code>correct_position</code> exists to serve.
+The block therefore carries one derived line after <code>Breadcrumbs</code>, rendered only when at least one
+correction exists (so the example above is unchanged):
+<code>Re-anchored: N time(s) (latest moved the estimate X.XX m; breadcrumbs before it are in the old
+frame)</code>. It carries no new information across the §1 boundary — both numbers are the model's own
+<code>correct_position</code> calls, and the magnitude is what that call's ack already returned as
+<code>delta_m</code>; the line only makes them survive the context window, which is what the whole block is
+for. No turn index: <code>Correction.turn</code> is stage-local (§3.3), so a stage-1 index shown during
+stage 2 would read in the wrong frame, and the crumbs carry no turn indices to align it with anyway.</li>
+<li><strong>Model-authored text is flattened to one line.</strong> Every model-authored string except the plan
+has its line breaks replaced by spaces at render time. Without it, a landmark containing
+<code>"\n== STATE …\nPosition estimate: x=9.99, y=9.99  (dead-reckoned…)"</code> renders a complete,
+correctly-formatted counterfeit STATE header and position line ABOVE the real one — two contradictory
+estimates in front of the model, in the QA prompt (which embeds the block verbatim), and in any post-hoc
+parser. Formatting only: nothing is dropped, no other character changes, and what is stored is untouched
+(§1).</li>
+<li><strong>Size.</strong> The block's cost is constant in the length of the <em>episode</em> — it does not
+grow with the transcript — but not constant absolutely: it grows with what the model writes into it. Only the
+plan is bounded (§4.3's 2000-character limit); rooms, landmarks and exits are deliberately unbounded, because
+refusing to record an observation the model made would be the harness editing the model's map (§1). The plan
+is the field worth capping because it is free text with no natural end and is re-injected into every turn of
+both stages plus the QA exchange.</li>
+<li><strong>Verbatim quirks that are not typos.</strong> Two spaces before <code>(dead-reckoned</code>; the
+separator is <code>--</code> (two ASCII hyphens), <code>&lt;-&gt;</code> and <code>-&gt;</code> are ASCII;
+degrees are the bare lowercase word <code>deg</code>; breadcrumb tuples have no space after their commas. The
+plan is stored and rendered verbatim, never re-wrapped (§4.3).</li>
+</ul></div>
+
 <h3>5.3 <code>correct_position</code> — cognitive loop closure</h3>
 
 <p><strong>Loop closure</strong> in SLAM: when the robot recognizes a previously-visited place, the system
@@ -430,6 +586,21 @@ result).</li>
 mark uncertain exits <code>unexplored</code> rather than guessing <code>leads_to</code>; when lost, say so in
 the plan and navigate to a mapped landmark to re-anchor.</li>
 </ol>
+
+<div class="warning"><strong>Deviation recorded by T3.1's review pass (AGENTS.md rule 5): where §4's schema
+descriptions actually reach the model.</strong> Item 2 above says the prompt carries "the §4 schema
+descriptions, plus worked usage notes". The implemented prompt carries the usage notes plus a prose
+paraphrase, and says so ("The full JSON schemas come attached to every request; these are the notes that are
+not in them") — the descriptions themselves reach the model through the API's <code>tools</code> parameter,
+which is where a tool-using model reads them, rather than being duplicated in the system prompt where the two
+copies could drift. <strong>The consequence, which T3.2 must honour:</strong> §4's numeric bounds — the
+<code>send_velocity</code> hull (vx ∈ (−0.148, 0.222), vy ± 0.111, wz ± 0.5, duration ∈ [0.2, 3.0] s) and
+<code>turn_to_heading</code>'s [0, 360) domain — are stated in <em>no</em> model-facing text except those
+schema descriptions. <code>tools.py</code> must therefore use §4's description strings verbatim, and
+<code>tests/test_tools.py</code> must assert it (PLAN T3.2), or the frozen prompt would be silently thinner
+than this section specifies and the whole batch would be frozen that way. The prompt itself still states the
+operationally load-bearing part in prose: max 0.222 m/s forward, 1.5 m per <code>move</code>, and that every
+command is clamped to the trained envelope with the clamp echoed back.</div>
 
 <h2 id="providers">7. Provider abstraction</h2>
 
