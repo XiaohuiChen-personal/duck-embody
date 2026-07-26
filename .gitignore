@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+# fetched asset mirror (checksums are committed, binaries are not)
+assets/*.usd*
+assets/**/*.usd*
+assets/textures/
+# scratch
+*.tmp
+_staging/

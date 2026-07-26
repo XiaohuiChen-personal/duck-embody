@@ -1,0 +1,1 @@
+"""DuckEmbodyEnvCfg: subclasses the parent repo's OpenDuckRobustEnvCfg_PLAY, adds head camera, apartment scene, and env fixes (heading_command off, no time_out, fall-logic redesign). Registers the gym task. See AGENTS.md 'Critical gotchas' before editing."""

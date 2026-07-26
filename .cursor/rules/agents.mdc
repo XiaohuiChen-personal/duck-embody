@@ -1,0 +1,9 @@
+---
+description: Project rules — single source of truth
+alwaysApply: true
+---
+
+All project rules and context live in AGENTS.md at the repo root — the single
+source of truth for every AI agent (Cursor, Claude Code, or otherwise).
+Read it fully before making changes. Keep AGENTS.md updated when decisions
+change; do not duplicate rules here.

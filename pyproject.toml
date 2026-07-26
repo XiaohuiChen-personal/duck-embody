@@ -1,0 +1,21 @@
+[project]
+name = "duck-embody"
+version = "0.1.0"
+description = "LLM-as-SLAM: language models navigate a bipedal robot through an unknown apartment in Isaac Sim"
+requires-python = ">=3.11"
+# NOTE: Isaac Sim / Isaac Lab / torch come from the Isaac kit python environment
+# (see AGENTS.md "Runtime environment"), NOT from this dependency list.
+dependencies = [
+  "anthropic",
+  "openai",
+  "pyyaml",
+  "numpy",
+  "pillow",
+  "matplotlib",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
