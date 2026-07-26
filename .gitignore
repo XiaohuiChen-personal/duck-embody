@@ -17,3 +17,7 @@ assets/Assets/
 _staging/
 # kit run logs (large, regenerated); curated evidence lives in the task entry
 results/logs/
+# Intermediate per-frame PNG dumps from the recorder / camera smoke tests.
+# The mp4s and filmstrips they produce ARE committed; the raw frames are bulky
+# and fully regenerable.
+results/**/*_frames/

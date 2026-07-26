@@ -231,11 +231,22 @@ class DuckEmbodyEnvCfg(OpenDuckRobustEnvCfg_PLAY):
         # the reward manager would silently corrupt 2 of 59 policy inputs and
         # degrade gait with no error. See doc 02 §2 and policy/README.md.
 
+        # --- Head camera: the model's only view of the world -----------------
+        from duck_embody.env.camera import head_camera_cfg
+
+        self.scene.head_cam = head_camera_cfg()
+
         # --- Rendering: on demand, not every control step --------------------
         # Adding an RTX camera makes the step loop render every
         # sim.render_interval physics steps (= 50 Hz here), i.e. ~12,000 wasted
         # ray-traced frames per stage when the model looks at one per turn.
         # duck_embody.env.camera renders explicitly while the sim is paused.
+        #
+        # NOTE the knock-on effect this has on video recording: with an RTX
+        # sensor in the scene, ManagerBasedRLEnv.render() stops calling
+        # sim.render() itself and assumes the step loop did it — which this line
+        # prevents. duck_embody.sim.recorder.Recorder.grab() therefore renders
+        # explicitly; without that, every mp4 would be frozen frames.
         self.sim.render_interval = 10_000
 
 

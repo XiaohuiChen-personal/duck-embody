@@ -1,0 +1,41 @@
+{
+  "ref_thirdperson": {
+    "mean": 84.36,
+    "std": 65.78
+  },
+  "fwd_0.02": {
+    "mean": 153.5,
+    "std": 13.74,
+    "top_half": 154.6,
+    "bottom_half": 152.39,
+    "horizon_delta": 2.22
+  },
+  "fwd_0.06": {
+    "mean": 152.73,
+    "std": 12.73,
+    "top_half": 150.88,
+    "bottom_half": 154.58,
+    "horizon_delta": 3.7
+  },
+  "fwd_0.10": {
+    "mean": 78.02,
+    "std": 60.11,
+    "top_half": 125.62,
+    "bottom_half": 30.41,
+    "horizon_delta": 95.21
+  },
+  "fwd_0.14": {
+    "mean": 77.72,
+    "std": 60.24,
+    "top_half": 125.73,
+    "bottom_half": 29.71,
+    "horizon_delta": 96.02
+  },
+  "fwd_0.18": {
+    "mean": 77.81,
+    "std": 60.21,
+    "top_half": 125.72,
+    "bottom_half": 29.89,
+    "horizon_delta": 95.84
+  }
+}

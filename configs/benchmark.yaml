@@ -86,8 +86,44 @@ runtime:
   wall_s_per_policy_s_with_recording: 1.73
   measured_at: T1.3
 
-# --- Camera (frozen; filled by T1.4) ---------------------------------------
+# --- Camera (frozen; MEASURED by T1.4) --------------------------------------
 camera:
   resolution: [512, 512]
   hfov_deg: 90
-  # mount rung, height and warmup-N are written by T1.4 from measurement.
+  focal_length: 12.0
+  horizontal_aperture: 24.0          # aperture = 2 x focal => exactly 90 deg
+  jpeg_quality: 85
+  jpeg_bytes_typical: 15920          # MEASURED on an empty-plane frame
+
+  # Mount "rung 1b: slaved" — the camera is a SIBLING of the robot and its world
+  # pose is written from the robot's true pose before every capture via
+  # set_world_poses_from_view(eye, target). Doc 04 §3's rung 1 (parented under
+  # /Robot/base with an OffsetCfg) was implemented and MEASURED to fail: it
+  # filmed the sky, and its pose readback reported a level forward-facing camera
+  # while doing so. Aiming by eye/target has no orientation convention at all.
+  mount: slaved_eye_target
+  mount_forward_m: 0.12              # MUST clear the head shell — see below
+  mount_left_m: 0.0
+  mount_up_m: 0.19
+  measured_height_m: 0.3644          # MEASURED (trunk measured at 0.1744 m)
+
+  # At forward offsets <= 0.06 m the lens is INSIDE the duck's own head and
+  # films its interior: a plausible-looking uniform light gray (the duck is
+  # white) that passes any naive "not black, not flat" check while showing the
+  # model nothing. Measured sweep (scripts/debug_camera_offset.py), horizon
+  # delta = |top-half mean - bottom-half mean|:
+  #   0.02 -> 2.2   0.06 -> 3.7   0.10 -> 95.2   0.14 -> 96.0
+  # The smoke test now asserts horizon delta > 30 and frame std > 30.
+  horizon_delta_measured: 96.2
+
+  # Warmup renders before a frame is fit to send to a model. MEASURED N=1 on the
+  # EMPTY PLANE (zero gray frames over a 25-frame walking clip), but that scene
+  # has almost no MDL to stream. T2.3 re-measures against the furnished
+  # apartment and freezes the value there; 5 is the conservative default until
+  # then (5 renders cost milliseconds; one gray first observation poisons a
+  # trial's opening room guess).
+  warmup_renders: 5
+  warmup_measured_empty_plane: 1
+  warmup_pending_remeasure_in: T2.3
+
+  look_around_bearings_deg: [0, 90, 180, 270]

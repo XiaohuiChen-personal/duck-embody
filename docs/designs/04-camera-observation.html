@@ -193,6 +193,48 @@ scene, attaches the camera per rung 1, renders one PNG, and a human looks at it;
 end-to-end at once. (Run rule: it launches Isaac Sim, so it obeys the one-GPU-job rule and is run by the
 owner, never by doc writers/reviewers.)</div>
 
+<div class="warning"><strong>RESOLVED (T1.4, 2026-07-26) — rung 1 failed; the mount is
+"rung 1b: slaved".</strong> Rung 1 (camera parented under <code>/Robot/base</code> with an
+<code>OffsetCfg</code>) was implemented and measured. Two independent problems:
+<ul>
+<li><strong>It filmed the sky.</strong> With <code>rot</code> identity and
+<code>convention="world"</code> — documented as forward +X / up +Z, which is exactly the base
+frame — the rendered frame was the sky dome.</li>
+<li><strong>Worse, the pose readback lied.</strong> <code>camera.data.quat_w_world</code>
+reported a level, forward-facing camera while the pixels showed sky, and during
+<code>look_around</code> it reported an <em>unchanged</em> orientation at all four bearings even
+though the four frames plainly differed. <code>Camera._update_poses()</code> re-reads the pose
+from the prim view, and under a physics-driven articulation that readback does not survive the
+render. A mount whose orientation cannot be trusted <em>or verified</em> cannot carry a frozen
+benchmark.</li>
+</ul>
+<strong>Adopted instead:</strong> the camera prim is a <em>sibling</em> of the robot
+(<code>{ENV_REGEX_NS}/head_cam</code>) and its world pose is written from the robot's true pose
+before every capture via <code>set_world_poses_from_view(eye, target)</code>. Because that API
+takes an eye point and a look-at target, <strong>no orientation convention and no corrective
+quaternion appear anywhere</strong> — the §2.1 frame trap is structurally avoided rather than
+solved, and the instanceable-USD risk disappears with it. Cost: the pose must be written per
+capture, which is free given rendering is already on demand.</div>
+
+<div class="warning"><strong>MEASURED (T1.4) — the lens must clear the duck's own head.</strong>
+At the design offset (~0.02 m forward of the root at head height) the camera sits
+<em>inside the head shell</em> and films its interior. This failure is deceptive rather than
+obvious: the duck is white, so the frame is a plausible uniform light gray with a patch of sky
+through a gap — it survives any "not black, not flat" check while showing the model nothing.
+Sweep at head height (<code>scripts/debug_camera_offset.py</code>):
+<table>
+<tr><th>forward offset (m)</th><th>mean</th><th>std</th><th>top-vs-bottom delta</th><th>verdict</th></tr>
+<tr><td>0.02</td><td>153.5</td><td>13.7</td><td>2.2</td><td>inside head</td></tr>
+<tr><td>0.06</td><td>152.7</td><td>12.7</td><td>3.7</td><td>inside head</td></tr>
+<tr><td>0.10</td><td>78.0</td><td>60.1</td><td>95.2</td><td>clear</td></tr>
+<tr><td>0.14</td><td>77.7</td><td>60.2</td><td>96.0</td><td>clear</td></tr>
+</table>
+<strong>Frozen: forward 0.12 m, up 0.19 m from the root frame</strong> — comfortably past the
+shell, roughly the head's front face, which is also where the real IMX219 module would sit.
+<strong>Measured lens height: 0.3644 m</strong> (trunk 0.1744 m), matching §4's 0.36 m design
+figure. The smoke test now asserts a horizon delta &gt; 30 and frame std &gt; 30 so a
+buried lens can never pass again.</div>
+
 <p>Fallback ladder, in order of preference:</p>
 
 <table>
@@ -262,6 +304,15 @@ Two renders are not always enough for a full apartment of SimReady assets, so th
 <strong>N warmup render calls (N configurable, default 10) after scene load and after every reset, before the
 first captured frame</strong>, and the smoke test visually confirms frame N is fully shaded. Warmup frames
 are discarded, never sent to the model.</p>
+
+<div class="note"><strong>MEASURED (T1.4, 2026-07-26): N = 1 on the empty plane.</strong> Frame 1
+after a reset was already fully shaded (pixel spread 194, unchanged through render 20), and a
+25-frame walking clip produced <strong>zero</strong> gray frames. <strong>This does not settle
+the question the doc actually asks.</strong> The empty plane has almost no MDL material to
+stream; the risk lives in the furnished apartment with its SimReady and ArchVis textures, so
+<strong>T2.3 re-measures N against the real scene</strong> and freezes it there. The harness
+keeps a conservative default of <strong>5</strong> until then — 5 renders cost milliseconds
+while one gray first observation poisons a whole trial's opening room guess.</div>
 
 <h3>5.3 The pipeline, end to end</h3>
 

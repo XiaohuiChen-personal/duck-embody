@@ -1,0 +1,31 @@
+{
+  "camera_eye_world": [
+    0.1329,
+    0.0034,
+    0.3644
+  ],
+  "camera_forward_vector": [
+    0.999,
+    -0.0455,
+    0.0
+  ],
+  "trunk_height_m": 0.1744,
+  "camera_height_m": 0.3644,
+  "measured_warmup_renders": 1,
+  "frame_top_mean": 125.96,
+  "frame_bottom_mean": 29.8,
+  "jpeg_bytes": 15920,
+  "look_around_pairwise_mean_abs_diff": [
+    50.46,
+    84.219,
+    20.548,
+    65.077,
+    56.184,
+    74.688
+  ],
+  "look_around_vs_plain_capture_mean_abs_diff": 0.7748,
+  "walk_frames": 25,
+  "gray_frames_after_warmup": 0,
+  "failures": [],
+  "acceptance": "PASS"
+}

@@ -459,7 +459,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   wall-clock **with** 25 fps video recording ⇒ **~1.73 s wall per policy-second**.
   doc 06 §8's sim-stepping term was previously unmeasured.
 
-### T1.4 `[ ]` Head camera + capture pipeline smoke (VIDEO)
+### T1.4 `[x]` Head camera + capture pipeline smoke (VIDEO)
 
 - **Context:** No camera exists yet; the robot USD is instanceable and the head
   frame is rotated — the two risks this task retires. **Follow doc 04 §3's ladder
@@ -492,7 +492,64 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   featureless, so four bearings look identical): log the camera world quaternion /
   forward vector before each capture and assert 90° increments, and assert the four
   JPEGs are not byte-identical.
-- **Acceptance:** all checks pass; mount rung + warmup documented.
+- **Acceptance:** PASSED — 19/19 checks, exit 0
+  (`results/figures/smoke/camera_report.json`, `"acceptance": "PASS"`).
+  - **Measured lens height 0.3644 m** (trunk 0.1744 m) — matches doc 04 §4's
+    0.36 m design figure. Forward vector `(0.999, -0.046, 0.000)`: forward and
+    level, not sky, not floor.
+  - **Horizon delta 96.2**, frame std 60.5 — a real egocentric view (sky above,
+    grid floor below). JPEG q85 = 15.9 KiB.
+  - **`look_around` verified numerically** (the empty plane is featureless):
+    aim vectors at 0/90/180/270° land within 0.05 of the unit circle; all four
+    frames distinct with pairwise mean-abs-diff 20.5–84.2 (far above render
+    noise); and the decisive cross-check — `look_around` at the robot's own
+    heading reproduces a plain `get_observation` capture to within 0.775.
+  - **Warmup measured N=1** on the empty plane; zero gray frames over a 25-frame
+    walking clip. **Explicitly NOT settled** — the empty plane streams almost no
+    MDL. T2.3 re-measures against the furnished apartment; default stays 5.
+  - Artifacts: `camera_standing.{png,jpg}`, `camera_look_{000,090,180,270}.png`,
+    `camera_walk_headcam.mp4`, `camera_walk_thirdperson.mp4` + filmstrip,
+    `camera_offset_sweep/`.
+- **THE MOUNT CHANGED — doc 04 §3 rung 1 failed (doc updated this commit):**
+  1. **Rung 1 filmed the sky.** Parented under `/Robot/base` with `rot` identity
+     and `convention="world"` (documented forward +X / up +Z — exactly the base
+     frame), the render was the sky dome.
+  2. **And its pose readback lied about it.** `camera.data.quat_w_world`
+     reported a level forward-facing camera while the pixels showed sky, and
+     during `look_around` reported an *unchanged* orientation at all four
+     bearings while the frames plainly differed. `Camera._update_poses()`
+     re-reads from the prim view, and under a physics-driven articulation that
+     readback does not survive the render. **A mount that cannot be verified
+     cannot carry a frozen benchmark.**
+  3. **Adopted "rung 1b: slaved"** — camera prim is a *sibling* of the robot;
+     its world pose is written from the robot's true pose before each capture
+     via `set_world_poses_from_view(eye, target)`. Eye/target aiming has **no
+     orientation convention and no corrective quaternion**, so doc 04 §2.1's
+     frame trap is structurally impossible, and the instanceable-USD risk goes
+     away with it. Cost — one pose write per capture — is free given rendering
+     is already on demand.
+- **THE SECOND FINDING — the lens was inside the duck's own head.** At the
+  design offset (~0.02 m forward) the camera films the interior of the head
+  shell. The failure is *deceptive, not obvious*: the duck is white, so the frame
+  is a plausible uniform light gray with sky through a gap — it passes any naive
+  "not black, not flat" check while showing the model **nothing**, and would have
+  silently destroyed every trial. Measured sweep
+  (`scripts/debug_camera_offset.py`), horizon delta: 0.02 → 2.2; 0.06 → 3.7;
+  0.10 → 95.2; 0.14 → 96.0. **Frozen at forward 0.12 m**, roughly the head's
+  front face (where the real IMX219 would sit). The smoke test now asserts
+  horizon delta > 30 **and** frame std > 30 so a buried lens can never pass again.
+- **A third bug, caught in review before it could bite (in `recorder.py`):**
+  once an RTX camera exists, `ManagerBasedRLEnv.render()` stops calling
+  `sim.render()` itself and assumes the step loop did it — but T1.1 deliberately
+  raised `sim.render_interval` to 10,000 so RTX never runs at 50 Hz. Together
+  those hand back a **stale viewport buffer**: every mp4 from T2.4 onward would
+  have been frozen frames while every metric looked healthy — precisely the
+  failure rule 11 exists to catch. `Recorder.grab()` now renders explicitly and
+  passes `recompute=True`. Verified: the third-person clip captured 63 frames.
+- **Deliverables (done):** `duck_embody/env/camera.py`; `scripts/smoke_camera.py`;
+  `scripts/debug_camera_offset.py` (kept as evidence); camera wired into
+  `DuckEmbodyEnvCfg`; `configs/benchmark.yaml` camera section populated with
+  measured values; doc 04 §3/§5.2 updated.
 
 ---
 

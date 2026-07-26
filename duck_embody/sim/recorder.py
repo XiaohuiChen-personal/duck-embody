@@ -72,11 +72,32 @@ class Recorder:
         self.frames_dir.mkdir(parents=True)
 
     def grab(self, env) -> None:
-        """Capture one viewport frame, if this call lands on the sampling grid."""
+        """Capture one viewport frame, if this call lands on the sampling grid.
+
+        The explicit ``env.sim.render()`` is load-bearing and easy to lose.
+        ``ManagerBasedRLEnv.render()`` only renders for you when the scene has
+        **no** RTX sensors::
+
+            if not self.sim.has_rtx_sensors() and not recompute:
+                self.sim.render()
+
+        Once the head camera exists (T1.4), ``has_rtx_sensors()`` is True and
+        ``render()`` assumes the step loop already produced a frame at
+        ``sim.render_interval`` — but we deliberately raised that interval to
+        10,000 so RTX does not run at 50 Hz. The two settings combine to hand
+        back a **stale viewport buffer**: every mp4 from T2.4 onward would have
+        been frozen frames while every metric looked healthy, which is the exact
+        failure mode rule 11 exists to catch.
+
+        So: render explicitly, then ask render() only to read the annotator
+        (``recompute=True`` suppresses its own render call, avoiding a double
+        render). Correct whether or not a camera is present.
+        """
         self._calls += 1
         if (self._calls - 1) % self.every_n:
             return
-        frame = env.render()
+        env.sim.render()
+        frame = env.render(recompute=True)
         if frame is None:
             # Loud once, not per step: a silent None here is exactly how a
             # rule-11 smoke test ends up with an empty video and a green tick.
