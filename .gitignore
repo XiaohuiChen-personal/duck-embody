@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 .venv/
 .env
+.env.local
+!.env.example
 # fetched asset mirror (checksums are committed, binaries are not)
 assets/*.usd*
 assets/**/*.usd*

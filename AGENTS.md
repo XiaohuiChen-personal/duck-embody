@@ -55,7 +55,7 @@ written). The apartment layout dict (`duck_embody/env/apartment_layout.py`) is
 depend on anything else.
 
 **Low-level design docs** (`docs/designs/`, HTML — start at
-[`index.html`](docs/designs/index.html); status: DRAFT pending owner approval).
+[`index.html`](docs/designs/index.html); status: **APPROVED by owner 2026-07-26**).
 **Read the relevant doc BEFORE implementing a component**; if implementation must
 deviate, update the doc in the same commit:
 
@@ -87,8 +87,10 @@ deviate, update the doc in the same commit:
    observations. Exceptions (declared in docs): dead-reckoning integration of
    commanded velocity, compass heading, and closed-loop motion macros — these mirror
    the real robot's IMU + command interface and are sensor-realistic.
-6. **Secrets**: API keys come from environment variables / `.env` (gitignored).
-   Never write a key into a tracked file.
+6. **Secrets**: API keys come from `.env` (gitignored; template `.env.example`),
+   loaded via `python-dotenv` `load_dotenv()` at provider import — shell
+   alternative `set -a && source .env && set +a`. Never write a key into a
+   tracked file; never echo or log key values.
 7. **Git**: do not commit or push without the owner asking. Fetched asset binaries
    (`assets/*.usd*`) stay out of git; checksums are committed. Results (JSON,
    figures, selected compressed videos) ARE committed — they are the portfolio.
@@ -96,9 +98,47 @@ deviate, update the doc in the same commit:
    from it. Record the pinned commit in `pyproject.toml`/README at first import.
 9. Keep this file updated. When a decision changes or a gotcha is discovered,
    record it here in the same commit as the change.
+10. **Per-task implementation loop** (mandatory for EVERY task in `docs/PLAN.md`,
+    in this order — owner-mandated 2026-07-26):
+    1. **Adversarial plan review first**: read the task's entry in `docs/PLAN.md`,
+       the design doc sections it cites, AND the current repo state (what previous
+       tasks actually built — do not trust the plan's assumptions about it). Try to
+       find errors, staleness, or contradictions in the task plan. Fix `docs/PLAN.md`
+       BEFORE implementing (same commit as the implementation).
+    2. **Implement** per the (corrected) plan and the approved design docs.
+    3. **Unit tests**: create/extend them wherever the deliverable has testable
+       logic (pure functions, data transforms, schemas). Run them.
+    4. **Adversarial implementation review**: review the new code with fresh eyes
+       (a subagent or a deliberate reviewer pass) hunting for bugs, spec deviations,
+       and silent failure modes. Fix what is confirmed.
+    5. **Smoke test** per the task's Smoke section (see rule 11 for simulation
+       smoke tests) and confirm behavior matches expectations.
+    Fix every error encountered at ANY stage before marking the task complete;
+    record completion in `docs/PLAN.md` (status + evidence: commands, outputs,
+    artifact paths) in the same commit.
+11. **Simulation smoke tests are video-verified.** The owner works over SSH from a
+    MacBook Air — there is no live viewport, and aggregate numbers alone are NOT
+    sufficient (parent-repo lesson: run 12 passed every metric while crawling; the
+    video caught it). Any smoke test that runs simulation MUST: (a) capture an mp4
+    of the run (robot-tracking or task-relevant camera); (b) extract a filmstrip
+    (`ffmpeg -vf fps=1` — denser around critical moments) plus PNG stills; (c)
+    analyze it frame by frame against the task's explicit expected-behavior
+    checklist (locomotion baseline: trunk upright ~0.17 m, both feet alternate with
+    real ground clearance, no drag/glide/crawl, heading straight, no action dither
+    — extended per task: camera view correct, collisions bump-not-teleport, rooms
+    recognizable); (d) store video + filmstrip under `results/` (or the task's log
+    dir) and cite them in the task's completion evidence. **When metrics and video
+    disagree, the video wins.** Serve artifacts to the owner via the existing
+    tailscale serve when asked.
 
 ## 4. Runtime environment (this machine)
 
+- **Interpreters are disjoint** (verified 2026-07-26): the kit python
+  (`~/IsaacLab/isaaclab.sh -p`) has isaaclab/rsl_rl/torch-cuda/yaml/dotenv but NOT
+  anthropic/openai until PLAN T0.0 installs them; system `python3` has the SDKs but
+  NOT isaaclab. **All runtime and all pytest runs use the kit python.** `pxr` (USD)
+  is importable from neither by default — use the pinned packman invocation in
+  PLAN T0.2.
 - DGX Spark, aarch64, single NVIDIA GB10, CUDA 13.0. Headless (no display).
 - Isaac Sim **5.1.0-rc.19** at `~/IsaacSim` (build: `~/IsaacSim/_build/linux-aarch64/release`).
 - Isaac Lab **2.3.2** at `~/IsaacLab` (commit f4aa17f87e2). Launch pattern:
@@ -220,11 +260,10 @@ results/         raw JSON · figures · videos (committed)
 
 - [x] Design + feasibility research complete (2026-07-26; see §2 decisions, §5 gotchas)
 - [x] Repo skeleton, rules, README draft
-- [x] Low-level design docs (`docs/designs/01–06` + index) — written, adversarially
-      reviewed (19-agent pass; caught & fixed: 0.153 m/s eval misread, ArchVis path
-      404, look_around mechanism, compass convention, cost/runtime bounds) —
-      **DRAFT, pending owner approval**
-- [ ] docs/PLAN.md (consolidated plan) — pending owner approval of designs + go
+- [x] Low-level design docs (`docs/designs/01–06` + index) — adversarially reviewed,
+      **APPROVED by owner 2026-07-26**
+- [x] docs/PLAN.md — task-level implementation plan (every task follows hard
+      rules 10–11)
 - [ ] Vendor policy artifacts into `policy/`
 - [ ] Smoke tests (camera PNG, net displacement, asset inspection)
 - [ ] Apartment scene + survey renders
