@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doc 06 — Benchmark Protocol &amp; Scoring</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Benchmark Protocol &amp; Scoring</h1>
+<p class="meta">Doc 06 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This document defines
+how the Duck Embody benchmark is run and scored, assuming no prior robotics or
+simulation background. Duck Embody puts a large language model (LLM) in control of a
+simulated 42&nbsp;cm bipedal robot inside an apartment it has never seen, with no
+mapping software — the model must build its own map as text, estimate its own
+position, and find the kitchen. This doc specifies: what the benchmark does and does
+not claim, exactly what is frozen before any trial runs (the fairness contract), the
+trial protocol, the per-trial log format, every metric with its exact formula, the
+statistics, the batch-runner design, cost/runtime estimates, the test gate that must
+pass before launch, and the deliverables. Every term of art (SPL, dead reckoning,
+loop closure, bootstrap CI, oracle path) is defined at first use.</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#claims">What the benchmark claims — and does not claim</a></li>
+<li><a href="#frozen">The fairness contract: frozen before batch</a></li>
+<li><a href="#protocol">Trial protocol</a></li>
+<li><a href="#logs">Per-trial JSON log schema</a></li>
+<li><a href="#metrics">Metric definitions</a></li>
+<li><a href="#stats">Statistics</a></li>
+<li><a href="#runner">Runner design</a></li>
+<li><a href="#cost">Cost &amp; runtime estimates</a></li>
+<li><a href="#tests">Test plan (the pre-batch gate)</a></li>
+<li><a href="#reporting">Reporting deliverables</a></li>
+<li><a href="#validation">Validation performed</a></li>
+<li><a href="#open">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="claims">1. What the benchmark claims — and does not claim</h2>
+
+<p>The benchmark compares <strong>three frontier models on identical tasks</strong>:
+<strong>Fable&nbsp;5</strong> (<code>claude-fable-5</code>, Anthropic),
+<strong>Opus&nbsp;5</strong> (<code>claude-opus-5</code>, Anthropic), and
+<strong>GPT&nbsp;5.6&nbsp;sol</strong> (OpenAI). Two Anthropic tiers give a
+generational comparison mirroring Anthropic's "How Claude Performs on Robotics
+Tasks" study (which compared Claude generations on the same robot harness); the
+OpenAI model adds one cross-lab data point.
+<span class="src">source: AGENTS.md §2 "Models" (locked 2026-07-26);
+https://www.anthropic.com/research/claude-plays-robotics</span></p>
+
+<div class="decision"><strong>Locked:</strong> this is a <em>feasibility case study of
+one maximum-scaffold memory configuration</em> — the LLM-authored map, dead-reckoned
+position, and loop-closure tools are all ON for every model. It is <strong>not an
+ablation study</strong>. WHY: the question "can any frontier model do LLM-as-SLAM at
+all, given the best scaffolding we can build?" must be answered before "which
+scaffold component matters?" is worth asking. A no-memory ablation is the top stretch
+goal, not part of this benchmark.</div>
+
+<p>What the benchmark <strong>does</strong> claim, if the data supports it: relative
+ranking of the three models on this task suite, under this one scaffold, in this one
+simulated apartment, with honest per-trial evidence published for every number.</p>
+
+<p>What it <strong>does not</strong> claim:</p>
+<ul>
+<li><strong>No statistical significance claims.</strong> N=4 trials per model is far
+too small; we report ranking hypotheses with uncertainty intervals (§6).</li>
+<li><strong>No generality claims</strong> beyond this embodiment (one biped, one
+apartment, simulation only, one prompt, one camera config).</li>
+<li><strong>No claims about the unreleased original harness.</strong> Anthropic's
+<code>safety-research/embody</code> is unreleased (404 verified 2026-07-26); this is
+a from-scratch build of the paradigm, not a reproduction of their code.</li>
+<li><strong>No memory-scaffold causality claims</strong> — without the ablation, we
+cannot attribute success or failure to the scaffold itself.</li>
+</ul>
+
+<h2 id="frozen">2. The fairness contract: frozen before batch</h2>
+
+<p>A model comparison is only fair if every model faces byte-identical conditions.
+Everything below is frozen in a single git commit <em>before</em> the first batch
+trial, and the commit hash is recorded in every result file. If any frozen item
+changes, all prior trials are invalid and the batch restarts from zero.</p>
+
+<table>
+<tr><th>Frozen item</th><th>What exactly</th></tr>
+<tr><td>Prompt template</td><td>The system prompt and per-turn formatting (memory
+block, MapGPT-grammar map rendering — a text map format of numbered "Place&nbsp;N"
+nodes plus explicit adjacency lines and a one-line trajectory, from the MapGPT
+vision-and-language-navigation paper; specified in
+<a href="05-agent-harness.html">doc&nbsp;05</a> §5.2 — and plan re-injection). One
+prompt for all three
+models — <strong>no per-model prompt tuning</strong>.</td></tr>
+<tr><td>Tool schema</td><td>The full tool set and signatures: <code>get_observation</code>,
+<code>look_around</code>, <code>turn_to_heading</code>, <code>move</code>,
+<code>send_velocity</code>, <code>update_room</code>, <code>add_landmark</code>,
+<code>mark_exit</code>, <code>set_current_room</code>, <code>correct_position</code>,
+<code>update_plan</code>, <code>declare_done</code>. Names, argument shapes, and
+clamps identical for all models.</td></tr>
+<tr><td>Camera config</td><td>Head-mounted egocentric camera, ~0.36&nbsp;m height,
+512&times;512 RGB, 90° horizontal field of view, 1 frame per
+<code>get_observation</code>. May be adjusted during smoke tests, but only
+<em>before</em> the freeze — after freeze it is identical for all models.</td></tr>
+<tr><td>Scene layout</td><td>The apartment layout dict
+(<code>duck_embody/env/apartment_layout.py</code>) — simultaneously the scene spec
+and the scoring ground truth. 4.8&nbsp;&times;&nbsp;3.6&nbsp;m duck-scale (0.4&times;)
+apartment; rooms <code>living_room</code>, <code>kitchen</code>, <code>bedroom</code>,
+<code>hallway</code>.</td></tr>
+<tr><td>Seeds</td><td>Fixed seed set {101, 102, 103, 104}, same for every model. The
+seed selects the spawn point and initial heading from the layout's
+<code>spawn_points</code>.</td></tr>
+<tr><td>Caps</td><td>40 model turns per stage; 240 policy-seconds of commanded motion
+per stage; fall ends the trial.</td></tr>
+<tr><td>Model configs</td><td>Exact model IDs, max-token settings, and any
+provider-side options, recorded verbatim. Providers: Anthropic + OpenAI APIs only,
+keys via environment variables.</td></tr>
+</table>
+
+<div class="decision"><strong>Locked:</strong> the freeze commit hash is written into
+every per-trial JSON (<code>config.freeze_commit</code>) and the runner refuses to
+run or resume if the working tree's frozen files differ from that commit (§7). WHY:
+"every number names its source" — a result that cannot be traced to the exact frozen
+configuration is not a result.</div>
+
+<h2 id="protocol">3. Trial protocol</h2>
+
+<p>A <strong>trial</strong> is one model attempting the full episode from one seed.
+The matrix is <strong>4 seeds &times; 3 models = 12 trials</strong>, run
+sequentially in <strong>one persistent Isaac Sim process</strong>. Isaac Sim
+(NVIDIA's physics simulator) takes minutes to start ("kit startup"), and the
+project's hard rule is one Isaac Sim / GPU job at a time on this machine — so the
+runner starts the sim once and resets the scene between trials rather than
+restarting the process.
+<span class="src">source: AGENTS.md §3 hard rule 1; runtime = DGX Spark, single GB10
+GPU, headless, Isaac Sim 5.1.0-rc.19</span></p>
+
+<h3>3.1 Episode structure</h3>
+<ol>
+<li><strong>Reset.</strong> Robot is placed at the seed's spawn point and heading
+(from the layout's <code>spawn_points</code>); dead-reckoning integrator zeroed;
+memory empty; model context fresh.</li>
+<li><strong>Stage 1 — <code>find_kitchen</code>.</strong> Task prompt: <em>"Find the
+kitchen and walk to the counter."</em> Success: robot base within
+<strong>0.35&nbsp;m</strong> of the kitchen-counter target region AND the model calls
+<code>declare_done</code>. Both conditions are required — physically arriving without
+declaring is a timeout, declaring elsewhere is a failure.</li>
+<li><strong>Stage 2 — <code>return_home</code>.</strong> Continuation in the same
+episode (memory and context carry over): success = base within
+<strong>0.5&nbsp;m</strong> of the spawn point + <code>declare_done</code>. This is
+the direct test of whether the self-built map is real — the model must navigate back
+using only what it wrote down.</li>
+</ol>
+
+<h3>3.2 Caps and terminal conditions</h3>
+<table>
+<tr><th>Condition</th><th>Limit</th><th>Effect</th></tr>
+<tr><td>Model turns</td><td>40 per stage</td><td>Stage scored as failure (with
+partial progress); episode continues to stage 2 only if stage 1 succeeded</td></tr>
+<tr><td>Commanded motion</td><td>240 policy-seconds per stage</td><td>Same as turn
+cap. "Policy-seconds" = seconds of simulated time during which the locomotion policy
+executes commands; sim is paused while the model thinks, so this measures capability,
+not API latency (the paper's protocol).</td></tr>
+<tr><td>Fall</td><td>any</td><td><strong>Ends the trial</strong> — scored failure
+with partial progress. The biped can genuinely fall; that is part of the
+embodiment's difficulty.</td></tr>
+</table>
+
+<div class="decision"><strong>Locked:</strong> timeouts and cap hits are scored as
+failures and are <strong>never selectively retried</strong>. WHY: retrying only the
+bad runs is survivorship bias; the only legitimate rerun is an infra failure (§7),
+which is logged as such.</div>
+
+<div class="note">The locomotion layer is deliberately not the thing under test: the
+pretrained <code>v4_robust</code> PPO policy has a clean record — 5/5 gait-validity
+gate, 0.00% falls over 3,200 push-free evaluation episodes — so falls in this
+benchmark are overwhelmingly attributable to navigation choices (collisions,
+wall-hugging), not to a wobbly walk.
+<span class="src">source: parent repo docs/jetson-mod/v4_comparison.md, v4_robust row
+(gait 5/5, fall rate 0.0) + per-condition fall table</span></div>
+
+<h2 id="logs">4. Per-trial JSON log schema</h2>
+
+<p>One JSON file per trial, written incrementally (turn-by-turn flush, so a crash
+loses at most the in-flight turn). The log is the single source for scoring — the
+scorer never touches the simulator. Annotated schema:</p>
+
+<pre><code>{
+  "trial_id": "fable-5_seed101",          // {model}_{seed} — also the resume key
+  "config": {
+    "freeze_commit": "&lt;git sha&gt;",        // fairness-contract commit (§2)
+    "config_hash": "&lt;sha256&gt;",           // hash over frozen files; runner guard (§7)
+    "model": "claude-fable-5",            // exact provider model ID
+    "seed": 101,
+    "spawn": {"xy": [x, y], "heading_deg": h}   // from layout spawn_points
+  },
+  "turns": [                              // one entry per model turn, both stages
+    {
+      "stage": "find_kitchen",            // or "return_home"
+      "turn_idx": 7,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {                            // what the model was shown (summary)
+        "frame_paths": ["frames/t007_0.png"],   // saved camera frame(s)
+        "compass_deg": 92.4,
+        "position_estimate": {"x": 1.31, "y": 0.66},  // dead-reckoned, drifts
+        "status": {"bumped": false, "fell": false, "distance_moved_m": 0.48}
+      },
+      "model_output": {
+        "thought": "...",                 // model's visible reasoning text, if any
+        "tool_calls": [{"name": "move", "args": {"distance_m": 1.0}}]
+      },
+      "execution": {                      // what the harness actually did
+        "result": "moved 0.82 m, auto-stop on collision (bump)",
+        "policy_seconds_used": 4.1,
+        "pose_trace": [[1.02, 0.55], ...] // true base XY sampled every 10 control
+                                          //   steps (5 Hz) during this turn's motion;
+                                          //   scoring-only (never shown to the model),
+                                          //   feeds the SPL path integral (§5.3)
+      },
+      "true_pose": {"x": 1.24, "y": 0.71, "heading_deg": 90.8},
+      // ^ ground truth, logged EVERY turn for scoring — NEVER shown to the model
+      "memory_snapshot": { "rooms": {...}, "exits": [...], "trajectory": "...",
+                           "plan": "..." }   // full memory block as re-injected
+    }
+  ],
+  "final": {
+    "outcome": {"find_kitchen": "success", "return_home": "timeout_turns"},
+    "metrics": { ... },                   // §5 values, computed post-hoc by scorer
+    "tokens": {"input": 0, "output": 0, "cost_usd_estimate": 0.0},  // per provider
+    "qa": [ {"question": "...", "answer": "...", "score": 1.0}, ... ]  // §5.9
+  },
+  "video_path": "videos/fable-5_seed101.mp4"  // robot-tracking mp4, whole trial
+}</code></pre>
+
+<div class="warning"><strong>Gotcha:</strong> <code>true_pose</code> lives in the
+same file the scorer reads, but must never leak into the prompt path. The harness
+builds prompts exclusively from <code>obs</code> + <code>memory_snapshot</code>;
+a unit test asserts the rendered prompt contains no <code>true_pose</code>-derived
+values (the memory principle: ground-truth position is NEVER given to the
+model).</div>
+
+<h2 id="metrics">5. Metric definitions</h2>
+
+<p>All metrics are computed by <code>duck_embody/scoring.py</code> from the trial
+JSON plus the layout ground truth — nothing else
+(<span class="src">source: AGENTS.md §2 — the layout dict is simultaneously scene
+spec and scoring ground truth</span>). Stage-level metrics are reported for
+<code>find_kitchen</code>; <code>return_home</code> gets its own SR/progress
+columns.</p>
+
+<div class="decision"><strong>5.1 Success rate (SR).</strong>
+<code>SR = successes / N</code> per model per stage. A stage succeeds only if the
+distance condition (0.35&nbsp;m kitchen counter / 0.5&nbsp;m spawn) holds at the
+moment the model calls <code>declare_done</code>. WHY declare_done is required: the
+model must <em>know</em> it arrived; stumbling through the goal region does not
+demonstrate localization.</div>
+
+<div class="decision"><strong>5.2 Progress.</strong>
+<code>progress = clip(1 − d_final / d_initial, 0, 1)</code>, where
+<code>d_initial</code> is the straight-line distance from spawn to target at t=0 and
+<code>d_final</code> the distance at trial end (or at <code>declare_done</code>).
+There is <strong>no success override</strong>: successes report the same formula
+value as failures (naturally near 1.0, since success requires
+d_final ≤ 0.35&nbsp;m), so every published progress number is reproducible from the
+canonical formula alone. WHY: gives partial credit on
+failures (a fall two steps from the counter ≠ a fall at spawn) and is clipped so
+wandering away from the goal cannot go negative.
+<span class="src">source: AGENTS.md canonical metrics — progress =
+1 − d_final/d_initial clipped [0,1], no exceptions</span></div>
+
+<div class="decision"><strong>5.3 SPL — Success weighted by Path Length.</strong>
+Per trial: <code>SPL = S × l / max(p, l)</code>; reported as the mean over N trials,
+<code>SPL = (1/N) Σᵢ Sᵢ · lᵢ / max(pᵢ, lᵢ)</code> — the Anderson et&nbsp;al. 2018
+SPL definition (later adopted as the ObjectNav convention by Batra et&nbsp;al. 2020,
+arXiv:2006.13171), verified verbatim against the paper. <code>S</code> is the
+binary success indicator (5.1); <code>l</code> is the <em>oracle shortest path</em> —
+the shortest collision-free path from the seed's spawn to the target, computed on the
+layout's free-space grid (the apartment floor minus wall/furniture footprints);
+<code>p</code> is the integrated true path length,
+<code>p = Σ ‖pose(t+1) − pose(t)‖</code> over the sub-turn <code>pose_trace</code>
+samples (true base XY at 5&nbsp;Hz during motion — §4 execution block). Sub-turn
+sampling matters: chord-summing only the once-per-turn <code>true_pose</code> entries
+would under-measure any within-turn curved motion (<code>send_velocity</code> arcs
+with wz&nbsp;≠&nbsp;0, deflections during bumped <code>move</code> calls), shrinking
+p and inflating SPL. The <code>max(p, l)</code> denominator means SPL ≤ SR always: a successful
+but wandering trial scores below 1, and a failed trial scores 0.
+<span class="src">source: Anderson et al., "On Evaluation of Embodied Navigation
+Agents", arXiv:1807.06757, Eq. (1) — fetched 2026-07-26, HTTP 200 (see §11)</span></div>
+
+<div class="decision"><strong>5.4 Time-to-kitchen.</strong> Cumulative
+<em>policy-seconds</em> (simulated seconds of commanded motion) from stage start to
+the successful <code>declare_done</code>; undefined (reported as "—", not a number)
+for failed trials. WHY policy-seconds and not wall-clock: the sim pauses while the
+model thinks, so wall-clock would measure API latency, not navigation
+efficiency.</div>
+
+<div class="decision"><strong>5.5 Turns used.</strong> Model turns consumed in the
+stage (max 40). A proxy for deliberation cost, complementary to 5.4's motion
+cost.</div>
+
+<div class="decision"><strong>5.6 Bumps and falls.</strong> <code>bumps</code> =
+count of collision events over the trial: auto-stops reported by <code>move</code>
+(per the canonical tool schema, <code>move</code> is the tool with collision
+auto-stop semantics) plus <code>bumped = true</code> collision reports surfaced in
+<code>status</code> for <code>send_velocity</code> commands (the raw escape hatch
+has no auto-stop clause in the canonical schema; its collisions are counted from the
+status report, one per command). <code>falls</code> ∈ {0, 1} (a fall ends
+the trial). Bumps measure how blindly the model drives; collision detection is
+part of the harness, so bumps are cheap but counted.</div>
+
+<div class="decision"><strong>5.7 Map accuracy.</strong> Scored against the layout
+ground truth in two parts.
+<br><strong>Room-node precision/recall.</strong> The model's claimed rooms (its
+<code>update_room</code> entries) are matched to true rooms. <em>Matching rule:</em>
+a claimed room matches a true room iff (a) its name is similar (case-insensitive
+match after synonym normalization from a fixed, frozen synonym table — e.g.
+"lounge"→"living_room"; no fuzzy embedding matching) AND (b) its evidence places it
+in the true room's polygon — evidence = the true pose at the moments the model called
+<code>set_current_room</code>/<code>update_room</code> for it, or the true positions
+of its claimed landmarks; majority of evidence points must fall inside the polygon.
+Each claimed room may match at most one true room and vice versa (greedy one-to-one
+matching in order of evidence count; ties broken by name-similarity first, then by
+earliest claim time). Then <code>precision = matched / claimed</code>,
+<code>recall = matched / true_rooms_visited</code> (recall counts only rooms the
+robot actually entered per the true trace — the model cannot be penalized for not
+mapping rooms it never saw). Edge convention: if the model never claims a room
+(claimed = 0), precision is undefined — reported as "—" and excluded from the
+aggregate mean, never coerced to a number; recall is then 0 whenever at least one
+room was visited.
+<br><strong>Adjacency edge accuracy.</strong> The model's exits with status
+<code>leads_to:&lt;room&gt;</code> define claimed edges between matched rooms;
+accuracy = correct claimed edges / all claimed edges, checked against the layout
+adjacency graph. Unexplored exits are excluded (claiming "there's an unexplored exit
+north" is not an adjacency assertion).</div>
+
+<div class="decision"><strong>5.8 Dead-reckoning drift.</strong>
+<code>drift = ‖position_estimate − true_pose‖</code> at the moment of
+<code>declare_done</code> (per stage), plus the count of
+<code>correct_position</code> calls and the magnitude of each correction
+(‖old estimate − new estimate‖). WHY both: final drift measures how honest the
+estimate ended up; the corrections series shows whether the model actively did
+cognitive loop closure (recognizing a place and snapping its estimate) or just rode
+the drift. Dead reckoning = integrating commanded velocity over time to estimate
+position; it drifts because the real robot slips, bumps, and turns imperfectly.</div>
+
+<div class="decision"><strong>5.9 Layout QA.</strong> After the episode ends, the
+model is asked <strong>5 fixed questions</strong> in a fresh exchange where it sees
+only its own final map/memory block — <em>no new camera frames, no sim access</em>.
+Each answer is scored 0 / 0.5 / 1 against the layout ground truth (+ the logged true
+trace for "visited" questions); QA score = mean of the five. The questions and
+rubrics are frozen with the prompt template:</div>
+
+<table>
+<tr><th>#</th><th>Question (exact text)</th><th>Rubric (1 / 0.5 / 0)</th></tr>
+<tr><td>1</td><td>"Which room connects the bedroom to the kitchen?"</td>
+<td>1: names the unique connector room (per adjacency graph). 0.5: names a room that
+is adjacent to exactly one of the two. 0: anything else.</td></tr>
+<tr><td>2</td><td>"Starting at the front of the sofa, give turn-by-turn directions
+to the fridge."</td>
+<td>1: room sequence matches the oracle route AND initial direction correct AND ends
+at the fridge. 0.5: correct room sequence but a wrong/missing turn direction, or
+correct directions with one wrong room name. 0: route would not reach the
+kitchen.</td></tr>
+<tr><td>3</td><td>"How many rooms did you visit? Name them."</td>
+<td>1: count and names match the true visited set (from the true trace ∩ room
+polygons). 0.5: names correct but count off by one, or one room missing/extra.
+0: otherwise.</td></tr>
+<tr><td>4</td><td>"Which direction (compass) is the kitchen from your spawn
+point?"</td>
+<td>1: matches the true bearing bucketed to 8-way compass (spawn → kitchen
+centroid). 0.5: adjacent bucket (e.g. E vs NE). 0: otherwise.</td></tr>
+<tr><td>5</td><td>"Name one landmark in each room you visited."</td>
+<td>1: a true layout landmark for every visited room. 0.5: correct for all but one
+room. 0: otherwise.</td></tr>
+</table>
+
+<div class="note">All five ground-truth answers were verified computable from the
+layout dict + the logged true trace alone (no extra sim queries): connector room =
+unique common neighbor in the adjacency graph; directions = breadth-first search room
+path + bearings; visited set = true trace ∩ room polygons; kitchen bearing = spawn →
+centroid, 8-way bucketed; landmarks = per-room layout lists. See §11 for the
+executed check.</div>
+
+<h2 id="stats">6. Statistics</h2>
+
+<p>Every metric is reported as <strong>mean ± bootstrap 95% confidence
+interval</strong> over the N=4 trials. The bootstrap: resample the 4 per-trial
+values with replacement 10,000 times, compute the mean of each resample, and take
+the 2.5th and 97.5th percentiles as the interval. (A confidence interval is a range
+that expresses how much the mean could plausibly move under resampling — with N=4 it
+will be wide, and showing that width is the point.)</p>
+
+<div class="warning"><strong>Honesty clause.</strong> N=4 supports <em>ranking
+hypotheses</em> ("Fable 5 looked stronger than GPT 5.6 sol on SPL in this suite"),
+not significance claims. With 4 trials, one lucky seed moves a success rate by 25
+percentage points. Therefore: (a) the per-trial table is always published alongside
+any aggregate; (b) no "statistically significant" language anywhere; (c) overlapping
+CIs are reported as "indistinguishable at this N"; (d) no claims beyond the
+data.</div>
+
+<div class="decision"><strong>Locked:</strong> bootstrap with 10,000 resamples,
+fixed RNG seed for the bootstrap itself (so the reported CIs are reproducible), and
+percentile method (not BCa). WHY: at N=4 the sophistication of the interval method
+is noise; reproducibility is not.</div>
+
+<h2 id="runner">7. Runner design</h2>
+
+<p>The batch runner (<code>duck_embody/runner.py</code> +
+<code>scripts/run_trial.py</code>) executes the 12-trial matrix. Design
+requirements:</p>
+
+<ul>
+<li><strong>Sequential, one sim process.</strong> Trials run one at a time inside
+the single persistent Isaac Sim process (§3). The runner never launches a second kit
+process.</li>
+<li><strong>Resumable by trial id.</strong> Before running a trial, the runner
+checks <code>results/&lt;trial_id&gt;.json</code>: if the file exists AND is complete
+(has a <code>final</code> block that validates against the schema), the trial is
+skipped. A partial file (crash mid-trial) is moved to
+<code>results/incomplete/</code> with a timestamp suffix and the trial reruns.</li>
+<li><strong>Config-hash guard.</strong> At startup the runner recomputes the hash
+over the frozen files (§2) and compares it to the <code>config_hash</code> in every
+existing result it would resume around. Mismatch ⇒ hard refuse with a message
+naming the changed file. There is deliberately no <code>--force</code> flag; the
+correct responses are "revert the change" or "start a new batch directory".</li>
+<li><strong>Infra failure vs model failure.</strong> A trial that ends by cap, fall,
+or wrong <code>declare_done</code> is a <em>model failure</em> — final, never rerun.
+A trial that ends because the harness broke (sim crash, provider 5xx/429 exhaustion
+after backoff, camera returning black frames, scoring-input corruption) is an
+<em>infra failure</em>: the partial JSON is preserved in
+<code>results/incomplete/</code>, an entry is appended to
+<code>results/rerun_log.md</code> (trial id, timestamp, cause, evidence path), and
+the trial reruns from scratch. The rerun log ships with the results — reruns are
+visible, not silent.</li>
+<li><strong>API keys via env vars only</strong> (<code>ANTHROPIC_API_KEY</code>,
+<code>OPENAI_API_KEY</code>); never in configs or logs.</li>
+</ul>
+
+<div class="warning"><strong>Gotcha:</strong> the infra/model distinction is the
+integrity-critical judgment call. The rule: if the <em>model</em> could in principle
+have avoided it, it is a model failure. A bump-stop is model; a segfault is infra. A
+provider timeout on one turn is retried at the API-call level (bounded backoff)
+without consuming a model turn — only unrecoverable provider failure escalates to
+infra-rerun.</div>
+
+<h2 id="cost">8. Cost &amp; runtime estimates</h2>
+
+<p>All figures are <strong>estimates</strong>, computed 2026-07-26 (arithmetic in
+§11). Assumptions: a 512&times;512 image ≈ 350 tokens (Anthropic vision rule of
+thumb, w&times;h/750); per turn 1–5 images + ~3–6k text tokens in, ~0.5–1k tokens
+out; a full trial (both stages) spans ~40–80 turns; API latency 10–40&nbsp;s/turn
+plus sim stepping.</p>
+
+<table>
+<tr><th>Quantity</th><th>Low</th><th>High</th><th>Basis</th></tr>
+<tr><td>Input tokens / trial</td><td>~0.16&nbsp;M</td><td>~0.64&nbsp;M</td>
+<td>40–80 turns × 4–8k</td></tr>
+<tr><td>Output tokens / trial</td><td>~0.02&nbsp;M</td><td>~0.08&nbsp;M</td>
+<td>40–80 turns × 0.5–1k</td></tr>
+<tr><td>Fable 5 ($10 in / $50 out per MTok)</td><td>~$2.60 / trial</td>
+<td>~$10.40 / trial</td><td>4 trials ≈ <strong>$10–42</strong></td></tr>
+<tr><td>Opus 5 ($5 in / $25 out per MTok)</td><td>~$1.30 / trial</td>
+<td>~$5.20 / trial</td><td>4 trials ≈ <strong>$5–21</strong></td></tr>
+<tr><td>GPT 5.6 sol (pricing TBD)</td><td colspan="2">verify current OpenAI pricing
+before batch</td><td>if priced in the typical frontier band, same order of
+magnitude</td></tr>
+<tr><td>Wall-clock / trial</td><td>~10 min</td><td>~87 min</td>
+<td>40–80 turns × (10–40&nbsp;s API + 5–25&nbsp;s sim) = 15–65&nbsp;s/turn</td></tr>
+<tr><td>Full batch (12 trials, sequential)</td><td>~2 h</td><td>~17.5 h</td>
+<td>12 × 10–87 min (strict bounds from the row above; deliberately wide — the
+sim-stepping term is unmeasured until the smoke test, §12)</td></tr>
+</table>
+
+<p>Expected total spend for the batch: <strong>$15–63</strong> for the two Anthropic
+models (sum of the per-model ranges above: $10–42 Fable&nbsp;5 + $5–21 Opus&nbsp;5)
+plus an OpenAI amount to be confirmed — comfortably a
+single-evening budget. Prompt caching on the stable prefix (frozen system prompt +
+tool schema) can cut Anthropic input cost substantially; it is an optimization, not
+assumed in the ranges.
+<span class="src">source: Anthropic model pricing per claude-api skill reference
+(cached 2026-06-24): Fable 5 $10/$50, Opus 5 $5/$25 per MTok; arithmetic executed
+2026-07-26 (§11)</span></p>
+
+<h2 id="tests">9. Test plan (the pre-batch gate)</h2>
+
+<div class="decision"><strong>Locked:</strong> <code>tests/test_scoring.py</code> and
+<code>tests/test_layout.py</code> MUST pass before any batch trial launches —
+non-negotiable gate. WHY: scoring bugs found after the batch invalidate paid,
+hours-long runs; the scorer is pure-Python over JSON + the layout dict, so it is
+fully testable without Isaac Sim (and the test suite must never launch a kit
+process).</div>
+
+<h3>9.1 <code>tests/test_scoring.py</code> — enumerated cases</h3>
+<table>
+<tr><th>Case</th><th>Asserts</th></tr>
+<tr><td>Progress clipping</td><td>d_final &gt; d_initial ⇒ 0.0 (never negative);
+success at d_final = 0.34&nbsp;m, d_initial = 1.0&nbsp;m ⇒ 0.66 (canonical formula,
+<strong>no success override</strong>); d_final = d_initial ⇒ 0.0; d_final = 0 on
+failure ⇒ 1.0 clip boundary.</td></tr>
+<tr><td>SPL edge cases</td><td>p &lt; l (path shorter than oracle — possible only
+via drift/rounding or corner-cutting through the grid's resolution) ⇒ ratio capped
+at 1.0 by <code>max(p, l)</code>; failure ⇒ 0 regardless of path; p = l ⇒ SPL = S;
+zero-length path with success at spawn-adjacent target ⇒ no division blowup.</td></tr>
+<tr><td>Map matching tie-breaks</td><td>Two claimed rooms with name-similar labels
+matching one true room ⇒ exactly one match (greedy order: evidence count, then name
+similarity, then earliest claim); synonym-table hit ("lounge" = "living_room")
+matches, non-synonym near-string ("kitchenette" claimed in bedroom polygon) does
+not; claimed room with evidence straddling two polygons ⇒ majority rule;
+claimed = 0 (model never called <code>update_room</code>) ⇒ precision = "—"
+(N/A, excluded from aggregation — no division by zero) and recall = 0 with rooms
+visited (§5.7 edge convention).</td></tr>
+<tr><td>QA rubric fixtures</td><td>For each of the 5 questions: one fixture answer
+scoring 1, one scoring 0.5, one scoring 0, checked against a fixture layout —
+including Q4's adjacent-compass-bucket 0.5 case.</td></tr>
+<tr><td>Drift with/without corrections</td><td>Trace with zero
+<code>correct_position</code> calls ⇒ drift = raw integrator error at declare_done;
+trace with a correction ⇒ drift measured against the corrected estimate, correction
+count and magnitudes recorded; correction after declare_done ⇒ ignored.</td></tr>
+<tr><td>Schema/leak guard</td><td>Rendered prompt fixture contains no
+<code>true_pose</code> values; incomplete trial JSON (no <code>final</code>) is
+rejected by the resume check.</td></tr>
+</table>
+
+<h3>9.2 <code>tests/test_layout.py</code></h3>
+<ul>
+<li>Room polygons are non-overlapping and lie within the 4.8&nbsp;&times;&nbsp;3.6&nbsp;m
+apartment bounds.</li>
+<li>Every doorway (0.35&nbsp;m wide) connects exactly the two rooms the adjacency
+graph says it does, and is reachable on the free-space grid (duck body
+~0.16&nbsp;m fits).</li>
+<li>The target region lies inside the kitchen polygon.</li>
+<li>An oracle path exists on the free-space grid from every seed spawn (101–104) to
+the kitchen target, and back (for <code>return_home</code>'s scoring).</li>
+<li>Every seed spawn (101–104) lies well outside the kitchen-target goal radius —
+assert spawn-to-target distance &gt; 3 × 0.35&nbsp;m — so d_initial &gt; 0 (progress
+and SPL denominators are well-defined, §5.2/§5.3) and stage 1 can never be trivially
+successful at spawn.</li>
+<li>The 5 QA ground-truth answers are computable and unique — in particular exactly
+one room connects bedroom and kitchen (Q1's uniqueness precondition).</li>
+</ul>
+
+<h2 id="reporting">10. Reporting deliverables</h2>
+
+<ol>
+<li><strong>README results table.</strong> Per model: SR (both stages), progress,
+SPL, time-to-kitchen, turns, bumps, falls, map node P/R, edge accuracy, drift, QA
+score — each as mean ± 95% CI, with the per-trial table immediately below.</li>
+<li><strong>Per-metric bar charts</strong> with CI whiskers (one chart per headline
+metric, three bars each).</li>
+<li><strong>Per-model trial videos.</strong> The robot-tracking mp4 from each trial
+(12 total), linked from the per-trial table.</li>
+<li><strong>Trajectory-vs-belief map figures — the money figure.</strong> One per
+trial: the floor plan with (a) the true path (from <code>true_pose</code>), (b) the
+dead-reckoned path (from <code>position_estimate</code>, with
+<code>correct_position</code> snap points marked), and (c) the model's claimed rooms
+overlaid at their matched positions. This single image shows what no aggregate
+metric can: where the model's belief and reality diverged and whether loop closure
+pulled them back together.</li>
+</ol>
+
+<h2 id="validation">11. Validation performed</h2>
+
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>SPL formula matches Anderson et al. 2018</td>
+<td><code>curl https://arxiv.org/abs/1807.06757</code> (abstract page), then
+<code>curl https://arxiv.org/pdf/1807.06757</code> + <code>pdftotext</code> and
+locate the definition</td>
+<td>HTTP 200 both. Title "On Evaluation of Embodied Navigation Agents", Anderson et
+al. confirmed. Paper Eq.&nbsp;(1) verbatim: "(1/N) Σ Sᵢ · lᵢ / max(pᵢ, lᵢ)" with lᵢ =
+shortest-path distance from start to goal, pᵢ = length of the path actually taken —
+matches §5.3 exactly. (ar5iv HTML mirror returned an empty shell; PDF used
+instead.)</td></tr>
+<tr><td>ObjectNav attribution (§5.3 wording)</td>
+<td><code>curl https://arxiv.org/abs/2006.13171</code></td>
+<td>HTTP 200; title "ObjectNav Revisited: On Evaluation of Embodied Agents
+Navigating to Objects" (Batra et al. 2020) — confirms SPL originates in Anderson
+et&nbsp;al. 2018 and was later adopted as the ObjectNav convention, as §5.3 now
+states. Fetched 2026-07-26.</td></tr>
+<tr><td>Cost arithmetic</td>
+<td>Python: 512²/750 ≈ 350 tok/image; 40–80 turns × (4–8k in, 0.5–1k out); prices
+Fable 5 $10/$50, Opus 5 $5/$25 per MTok</td>
+<td>Per trial: in 0.16–0.64&nbsp;M, out 0.02–0.08&nbsp;M tokens ⇒ Fable 5
+$2.60–10.40, Opus 5 $1.30–5.20; 4 trials ⇒ $10–42 / $5–21; wall-clock 40×15&nbsp;s =
+10&nbsp;min to 80×65&nbsp;s ≈ 87&nbsp;min per trial; 12 trials ⇒ 2.0–17.3&nbsp;h.
+Consistent with §8 table.</td></tr>
+<tr><td>5 QA questions answerable from layout ground truth</td>
+<td>Python demo: representative layout dict per the canonical scene spec (4 rooms,
+adjacency, landmarks, per-seed spawns) + a logged-trace fixture; computed all 5
+answers</td>
+<td>All computable: Q1 unique connector = hallway (bedroom∩kitchen neighbors);
+Q2 BFS room path living_room→hallway→kitchen + initial bearing; Q3 visited set from
+trace ∩ polygons; Q4 8-way bearing per seed (E/E/SE/SE for 101–104 in the fixture);
+Q5 per-room landmark lists. Real layout must preserve Q1 uniqueness — asserted in
+test_layout.py (§9.2).</td></tr>
+<tr><td>Locomotion policy eval record cited correctly</td>
+<td><code>grep</code> parent repo <code>docs/jetson-mod/v4_comparison.md</code>;
+<code>ls</code> checkpoint path</td>
+<td>v4_robust row: gait valid 5/5, fall rate 0.0 (all 5 conditions 0.0).
+Checkpoint <code>~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt</code>
+exists.</td></tr>
+<tr><td>Project file state</td>
+<td><code>ls</code> / <code>wc -l</code> on <code>duck-embody</code></td>
+<td><code>scoring.py</code>, <code>test_scoring.py</code>, <code>test_layout.py</code>,
+<code>apartment_layout.py</code>, <code>benchmark.yaml</code>, <code>runner.py</code>
+are 1-line placeholders; <code>docs/designs/</code> created by this doc. No kit
+process launched at any point.</td></tr>
+</table>
+
+<h2 id="open">12. Open questions</h2>
+
+<ul>
+<li><strong>GPT 5.6 sol pricing and token accounting.</strong> Not verified —
+current OpenAI pricing must be checked before batch, and image-token accounting
+differs by provider (the 350-tok/image figure is Anthropic's rule of thumb). The
+cost table's OpenAI row is TBD.</li>
+<li><strong>Sim wall-clock per policy-second on the GB10.</strong> The 5–25&nbsp;s/turn
+sim-stepping assumption (headless + camera rendering) is unmeasured; the smoke test
+should record real step throughput and tighten §8.</li>
+<li><strong>Synonym table contents for room-name matching (5.7).</strong> The
+matching rule is fixed, but the concrete frozen synonym list ("lounge",
+"living area", "hall", …) must be authored and frozen with the prompt template.</li>
+<li><strong>Q2 rubric operationalization.</strong> "Turn-by-turn directions" scoring
+requires parsing free-text directions into a room/turn sequence; the parse rules
+(accepted direction vocabulary, how to handle relative vs compass directions) need
+fixture-driven pinning in <code>test_scoring.py</code> before freeze.</li>
+<li><strong>Stage-2 accounting when stage 1 fails.</strong> Current protocol: stage
+2 only runs if stage 1 succeeded (§3.1); the alternative (teleport-free "attempt
+return anyway") was rejected but the results table needs an explicit "—" convention
+for the unrun stage so return-home SR denominators are unambiguous (report as x/N
+with N=4, counting unrun as failure, plus a conditional SR over stage-1
+successes).</li>
+<li><strong>Layout QA answer-elicitation format.</strong> Whether QA answers are
+free text (scored by rubric rules) or forced through a small answer schema (easier
+to score, slightly more scaffold) — leaning free text + rubric parser, to keep the
+QA a genuine map-reading probe; decide before freeze.</li>
+<li><strong>Token/cost logging for the OpenAI client.</strong> The
+<code>final.tokens</code> block assumes both providers report usage per call;
+verify the OpenAI SDK exposes image-token usage the same way before the schema
+freezes.</li>
+</ul>
+
+</main>
+</body>
+</html>

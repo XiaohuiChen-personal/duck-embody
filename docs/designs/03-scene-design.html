@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Doc 03 — Apartment Scene Design</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Apartment Scene Design</h1>
+<p class="meta">Doc 03 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This doc specifies the simulated
+apartment that the Duck Embody experiment runs in: a small multi-room home, built entirely from
+code, that an LLM must explore through a robot's eyes. It assumes no robotics or Isaac Sim
+background — every term of art (USD, collider, PhysX, SimReady, and so on) is defined on first
+use. After reading you will know the exact floor plan and dimensions, where every asset comes
+from (with verified URLs), how the scene is assembled and collision-proofed, what can go wrong
+at 0.4&times; scale, and how we validate the scene before any LLM ever sees it.</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#goals">Goals and constraints</a></li>
+<li><a href="#scale">The duck-scale decision (0.4&times;)</a></li>
+<li><a href="#floorplan">Floor plan and dimensions</a></li>
+<li><a href="#layout">apartment_layout.py — the single source of truth</a></li>
+<li><a href="#assets">Asset sourcing</a></li>
+<li><a href="#builder">Scene builder mechanics</a></li>
+<li><a href="#risks">Risks and mitigations</a></li>
+<li><a href="#validation-loop">Validation loop design</a></li>
+<li><a href="#fallback">Fallback ladder</a></li>
+<li><a href="#validated">Validation performed</a></li>
+<li><a href="#open">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="goals">1. Goals and constraints</h2>
+<p>The experiment (see <a href="01-system-architecture.html">Doc 01</a>) drops the Open Duck Mini v2 — a 42&nbsp;cm bipedal robot — into an
+apartment it has never seen, and asks an LLM to find the kitchen using only camera frames and
+tool calls. There is no classical SLAM (Simultaneous Localization and Mapping — the standard
+robotics approach of building a geometric map from sensor data with dedicated algorithms); the
+LLM writes its own map as text. That puts four hard requirements on the scene itself:</p>
+<ol>
+<li><strong>Multi-room and unknown.</strong> The apartment must have several visually distinct
+rooms with doorways, so that "find the kitchen" requires actual exploration, room recognition,
+and route memory — not a single glance.</li>
+<li><strong>Visually recognizable from a 0.36&nbsp;m camera.</strong> The robot's head camera sits
+about 36&nbsp;cm off the floor. Each room must be identifiable by a vision-language model (VLM —
+a model that answers questions about images) from that viewpoint: a kitchen must look like a
+kitchen, a bedroom like a bedroom.</li>
+<li><strong>Reliable collision.</strong> Walls and furniture must physically stop the robot.
+A wall the robot can ghost through invalidates bump reporting, path length, and the whole
+navigation task. Collision behavior must be verified per asset, not assumed.</li>
+<li><strong>Reproducible from code.</strong> The build machine (DGX Spark) is headless — there is
+no GUI for hand-placing furniture, and hand-authored scenes cannot be diffed or code-reviewed.
+The entire scene must be generated from a Python data structure, so a fresh clone plus one
+asset-fetch script rebuilds the identical apartment.</li>
+</ol>
+<p>Terminology used throughout: <strong>USD</strong> (Universal Scene Description) is the file
+format Isaac Sim uses for 3D scenes — a hierarchical scene graph of <strong>prims</strong>
+(nodes: meshes, transforms, lights). <strong>PhysX</strong> is NVIDIA's physics engine inside
+Isaac Sim. A <strong>collider</strong> is the invisible physics shape attached to a prim that
+makes it solid; PhysX <strong>cooks</strong> (preprocesses) colliders once at scene load.</p>
+
+<h2 id="scale">2. The duck-scale decision (0.4&times;)</h2>
+<div class="decision"><strong>Locked:</strong> the apartment is built at 0.4&times; human scale
+("duck scale"), rather than placing the duck in a full-size home. <strong>Why:</strong> the duck's
+eye height of ~0.36&nbsp;m becomes the equivalent of ~0.9&nbsp;m in a real home
+(0.36&nbsp;/&nbsp;0.4&nbsp;=&nbsp;0.9) — a low but workable human vantage — instead of a
+toddler's view where counters loom overhead and no room is readable.</div>
+<p>Two failure modes drive this. First, <em>readability</em>: in a full-scale home a 36&nbsp;cm
+camera sees table undersides, sofa skirts, and cabinet kickboards. Countertops — the very target
+of the task — would be invisible. At 0.4&times;, a scaled counter top sits ~0.36&nbsp;m high,
+right at eye level, and room-defining objects (fridge, bed, sofa) fill the frame the way they do
+for a standing person at ~0.9&nbsp;m.</p>
+<p>Second, <em>traversal time</em>: the locomotion policy's command hull caps forward speed at
+0.222&nbsp;m/s, and motion macros drive at vx&nbsp;=&nbsp;0.2&nbsp;m/s. Crossing a real 12&nbsp;m
+apartment would burn the 240 policy-second budget on pure transit. At 0.4&times; the apartment is
+4.8&nbsp;&times;&nbsp;3.6&nbsp;m; the longest oracle route (bedroom spawn, seed 102, to the
+kitchen counter: ~4.0&nbsp;m via doorway centers, a little more with furniture-clearing detours)
+is roughly 20–25&nbsp;s of driving, leaving the budget for exploration and recovery.
+<span class="src">source: command hull and caps, Doc 01; straight-line segment sums
+spawn&rarr;door centers&rarr;target from the §3.1 coordinates (seed 102: 0.56&nbsp;+&nbsp;1.50
+&nbsp;+&nbsp;1.95 = 4.01&nbsp;m; seeds 101/103/104 are shorter). The definitive per-seed oracle
+lengths come from <code>scoring.py</code>'s shortest-path code once it exists (§4)</span></p>
+<p>All furniture USDs are spawned with a uniform <code>scale=(0.4,&nbsp;0.4,&nbsp;0.4)</code>;
+walls and doorways are authored directly at duck scale. Human-equivalent numbers (÷0.4) are given
+in the dimensions table so sanity checks stay easy.</p>
+
+<h2 id="floorplan">3. Floor plan and dimensions</h2>
+<p>Three rooms in a row along the south side, one full-width hallway along the north, four
+doorways. The east–west coordinate is x (0 at the west wall), north–south is y (0 at the south
+wall); headings are degrees counter-clockwise from +x (so 90&deg; faces north / +y). The bedroom
+is reachable only via the hallway; the living room and kitchen are additionally connected
+directly, giving the map a loop — useful for testing the LLM's adjacency reasoning.</p>
+
+<svg viewBox="0 0 620 540" role="img" aria-label="Apartment floor plan, top-down">
+  <!-- room fills -->
+  <rect x="22" y="130" width="216" height="324" fill="#f6f8fb"/>
+  <rect x="238" y="130" width="180" height="324" fill="#fdf6ec"/>
+  <rect x="418" y="130" width="180" height="324" fill="#f2f0fa"/>
+  <rect x="22" y="22" width="576" height="108" fill="#eef6f0"/>
+  <!-- outer walls -->
+  <rect x="22" y="22" width="576" height="432" fill="none" stroke="#1a2233" stroke-width="5"/>
+  <!-- interior wall A (y=2.7) with three door gaps -->
+  <line x1="22" y1="130" x2="109" y2="130" stroke="#1a2233" stroke-width="5"/>
+  <line x1="151" y1="130" x2="307" y2="130" stroke="#1a2233" stroke-width="5"/>
+  <line x1="349" y1="130" x2="487" y2="130" stroke="#1a2233" stroke-width="5"/>
+  <line x1="529" y1="130" x2="598" y2="130" stroke="#1a2233" stroke-width="5"/>
+  <!-- interior wall B (x=1.8) with door gap -->
+  <line x1="238" y1="331" x2="238" y2="454" stroke="#1a2233" stroke-width="5"/>
+  <line x1="238" y1="130" x2="238" y2="289" stroke="#1a2233" stroke-width="5"/>
+  <!-- interior wall C (x=3.3), no door -->
+  <line x1="418" y1="130" x2="418" y2="454" stroke="#1a2233" stroke-width="5"/>
+  <!-- doorway markers (dashed) -->
+  <line x1="109" y1="130" x2="151" y2="130" stroke="#0b6bcb" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="307" y1="130" x2="349" y2="130" stroke="#0b6bcb" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="487" y1="130" x2="529" y2="130" stroke="#0b6bcb" stroke-width="2" stroke-dasharray="4 3"/>
+  <line x1="238" y1="289" x2="238" y2="331" stroke="#0b6bcb" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="328" y="122" font-size="11" fill="#0b6bcb" text-anchor="middle">0.35 m</text>
+  <!-- furniture: SimReady (native collision) -->
+  <rect x="40" y="208" width="48" height="108" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <text x="64" y="266" font-size="10" fill="#1a2233" text-anchor="middle">sofa</text>
+  <rect x="121" y="232" width="30" height="60" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <rect x="184" y="406" width="42" height="42" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <text x="205" y="430" font-size="10" fill="#1a2233" text-anchor="middle">chair</text>
+  <circle cx="394" cy="370" r="10" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <rect x="433" y="142" width="30" height="60" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <text x="448" y="176" font-size="10" fill="#1a2233" text-anchor="middle">desk</text>
+  <circle cx="574" cy="52" r="9" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <!-- counter run (Sektion_Cabinet, target anchor) -->
+  <rect x="274" y="406" width="108" height="42" fill="#0b6bcb" opacity="0.75"/>
+  <text x="328" y="432" font-size="10" fill="#ffffff" text-anchor="middle">counter</text>
+  <!-- ArchVis visual-only + bbox proxy -->
+  <rect x="370" y="148" width="36" height="36" fill="#fde8c8" stroke="#f5a623"/>
+  <text x="388" y="169" font-size="9" fill="#1a2233" text-anchor="middle">fridge</text>
+  <rect x="484" y="313" width="72" height="102" fill="#fde8c8" stroke="#f5a623"/>
+  <text x="520" y="368" font-size="10" fill="#1a2233" text-anchor="middle">bed</text>
+  <!-- target region -->
+  <circle cx="328" cy="364" r="42" fill="none" stroke="#0b6bcb" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="328" y="352" font-size="10" fill="#0b6bcb" text-anchor="middle">target r=0.35</text>
+  <!-- spawn points with heading arrows -->
+  <circle cx="82" cy="394" r="8" fill="#3a9d5d"/><line x1="82" y1="394" x2="82" y2="376" stroke="#3a9d5d" stroke-width="3"/>
+  <text x="82" y="414" font-size="10" fill="#3a9d5d" text-anchor="middle">101</text>
+  <circle cx="538" cy="190" r="8" fill="#3a9d5d"/><line x1="538" y1="190" x2="538" y2="208" stroke="#3a9d5d" stroke-width="3"/>
+  <text x="538" y="228" font-size="10" fill="#3a9d5d" text-anchor="middle">102</text>
+  <circle cx="70" cy="76" r="8" fill="#3a9d5d"/><line x1="70" y1="76" x2="88" y2="76" stroke="#3a9d5d" stroke-width="3"/>
+  <text x="70" y="98" font-size="10" fill="#3a9d5d" text-anchor="middle">103</text>
+  <circle cx="190" cy="178" r="8" fill="#3a9d5d"/><line x1="190" y1="178" x2="172" y2="178" stroke="#3a9d5d" stroke-width="3"/>
+  <text x="190" y="198" font-size="10" fill="#3a9d5d" text-anchor="middle">104</text>
+  <!-- room labels -->
+  <text x="130" y="300" font-size="13" font-weight="600" fill="#5b6678">living_room</text>
+  <text x="300" y="240" font-size="13" font-weight="600" fill="#5b6678">kitchen</text>
+  <text x="472" y="264" font-size="13" font-weight="600" fill="#5b6678">bedroom</text>
+  <text x="285" y="82" font-size="13" font-weight="600" fill="#5b6678">hallway</text>
+  <!-- axes -->
+  <line x1="22" y1="480" x2="62" y2="480" stroke="#5b6678" stroke-width="2"/>
+  <text x="68" y="484" font-size="10" fill="#5b6678">+x (east, 0&#176;)</text>
+  <line x1="22" y1="480" x2="22" y2="462" stroke="#5b6678" stroke-width="2"/>
+  <text x="14" y="456" font-size="10" fill="#5b6678">+y (north, 90&#176;)</text>
+  <!-- legend -->
+  <rect x="22" y="500" width="14" height="14" fill="#cfe0f5" stroke="#0b6bcb"/>
+  <text x="42" y="512" font-size="11" fill="#1a2233">SimReady (native collision)</text>
+  <rect x="230" y="500" width="14" height="14" fill="#fde8c8" stroke="#f5a623"/>
+  <text x="250" y="512" font-size="11" fill="#1a2233">ArchVis (bbox proxy)</text>
+  <circle cx="420" cy="507" r="7" fill="#3a9d5d"/>
+  <text x="434" y="512" font-size="11" fill="#1a2233">spawn (seed) + heading</text>
+</svg>
+<p class="src">Wall thickness (0.03&nbsp;m) is exaggerated in the drawing for visibility. Furniture
+footprints are the planned 0.4&times;-scaled sizes, provisional until <code>inspect_assets.py</code>
+reports measured bounding boxes (§8).</p>
+
+<h3>3.1 Dimensions</h3>
+<table>
+<tr><th>Element</th><th>Duck scale (m)</th><th>Human equivalent (&divide;0.4)</th><th>Note</th></tr>
+<tr><td>Apartment extents</td><td>4.8 &times; 3.6</td><td>12 &times; 9 m</td><td>outer wall inner faces</td></tr>
+<tr><td>living_room</td><td>1.8 &times; 2.7 (x: 0–1.8, y: 0–2.7)</td><td>4.5 &times; 6.75 m</td><td>sofa, coffee table, armchair</td></tr>
+<tr><td>kitchen</td><td>1.5 &times; 2.7 (x: 1.8–3.3, y: 0–2.7)</td><td>3.75 &times; 6.75 m</td><td>counter run on south wall, fridge NE, stool</td></tr>
+<tr><td>bedroom</td><td>1.5 &times; 2.7 (x: 3.3–4.8, y: 0–2.7)</td><td>3.75 &times; 6.75 m</td><td>bed, desk; hallway access only</td></tr>
+<tr><td>hallway</td><td>4.8 &times; 0.9 (y: 2.7–3.6)</td><td>12 &times; 2.25 m</td><td>connects all three rooms; plant at east end (moved from the west end, which sat ~0.17 m from spawn 103)</td></tr>
+<tr><td>Wall height</td><td>0.5</td><td>1.25 m</td><td>blocks the 0.36 m camera's line of sight; low enough for top-down debug renders</td></tr>
+<tr><td>Wall thickness</td><td>0.03</td><td>0.075 m</td><td>thick enough for stable PhysX contact</td></tr>
+<tr><td>Doorway width</td><td>0.35</td><td>0.875 m</td><td>&asymp;2.2&times; duck body width (~0.16 m); human equivalent is a standard door</td></tr>
+<tr><td>Doorway centers</td><td>hall&harr;living (0.9, 2.7); hall&harr;kitchen (2.55, 2.7); hall&harr;bedroom (4.05, 2.7); living&harr;kitchen (1.8, 1.2)</td><td>—</td><td>gaps in walls A and B</td></tr>
+<tr><td>Kitchen counter target</td><td>point (2.55, 0.75), radius 0.35</td><td>—</td><td>disc in front of the Sektion_Cabinet run (footprint x: 2.1–3.0, y: 0.05–0.40). The disc IS the scored target region — distance is measured to the point, not to the cabinet footprint (§4)</td></tr>
+<tr><td>Spawns (seed: pos, heading)</td><td>101: (0.5, 0.5), 90&deg; &middot; 102: (4.3, 2.2), 270&deg; &middot; 103: (0.4, 3.15), 0&deg; &middot; 104: (1.4, 2.3), 180&deg;</td><td>—</td><td>&ge;0.4 m clearance from walls and (estimated) furniture footprints — a <code>test_layout.py</code> invariant (§4), re-run when <code>inspect_assets.py</code> AABBs land; 103/104 sit exactly at the 0.4 m wall boundary. Same seeds for every model</td></tr>
+<tr><td>Camera height</td><td>0.36</td><td>0.90 m</td><td>frozen for all models (Doc 01)</td></tr>
+</table>
+
+<h2 id="layout">4. <code>apartment_layout.py</code> — the single source of truth</h2>
+<div class="decision"><strong>Locked:</strong> one Python dict in
+<code>duck_embody/env/apartment_layout.py</code> is simultaneously the scene specification (the
+scene builder reads it to place walls and furniture) and the scoring ground truth (the scorer
+reads room polygons, doorway adjacency, target region, and spawn points from it — and from
+nothing else). <strong>Why:</strong> if the scene and the answer key are two files, they drift;
+one dict makes "the map the robot walked through" and "the map it is graded against" provably
+identical.</div>
+<p>The file currently exists as a docstring stub <span class="src">source:
+duck_embody/env/apartment_layout.py (1 line, checked 2026-07-26)</span>; this section is its
+design. Annotated schema:</p>
+<pre><code># apartment_layout.py — THE layout. Scene builder AND scorer import LAYOUT; nothing else
+# defines geometry. All lengths in meters at duck scale; headings in degrees CCW from +x.
+
+LAYOUT = {
+    "units": "m",
+    "world_scale": 0.4,            # uniform scale applied to every furniture USD at spawn
+    "extents": (4.8, 3.6),         # apartment footprint (x, y)
+    "wall_height": 0.5,
+    "wall_thickness": 0.03,
+
+    # Walls: straight segments; door gaps are encoded by SPLITTING a wall into
+    # segments, so the builder never subtracts geometry. Each segment -> one CuboidCfg.
+    "walls": [
+        {"name": "A1", "start": (0.0, 2.7),  "end": (0.725, 2.7)},   # wall A west of living door
+        {"name": "A2", "start": (1.075, 2.7),"end": (2.375, 2.7)},
+        # ... A3, A4, B1, B2, C, plus 4 outer walls
+    ],
+
+    # Rooms: axis-aligned polygons. SCORING ground truth for room precision/recall,
+    # "which room is the robot in", and the post-episode layout QA.
+    "rooms": {
+        "living_room": {"poly": [(0.0, 0.0), (1.8, 0.0), (1.8, 2.7), (0.0, 2.7)]},
+        "kitchen":     {"poly": [(1.8, 0.0), (3.3, 0.0), (3.3, 2.7), (1.8, 2.7)]},
+        "bedroom":     {"poly": [(3.3, 0.0), (4.8, 0.0), (4.8, 2.7), (3.3, 2.7)]},
+        "hallway":     {"poly": [(0.0, 2.7), (4.8, 2.7), (4.8, 3.6), (0.0, 3.6)]},
+    },
+
+    # Doorways: ground-truth adjacency edges (for map-accuracy scoring) + gap geometry
+    # (consumed by the wall-splitting builder and the oracle shortest-path computation).
+    "doorways": [
+        {"between": ("hallway", "living_room"), "center": (0.9, 2.7),  "width": 0.35},
+        {"between": ("hallway", "kitchen"),     "center": (2.55, 2.7), "width": 0.35},
+        {"between": ("hallway", "bedroom"),     "center": (4.05, 2.7), "width": 0.35},
+        {"between": ("living_room", "kitchen"), "center": (1.8, 1.2),  "width": 0.35},
+    ],
+
+    # Furniture: scene spec only (scoring never reads it). "collision" declares how the
+    # asset becomes solid: "native" (collider ships in the USD) or "bbox_proxy"
+    # (invisible cuboid sized from inspect_assets.py output — §6, §8).
+    "furniture": [
+        {"name": "sofa",    "room": "living_room", "asset": "simready/crestwood_sofa",
+         "pos": (0.35, 1.6), "yaw_deg": 90, "collision": "native"},
+        {"name": "counter", "room": "kitchen", "asset": "isaac/sektion_cabinet",
+         "pos": (2.55, 0.22), "yaw_deg": 90, "collision": "native", "count": 2},
+        {"name": "fridge",  "room": "kitchen", "asset": "archvis/Appliances/&lt;pick&gt;",
+         "pos": (3.05, 2.4), "yaw_deg": 180, "collision": "bbox_proxy"},
+        {"name": "bed",     "room": "bedroom", "asset": "archvis/Furniture/Beds/&lt;pick&gt;",
+         "pos": (4.15, 0.75), "yaw_deg": 90, "collision": "bbox_proxy"},
+        # ... coffee table, armchair, stool, desk, plant (SimReady, native)
+    ],
+
+    # Target: success = base within `radius` of `point` + declare_done (Doc 01).
+    # SEMANTICS PINNED: this disc IS "the kitchen-counter target region" — the scorer
+    # measures Euclidean distance to `point`, never to the cabinet footprint. A robot
+    # pressed against the counter face at (2.2, 0.5) is 0.43 m from `point` -> FAIL.
+    # That exact case is a required fixture in tests/test_scoring.py (pre-batch gate).
+    "target": {"name": "kitchen_counter", "room": "kitchen",
+               "point": (2.55, 0.75), "radius": 0.35},
+
+    # Spawns: seed -> pose. Seeds are the trial IDs; identical across models.
+    "spawn_points": {
+        101: {"pos": (0.5, 0.5),  "heading_deg": 90},
+        102: {"pos": (4.3, 2.2),  "heading_deg": 270},
+        103: {"pos": (0.4, 3.15), "heading_deg": 0},
+        104: {"pos": (1.4, 2.3),  "heading_deg": 180},
+    },
+}
+</code></pre>
+<p>Downstream consumers: <code>scene_builder.py</code> (walls + furniture &rarr; Isaac Lab scene
+config, §6), <code>scoring.py</code> (rooms, doorways, target, spawns &rarr; success, SPL oracle
+path, map precision/recall, drift-at-goal), and <code>tests/test_layout.py</code> (invariants:
+rooms tile the extents without overlap, every doorway lies on a shared room boundary and
+matches a wall gap, spawns and target are inside their rooms and off furniture footprints, and
+every spawn keeps &ge;0.4 m clearance from walls and furniture AABBs — added after design review
+found the original west-end plant ~0.17 m from spawn 103 and the original armchair pose ~0.23 m
+from spawn 101; both items were relocated, §3.1).</p>
+
+<h2 id="assets">5. Asset sourcing</h2>
+<p>All furniture comes from NVIDIA's public Omniverse content bucket, reachable anonymously over
+HTTPS. The Isaac-version-pinned tree root is
+<code>https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1</code>
+— an S3 <em>prefix</em>, not a HEAD-able object (HEAD on the bare root returns 404); the tree is
+verified via HTTP 200 on object keys beneath it plus a list-type=2 listing <span class="src">source:
+§10, checks 1–5, 2026-07-26</span>. Bucket listing
+shows the other two catalogs are <em>siblings</em> of that tree, not children:
+SimReady props live under <code>Assets/simready_content/</code> and ArchVis under
+<code>Assets/ArchVis/Residential/</code> <span class="src">source: S3 list-type=2 on prefix
+<code>Assets/</code>, 2026-07-26 (§10, checks 4–5)</span>.</p>
+<div class="warning"><strong>AGENTS.md correction (its rule 9).</strong> The AGENTS.md §4
+asset-catalog bullet listed ArchVis under <code>…/NVIDIA/Assets/ArchVis/Residential/…</code> —
+that prefix is dead (HEAD on
+<code>NVIDIA/Assets/ArchVis/Residential/Furniture/Sofas/Arnold.usd</code> returns 404; the
+same key under <code>Assets/ArchVis/…</code> returns 200 — §10, check 3). AGENTS.md is
+corrected to <code>Assets/ArchVis/Residential/</code> in the same commit that lands this
+doc.</div>
+<p><strong>SimReady</strong> is NVIDIA's "simulation-ready" asset standard: USDs that ship with
+colliders and semantic labels (machine-readable class tags like <code>sofa</code>) already
+authored. <strong>ArchVis</strong> ("architectural visualization") assets are render-quality
+models with no physics at all — pretty, but the robot walks through them unless we add physics
+ourselves.</p>
+
+<table>
+<tr><th>Class</th><th>Bucket path</th><th>Collision</th><th>Used for</th><th>Example verified asset</th></tr>
+<tr><td><strong>Isaac Props</strong></td><td><code>Assets/Isaac/5.1/Isaac/Props/</code></td>
+<td>Dedicated collision USD ships with the asset</td>
+<td>Kitchen-counter anchor: a run of 2 Sektion_Cabinet units — the scored target region sits in front of it</td>
+<td><code>.../Isaac/5.1/Isaac/Props/Sektion_Cabinet/sektion_cabinet_instanceable.usd</code> <span class="src">(HTTP 200, 2026-07-26)</span></td></tr>
+<tr><td><strong>SimReady props</strong></td><td><code>Assets/simready_content/common_assets/props/</code></td>
+<td>Colliders + semantic labels INCLUDED</td>
+<td>First choice for everything it covers: <code>armchair</code>, <code>crestwood_sofa</code>, tables (<code>appleseed_coffeetable</code>), chairs, <code>bar_stool</code>, desks, cabinets, plants</td>
+<td><code>.../props/armchair/armchair.usd</code> <span class="src">(HTTP 200)</span>; <code>crestwood_sofa/crestwood_sofa.usd</code> listed in the same prefix <span class="src">(list-type=2, 2026-07-26)</span></td></tr>
+<tr><td><strong>ArchVis Residential</strong></td><td><code>Assets/ArchVis/Residential/</code></td>
+<td><strong>VERIFIED visual-only</strong> — a downloaded sofa (<code>Furniture/Sofas/Arnold.usd</code>) contained zero physics tokens</td>
+<td>Room-identity items SimReady lacks: bed, fridge, oven, kitchen clutter. Every ArchVis asset gets an invisible bbox collider proxy (§6)</td>
+<td><code>.../ArchVis/Residential/Furniture/Sofas/Arnold.usd</code> <span class="src">(HTTP 200, 2026-07-26)</span></td></tr>
+</table>
+
+<div class="decision"><strong>Locked:</strong> <code>assets/fetch_assets.sh</code> mirrors every
+referenced USD (plus textures) into <code>assets/</code> and records SHA-256 checksums; the scene
+builder resolves paths only against the local mirror. <strong>Why:</strong> the experiment batch
+must never depend on a live bucket — a mid-batch network hiccup or upstream asset change would
+silently break cross-model comparability.</div>
+
+<div class="warning"><strong>License boundaries.</strong> NVIDIA's official ready-made
+<em>Environments</em> (Office, Hospital, etc.) are under a "Limited Use" no-modification license —
+they may not be remixed into a custom apartment, so we build our own from props. Separately, the
+ArchVis EULA has not yet been read against our plan to publish rendered GIFs of episodes in the
+public repo — tracked as an open question (§11). MolmoSpaces (fallback, §9) is CC BY 4.0 and
+unproblematic.</div>
+
+<h2 id="builder">6. Scene builder mechanics</h2>
+<p><code>duck_embody/env/scene_builder.py</code> translates <code>LAYOUT</code> into Isaac Lab
+scene-config entries. Isaac Lab is configuration-driven: you describe each scene object as a
+config dataclass, and the framework spawns it at startup. Three mechanisms, all verified against
+Isaac Lab 2.3.2 sources:</p>
+
+<h3>6.1 Walls: <code>CuboidCfg</code> with native collision</h3>
+<p>Each wall segment becomes an <code>AssetBaseCfg</code> whose spawner is a
+<code>CuboidCfg</code> (a box primitive) with <code>collision_props</code> set. For shape
+primitives Isaac Lab <em>defines</em> (creates) the collision schema on the prim — box colliders
+need no mesh cooking and are the most reliable collision geometry PhysX has.
+<span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/sim/spawners/shapes/shapes.py:295-297
+(<code>define_collision_properties</code> when <code>cfg.collision_props</code> is set);
+CuboidCfg at shapes_cfg.py:62</span>. Walls are 0.03&nbsp;m thick — comfortably above PhysX
+contact tolerances, so a walking robot cannot tunnel through at 0.2&nbsp;m/s.</p>
+
+<h3>6.2 Furniture: <code>AssetBaseCfg</code> + <code>UsdFileCfg</code> at fixed poses</h3>
+<p>Static furniture follows the pattern Isaac Lab itself uses for the table in its stacking task:
+an <code>AssetBaseCfg</code> with an initial pose and a <code>UsdFileCfg</code> spawner
+<span class="src">source: ~/IsaacLab/source/isaaclab_tasks/.../manipulation/stack/stack_env_cfg.py:41-44</span>.
+We add <code>scale=(0.4, 0.4, 0.4)</code> and <code>semantic_tags=[("class", name)]</code>
+(supported field <span class="src">source: .../sim/spawners/spawner_cfg.py:41</span>) so debug
+tooling can query what the camera sees.</p>
+<div class="note"><strong>Why scaling is safe here:</strong> Isaac Lab applies
+<code>scale=cfg.scale</code> inside <code>create_prim</code> at the moment the USD reference is
+added to the stage — i.e., the scale is authored on the prim <em>before</em> simulation starts
+and before PhysX parses the stage, so colliders are cooked at the scaled size rather than
+rescaled afterwards. <span class="src">source:
+~/IsaacLab/source/isaaclab/isaaclab/sim/spawners/from_files/from_files.py:314-319
+(<code>_spawn_from_usd_file</code>, def at :268)</span>. Uniform scale only — non-uniform scale
+on mesh/convex colliders is a known PhysX trouble spot and buys us nothing here.</div>
+
+<h3>6.3 Collider proxies for visual-only assets</h3>
+<p>ArchVis assets get a co-located <em>invisible</em> <code>CuboidCfg</code>
+(<code>visible=False</code>, <code>collision_props</code> set) sized from the asset's
+axis-aligned bounding box (AABB — the smallest axis-aligned box containing the mesh), computed
+offline by <code>inspect_assets.py</code> (§8) and recorded in <code>assets/manifest.json</code>.
+The visual USD spawns with <em>no</em> collision config; the proxy is the physics.</p>
+
+<h3>6.4 Scene assembly</h3>
+<p>Everything lives under one <code>/World/Apartment</code> scope with
+<code>num_envs=1</code> (a single environment — no vectorized cloning, unlike training).
+Every scene asset sets <code>collision_group=-1</code>: Isaac Lab collects such prims into the
+global collision group, which is what makes them collide with the robot rather than only within
+their own environment copy. <span class="src">source:
+.../assets/asset_base_cfg.py:69 (<code>collision_group: Literal[0, -1] = 0</code>);
+.../scene/interactive_scene.py:754, 802 (global prim path collection when
+<code>collision_group == -1</code>)</span>.</p>
+<pre><code># scene_builder.py — shape of the generated config (sketch)
+def wall_asset(seg: dict, L: dict) -&gt; AssetBaseCfg:
+    cx, cy, length, yaw = segment_pose(seg)          # midpoint + orientation from LAYOUT
+    return AssetBaseCfg(
+        prim_path=f"/World/Apartment/walls/{seg['name']}",
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(cx, cy, L["wall_height"] / 2),
+                                                rot=yaw_to_quat(yaw)),
+        spawn=sim_utils.CuboidCfg(
+            size=(length, L["wall_thickness"], L["wall_height"]),
+            collision_props=sim_utils.CollisionPropertiesCfg(),   # DEFINES a box collider
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=WALL_COLOR),
+        ),
+        collision_group=-1,
+    )
+
+def furniture_asset(item: dict) -&gt; AssetBaseCfg:
+    return AssetBaseCfg(
+        prim_path=f"/World/Apartment/furniture/{item['name']}",
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(*item["pos"], 0.0),
+                                                rot=yaw_to_quat(item["yaw_deg"])),
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=str(ASSETS_DIR / MANIFEST[item["asset"]]["local_path"]),  # mirror only
+            scale=(0.4, 0.4, 0.4),                     # authored pre-PhysX-parse (§6.2)
+            semantic_tags=[("class", item["name"])],
+            collision_props=OFFSET_OVERRIDE if item["collision"] == "native" else None,
+        ),
+        collision_group=-1,
+    )
+    # if item["collision"] == "bbox_proxy": emit an additional invisible CuboidCfg
+    # sized from MANIFEST[item["asset"]]["aabb"] * 0.4 at the same pose (§6.3)
+</code></pre>
+
+<h2 id="risks">7. Risks and mitigations</h2>
+<table>
+<tr><th>Risk</th><th>Mechanism</th><th>Mitigation</th></tr>
+<tr><td><strong>Contact offsets don't scale</strong></td>
+<td>PhysX's <code>contactOffset</code>/<code>restOffset</code> (distances at which contacts are
+generated/come to rest) are authored in ABSOLUTE meters and do not shrink with the 0.4&times;
+scale. A 2&nbsp;cm contact offset authored for a human-scale table becomes an invisible force
+field around a 20&nbsp;cm-tall duck-scale table — the robot gets shoved before visually touching
+anything.</td>
+<td><code>inspect_assets.py</code> reads authored offsets offline via <code>pxr</code> (§8);
+the builder overrides them on every native-collision asset via
+<code>CollisionPropertiesCfg(contact_offset=0.002, rest_offset=0.0)</code>, applied nested to all
+collider prims <span class="src">source: modify path at from_files.py:333-334 &rarr;
+schemas.py:366</span>. Exact value tuned in the physics pass (§8.3).</td></tr>
+<tr><td><strong><code>collision_props</code> cannot create colliders</strong></td>
+<td><code>UsdFileCfg(collision_props=...)</code> only MODIFIES colliders that already exist in the
+USD: the schema helper returns <code>False</code> if the prim has no
+<code>UsdPhysics.CollisionAPI</code> <span class="src">source:
+~/IsaacLab/source/isaaclab/isaaclab/sim/schemas/schemas.py:400-402</span>. A visual-only asset
+spawned this way renders perfectly and the robot walks straight through it — no error, no
+warning.</td>
+<td>Per-asset verification: <code>inspect_assets.py</code> counts collision-API prims in every
+mirrored USD; assets declaring <code>"native"</code> in the layout must have &ge;1 or the build
+fails; everything else is forced to <code>"bbox_proxy"</code>. The scripted physics pass (§8.3)
+then bump-tests each furniture item.</td></tr>
+<tr><td><strong>MDL gray-frame warmup</strong></td>
+<td>MDL (NVIDIA's material definition language) materials compile on first use; the first rendered
+frames come out flat gray/black. A gray first observation would poison the LLM's very first
+room guess.</td>
+<td>The session runner performs N warmup renders (N determined empirically in the survey render,
+starting at 8) after scene load, before any captured frame; <code>render_scene_survey.py</code>
+verifies frame N is fully shaded.</td></tr>
+<tr><td><strong>Stage-unit mismatch</strong></td>
+<td>USD files declare <code>metersPerUnit</code>; some catalogs author in centimeters
+(<code>0.01</code>). A cm-authored asset dropped in unaware would be 100&times; too large, and
+0.4&times; of wrong is still wrong.</td>
+<td><code>inspect_assets.py</code> records <code>metersPerUnit</code> and the measured AABB per
+asset; the builder computes the effective scale so every asset lands at its intended duck-scale
+footprint, and the survey render (§8.2) catches anything that slips through visually.</td></tr>
+<tr><td><strong>Camera sees over walls</strong></td>
+<td>Walls are 0.5&nbsp;m; the camera sits at 0.36&nbsp;m with a wide FOV, so upper frame regions
+can glimpse adjacent rooms at distance, possibly confusing room identification.</td>
+<td>Assessed in the survey render; if the VLM mislabels rooms due to over-wall leakage, raise
+walls to 0.7&nbsp;m (layout constant, one-line change). Open question §11.</td></tr>
+</table>
+
+<h2 id="validation-loop">8. Validation loop design</h2>
+<p>Three stages, cheapest first. Only stage 2 launches Isaac Sim (the "kit" process — startup
+costs minutes and only one GPU job may run at a time), and it launches it exactly once.</p>
+<h3>8.1 <code>inspect_assets.py</code> — offline, no kit</h3>
+<p>Pure-<code>pxr</code> (the standalone USD Python library) pass over every mirrored USD. Records
+per asset: <code>metersPerUnit</code>, default prim, AABB via <code>UsdGeom.BBoxCache</code>,
+count of prims with <code>UsdPhysics.CollisionAPI</code>, and any authored
+<code>contactOffset</code>/<code>restOffset</code>. Output <code>assets/manifest.json</code> is
+the input for proxy sizing (§6.3) and the native-collision gate (§7). Runs in seconds, no GPU.</p>
+<h3>8.2 <code>render_scene_survey.py</code> — one kit launch</h3>
+<p>Builds the full scene once and captures: (a) a top-down orthographic view (no perspective —
+directly comparable against the §3 floor plan), and (b) a duck-height (0.36&nbsp;m) four-heading
+sweep at each room's center — exactly what <code>look_around()</code> will produce.
+<strong>Acceptance:</strong> a VLM, shown each room's sweep frames cold, names the room correctly
+for all four rooms; plus visual checks (no floating/sunken furniture, doorways visibly open,
+materials shaded after warmup). Survey renders are committed to <code>results/figures/</code> as
+evidence.</p>
+<h3>8.3 Scripted no-LLM physics pass</h3>
+<p>Same kit session, scripted controller driving the real locomotion policy (no LLM): traverse
+every doorway in both directions, deliberately bump the sofa (SimReady native collider), a wall
+(CuboidCfg), and the fridge (bbox proxy). <strong>Assert:</strong> colliders hold (no
+penetration beyond contact offset), the harness reports bumps, doorways pass without snagging,
+and nothing terminates the episode except a genuine fall. This is the gate that catches both
+walk-through furniture and invisible-force-field offsets before any scored trial.</p>
+
+<h2 id="fallback">9. Fallback ladder</h2>
+<p>If the primitive-walls-plus-props apartment fails its acceptance checks (rooms not
+recognizable, collision unfixable), we fall back in order — each rung trades some experimental
+cleanliness for robustness:</p>
+<ol>
+<li><strong>MolmoSpaces (AllenAI).</strong> USD exports of iTHOR/ProcTHOR interactive home scenes,
+explicitly targeting Isaac Sim 5.1.0 + Isaac Lab 2.3.1 (we run 5.1.0/2.3.2), CC BY 4.0, plain
+download script. Known caveat to document if used: their collision-group setup needs adjusting to
+collide with an externally added robot (same global-group issue as §6.4). Scaled 0.4&times;,
+their human-scale walls become ~1&nbsp;m — taller than our 0.5&nbsp;m spec, an acceptable
+relaxation.</li>
+<li><strong>InteriorAgent (SpatialVerse / Manycore Tech; listed among Isaac Sim's third-party
+SimReady assets).</strong> Photoreal interior scenes; custom "InteriorAgent License", and its
+publisher states testing only against Isaac Sim 4.2/4.5 (we run 5.1.0) — both make it a
+last-resort research option, not a default. <span class="src">source: Hugging Face dataset card
+<code>spatialverse/InteriorAgent</code> ("Tested with: Isaac Sim v4.2, Isaac Sim v4.5"; "released
+under InteriorAgent License"), checked 2026-07-26</span></li>
+<li><strong>Labeled-cuboid floor.</strong> Colored primitive boxes with text signage ("KITCHEN").
+Always works, zero asset risk — but we expect (an expectation, not a cited result) that a VLM
+cannot recognize a "kitchen" in bare geometric proxies, so the task degrades toward signage
+OCR; before adopting this rung, that expectation gets verified with a quick VLM probe on
+proxy-only renders. This rung changes what the experiment measures and would be reported as
+such.</li>
+</ol>
+
+<h2 id="validated">10. Validation performed</h2>
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>Tree root is a prefix, not an object</td>
+<td><code>curl -sI .../Assets/Isaac/5.1</code> (and trailing-slash variant)</td>
+<td>HTTP/1.1 404 Not Found both ways — S3 prefixes are not HEAD-able objects. The tree itself is proven live by the 200s on child keys (checks 2–4) and the listings (checks 4–5), 2026-07-26</td></tr>
+<tr><td>Sektion_Cabinet USD reachable</td>
+<td><code>curl -sI .../Assets/Isaac/5.1/Isaac/Props/Sektion_Cabinet/sektion_cabinet_instanceable.usd</code></td>
+<td>HTTP/1.1 200 OK (Last-Modified 2025-10-14), 2026-07-26</td></tr>
+<tr><td>ArchVis Residential USD reachable</td>
+<td><code>curl -sI .../Assets/ArchVis/Residential/Furniture/Sofas/Arnold.usd</code></td>
+<td>HTTP/1.1 200 OK, 2026-07-26. Same key under the <code>NVIDIA/Assets/…</code> prefix (the path AGENTS.md §4 carried) = 404 — AGENTS.md corrected (§5)</td></tr>
+<tr><td>SimReady props listing</td>
+<td><code>curl "...?list-type=2&amp;prefix=Assets/simready_content/common_assets/props/&amp;delimiter=/"</code></td>
+<td>Prefixes returned incl. <code>armchair/</code>, <code>crestwood_sofa/</code>, <code>bar_stool/</code>, <code>appleseed_coffeetable/</code>; <code>armchair.usd</code> HEAD = 200; <code>crestwood_sofa.usd</code> key present</td></tr>
+<tr><td>Catalog tree locations</td>
+<td><code>curl "...?list-type=2&amp;prefix=Assets/&amp;delimiter=/"</code></td>
+<td><code>Assets/simready_content/</code> and <code>Assets/ArchVis/</code> are siblings of <code>Assets/Isaac/</code> (first-guess prefix under <code>Assets/Isaac/5.1/</code> returned KeyCount 0 — corrected in §5)</td></tr>
+<tr><td>Scale applied before PhysX parse</td>
+<td><code>grep -n scale ~/IsaacLab/.../sim/spawners/from_files/from_files.py</code> + read <code>_spawn_from_usd_file</code></td>
+<td><code>create_prim(..., scale=cfg.scale)</code> at from_files.py:314-319 (def :268) — scale authored at reference-add time, pre-simulation</td></tr>
+<tr><td>CuboidCfg creates native colliders</td>
+<td><code>grep -n collision ~/IsaacLab/.../sim/spawners/shapes/shapes.py</code></td>
+<td>shapes.py:295-297 calls <code>define_collision_properties</code> when <code>collision_props</code> set; <code>spawn_cuboid</code> :62, <code>CuboidCfg</code> shapes_cfg.py:62</td></tr>
+<tr><td><code>collision_props</code> modifies, never adds</td>
+<td>Read <code>modify_collision_properties</code> in <code>~/IsaacLab/.../sim/schemas/schemas.py</code></td>
+<td>schemas.py:366; returns <code>False</code> when prim lacks <code>UsdPhysics.CollisionAPI</code> (:400-402); reached from from_files.py:333-334</td></tr>
+<tr><td>Static-asset pattern exists</td>
+<td><code>grep -n "AssetBaseCfg\|UsdFileCfg" ~/IsaacLab/.../manipulation/stack/stack_env_cfg.py</code></td>
+<td>Lines 41-44: table = <code>AssetBaseCfg(init_state=..., spawn=UsdFileCfg(usd_path=...))</code></td></tr>
+<tr><td>Global collision group mechanism</td>
+<td><code>grep -n collision_group</code> over <code>asset_base_cfg.py</code>, <code>interactive_scene.py</code></td>
+<td><code>collision_group: Literal[0, -1] = 0</code> at asset_base_cfg.py:69; global prim collection at interactive_scene.py:754, 802</td></tr>
+<tr><td><code>semantic_tags</code> field exists</td>
+<td><code>grep -n semantic_tags ~/IsaacLab/.../sim/spawners/spawner_cfg.py</code></td>
+<td>spawner_cfg.py:41: <code>semantic_tags: list[tuple[str, str]] | None</code></td></tr>
+<tr><td>Repo stubs in place</td>
+<td><code>wc -l duck_embody/env/apartment_layout.py duck_embody/env/scene_builder.py assets/fetch_assets.sh</code></td>
+<td>1 / 1 / 6 lines — docstring stubs only; this doc is their design (schema in §4 is planned, not yet code)</td></tr>
+</table>
+
+<h2 id="open">11. Open questions</h2>
+<ul>
+<li><strong>ArchVis EULA vs. published media.</strong> May rendered GIFs/frames containing ArchVis
+assets be published in the public repo README? Needs an actual license read before any media
+lands in <code>results/figures/</code> destined for publication.</li>
+<li><strong>Per-asset physics of the final ArchVis picks.</strong> "Zero physics tokens" was
+verified on one downloaded sofa (<code>Arnold.usd</code>); the specific bed/fridge/oven files
+chosen for the scene must each pass <code>inspect_assets.py</code> before the
+native-vs-proxy decision is final.</li>
+<li><strong>Sektion_Cabinet articulation.</strong> The cabinet has doors/drawers (it is used as a
+manipulation asset elsewhere). Does spawning it as a static <code>AssetBaseCfg</code> leave the
+doors rigidly fixed, or must joints be explicitly locked? Resolved in the survey render +
+physics pass.</li>
+<li><strong>Wall height 0.5 m vs. over-wall visibility.</strong> Whether the wide-FOV camera
+glimpsing adjacent rooms over 0.5&nbsp;m walls helps or hurts VLM room identification — decided
+by the §8.2 acceptance run; contingency is 0.7&nbsp;m walls.</li>
+<li><strong>Contact-offset override value.</strong> 2&nbsp;mm proposed (§7); the right value is
+whatever makes the §8.3 bump tests report contact at visually plausible distances without
+jitter.</li>
+<li><strong>Furniture poses and spawn clearances are provisional</strong> until
+<code>inspect_assets.py</code> returns measured 0.4&times; footprints; positions in §3/§4 assume
+estimated bounding boxes and may shift by a few centimeters (layout dict is the only place they
+change).</li>
+</ul>
+
+</main>
+</body>
+</html>

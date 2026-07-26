@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duck Embody — 01 System Architecture &amp; Runtime</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+
+<h1>System Architecture &amp; Runtime</h1>
+<p class="meta">Doc 01 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This document is the
+top-level design for <strong>Duck Embody</strong> and assumes no prior knowledge of
+robotics, simulators, or reinforcement learning — every term of art is defined on
+first use. It explains what the system is, how its three layers (simulation, agent,
+benchmark) fit together, exactly what happens during one agent "turn", why the
+simulator is paused while the language model thinks, how the whole batch runs inside
+one long-lived simulator process, how this repo depends on its parent robot project,
+and how a trial begins and ends. Later design docs go deep on individual layers;
+this one is the map.</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#s1">One-screen overview: an LLM as its own SLAM</a></li>
+  <li><a href="#s2">Three-layer architecture and the anatomy of one turn</a></li>
+  <li><a href="#s3">Why the simulator pauses while the model thinks</a></li>
+  <li><a href="#s4">Process model: one simulator process, sequential trials</a></li>
+  <li><a href="#s5">Repo map (annotated)</a></li>
+  <li><a href="#s6">Parent-repo dependency contract</a></li>
+  <li><a href="#s7">Runtime environment</a></li>
+  <li><a href="#s8">Trial lifecycle: spawn, caps, bumps, falls</a></li>
+  <li><a href="#s9">Relation to Anthropic's embody harness (honest framing)</a></li>
+  <li><a href="#s10">Validation performed</a></li>
+  <li><a href="#s11">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="s1">1. One-screen overview: an LLM as its own SLAM</h2>
+
+<p><strong>Duck Embody</strong> puts a frontier large language model (LLM) in charge
+of a 42&nbsp;cm bipedal robot — the Open Duck Mini v2 — inside a simulated,
+<em>unknown</em>, duck-scale apartment, and asks it to complete one task:
+<em>"Find the kitchen and walk to the counter."</em> The model never touches motors
+directly. It issues <strong>tool calls</strong> (structured function invocations,
+the standard way LLM APIs let a model act on the world) such as
+<code>turn_to_heading(90)</code> or <code>move(1.2)</code>; a harness translates
+those into velocity commands for a pretrained <strong>reinforcement-learning (RL)
+locomotion policy</strong> — a small neural network, trained by trial and error in
+simulation, that converts a desired walking velocity into 50-per-second joint
+commands that keep the biped upright and walking.</p>
+
+<p>The unusual part is navigation. Robots normally localize with
+<strong>SLAM</strong> (Simultaneous Localization and Mapping): geometry pipelines
+that build a metric map from camera/LiDAR data and track the robot's pose within
+it. Duck Embody has <strong>no SLAM anywhere</strong>. The LLM is the sole holder
+of both the map and the position estimate:</p>
+
+<ul>
+  <li>It <strong>authors its own map as text</strong> — rooms, exits, landmarks —
+      via memory tools (<code>update_room</code>, <code>mark_exit</code>,
+      <code>add_landmark</code>), rendered back to it every turn in the MapGPT
+      grammar ("Place N: &lt;desc&gt;" nodes plus explicit adjacency lines).</li>
+  <li>It tracks position by <strong>dead reckoning</strong> — integrating commanded
+      velocity over time to estimate (x,&nbsp;y), the way a ship's navigator works
+      without GPS. The estimate drifts honestly; ground truth is never shown.</li>
+  <li>It corrects drift <strong>cognitively</strong> via
+      <code>correct_position(x,&nbsp;y,&nbsp;reason)</code> — recognizing a known
+      landmark and resetting its own estimate. In SLAM terms this is
+      <strong>loop closure</strong> (realizing you are somewhere you have been
+      before and snapping the map back into consistency), performed by reasoning
+      instead of geometry.</li>
+</ul>
+
+<p><strong>Why this is interesting.</strong> Anthropic's "How Claude Performs on
+Robotics Tasks" (Frontier Red Team, Jul&nbsp;9&nbsp;2026) found that current models
+<em>"fail at tasks that require stable spatial memory, self-localization, or long
+open-loop plans."</em> Duck Embody tests whether <strong>memory scaffolding changes
+that</strong>: the harness stores and re-injects a model-authored map, plan, and
+position estimate every turn, so failure can no longer be blamed on context loss —
+only on perception and reasoning. A prior-art sweep (2026-07-26, ~40 repos/papers)
+found the "LLM holds both map and position" slot unoccupied: MapGPT uses a text map
+but an oracle discrete graph; SG-Nav/SayNav have the LLM read a geometry-built
+scene graph; VLMnav is mapless and memoryless.
+<span class="src">source: AGENTS.md §1; article URL verified HTTP 200 (§10)</span></p>
+
+<div class="decision"><strong>Locked:</strong> three models — Fable&nbsp;5
+(<code>claude-fable-5</code>), Opus&nbsp;5 (<code>claude-opus-5</code>), GPT&nbsp;5.6
+sol — over N=4 fixed seeds (101–104), one frozen prompt/camera/tool config for all.
+<em>Why:</em> two Anthropic tiers mirror the paper's generational comparison, one
+cross-lab point; no per-model tuning keeps the comparison valid.</div>
+
+<h2 id="s2">2. Three-layer architecture and the anatomy of one turn</h2>
+
+<p>The system is three layers with narrow interfaces. The <strong>SIM layer</strong>
+owns physics and rendering; the <strong>AGENT layer</strong> owns the LLM
+conversation, tools, and memory; the <strong>BENCHMARK layer</strong> owns trial
+orchestration, scoring, and reporting. Nothing in the agent layer touches Isaac Sim
+APIs directly, and nothing in the sim layer knows which model is playing.</p>
+
+<svg viewBox="0 0 880 700" role="img" aria-label="Three-layer block diagram: benchmark, agent, and sim layers with the one-turn data flow between agent and sim">
+  <!-- BENCHMARK layer -->
+  <rect x="20" y="16" width="840" height="150" rx="10" fill="#f6f8fb" stroke="#dde3ec" stroke-width="2"/>
+  <text x="40" y="44" font-size="15" font-weight="700" fill="#1a2233">BENCHMARK layer</text>
+  <text x="220" y="44" font-size="12" fill="#5b6678">runs the study; never talks to Isaac Sim directly</text>
+  <rect x="40" y="60" width="230" height="86" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="55" y="84" font-size="13" font-weight="600" fill="#1a2233">runner.py</text>
+  <text x="55" y="103" font-size="11.5" fill="#5b6678">resumable sequential batch:</text>
+  <text x="55" y="119" font-size="11.5" fill="#5b6678">3 models × 4 seeds, one at a time</text>
+  <rect x="290" y="60" width="260" height="86" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="305" y="84" font-size="13" font-weight="600" fill="#1a2233">scoring.py</text>
+  <text x="305" y="103" font-size="11.5" fill="#5b6678">success · progress · SPL · drift ·</text>
+  <text x="305" y="119" font-size="11.5" fill="#5b6678">map accuracy · layout QA (unit-tested)</text>
+  <rect x="570" y="60" width="270" height="86" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="585" y="84" font-size="13" font-weight="600" fill="#1a2233">charts.py + results/</text>
+  <text x="585" y="103" font-size="11.5" fill="#5b6678">raw per-trial JSON, figures,</text>
+  <text x="585" y="119" font-size="11.5" fill="#5b6678">videos (committed = the portfolio)</text>
+
+  <!-- arrows benchmark <-> agent -->
+  <line x1="250" y1="166" x2="250" y2="216" stroke="#0b6bcb" stroke-width="2"/>
+  <polygon points="250,216 245,206 255,206" fill="#0b6bcb"/>
+  <text x="262" y="196" font-size="11.5" fill="#5b6678">start trial: task, seed, caps, frozen config</text>
+  <line x1="640" y1="216" x2="640" y2="166" stroke="#0b6bcb" stroke-width="2"/>
+  <polygon points="640,166 635,176 645,176" fill="#0b6bcb"/>
+  <text x="652" y="196" font-size="11.5" fill="#5b6678">transcript + event log → scoring</text>
+
+  <!-- AGENT layer -->
+  <rect x="20" y="216" width="840" height="196" rx="10" fill="#f6f8fb" stroke="#dde3ec" stroke-width="2"/>
+  <text x="40" y="244" font-size="15" font-weight="700" fill="#1a2233">AGENT layer</text>
+  <text x="160" y="244" font-size="12" fill="#5b6678">duck_embody/agent — model-agnostic tool-use loop</text>
+  <rect x="40" y="260" width="250" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="55" y="284" font-size="13" font-weight="600" fill="#1a2233">loop + tools</text>
+  <text x="55" y="303" font-size="11.5" fill="#5b6678">get_observation · look_around ·</text>
+  <text x="55" y="319" font-size="11.5" fill="#5b6678">turn_to_heading · move · send_velocity ·</text>
+  <text x="55" y="335" font-size="11.5" fill="#5b6678">map/plan tools · correct_position ·</text>
+  <text x="55" y="351" font-size="11.5" fill="#5b6678">declare_done; caps: 40 turns,</text>
+  <text x="55" y="367" font-size="11.5" fill="#5b6678">240 policy-seconds per stage</text>
+  <rect x="310" y="260" width="260" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="325" y="284" font-size="13" font-weight="600" fill="#1a2233">memory</text>
+  <text x="325" y="303" font-size="11.5" fill="#5b6678">LLM-authored room/exit/landmark</text>
+  <text x="325" y="319" font-size="11.5" fill="#5b6678">graph (MapGPT grammar) · plan ·</text>
+  <text x="325" y="335" font-size="11.5" fill="#5b6678">dead-reckoned (x, y) · trajectory;</text>
+  <text x="325" y="351" font-size="11.5" fill="#5b6678">re-injected EVERY turn; context =</text>
+  <text x="325" y="367" font-size="11.5" fill="#5b6678">system + first turn + last K=10</text>
+  <rect x="590" y="260" width="250" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="605" y="284" font-size="13" font-weight="600" fill="#1a2233">providers</text>
+  <text x="605" y="303" font-size="11.5" fill="#5b6678">Anthropic API (Fable 5, Opus 5)</text>
+  <text x="605" y="319" font-size="11.5" fill="#5b6678">OpenAI API (GPT 5.6 sol)</text>
+  <text x="605" y="335" font-size="11.5" fill="#5b6678">keys via env vars only;</text>
+  <text x="605" y="351" font-size="11.5" fill="#5b6678">one prompt template for all —</text>
+  <text x="605" y="367" font-size="11.5" fill="#5b6678">no per-model tuning</text>
+
+  <!-- arrows agent <-> sim: the turn cycle -->
+  <line x1="250" y1="462" x2="250" y2="412" stroke="#0b6bcb" stroke-width="2"/>
+  <polygon points="250,412 245,422 255,422" fill="#0b6bcb"/>
+  <circle cx="228" cy="437" r="11" fill="#0b6bcb"/>
+  <text x="228" y="441" font-size="11" fill="#ffffff" text-anchor="middle" font-weight="700">1</text>
+  <text x="262" y="433" font-size="11.5" fill="#5b6678">frame + compass + position estimate</text>
+  <text x="262" y="448" font-size="11.5" fill="#5b6678">+ status (bumped / fell / distance)</text>
+  <line x1="640" y1="412" x2="640" y2="462" stroke="#0b6bcb" stroke-width="2"/>
+  <polygon points="640,462 635,452 645,452" fill="#0b6bcb"/>
+  <circle cx="618" cy="437" r="11" fill="#0b6bcb"/>
+  <text x="618" y="441" font-size="11" fill="#ffffff" text-anchor="middle" font-weight="700">4</text>
+  <text x="652" y="433" font-size="11.5" fill="#5b6678">clamped velocity macro →</text>
+  <text x="652" y="448" font-size="11.5" fill="#5b6678">N control steps at 50 Hz</text>
+  <rect x="352" y="420" width="180" height="34" rx="8" fill="#fff7ed" stroke="#f5a623"/>
+  <text x="442" y="441" font-size="11.5" fill="#1a2233" text-anchor="middle">sim FROZEN during 2–3 (LLM call)</text>
+
+  <!-- SIM layer -->
+  <rect x="20" y="462" width="840" height="196" rx="10" fill="#f6f8fb" stroke="#dde3ec" stroke-width="2"/>
+  <text x="40" y="490" font-size="15" font-weight="700" fill="#1a2233">SIM layer</text>
+  <text x="140" y="490" font-size="12" fill="#5b6678">ONE persistent Isaac Sim (kit) process for the whole batch — physics advances only inside env.step()</text>
+  <rect x="40" y="506" width="250" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="55" y="530" font-size="13" font-weight="600" fill="#1a2233">Isaac Lab env</text>
+  <text x="55" y="549" font-size="11.5" fill="#5b6678">embody_env_cfg (imports parent</text>
+  <text x="55" y="565" font-size="11.5" fill="#5b6678">repo) · duck-scale apartment scene</text>
+  <text x="55" y="581" font-size="11.5" fill="#5b6678">(0.4×, walls + furniture colliders) ·</text>
+  <text x="55" y="597" font-size="11.5" fill="#5b6678">apartment_layout = scene spec AND</text>
+  <text x="55" y="613" font-size="11.5" fill="#5b6678">scoring ground truth</text>
+  <rect x="310" y="506" width="260" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="325" y="530" font-size="13" font-weight="600" fill="#1a2233">v4_robust policy playback</text>
+  <text x="325" y="549" font-size="11.5" fill="#5b6678">RSL-RL PPO, model_2999.pt (vendored),</text>
+  <text x="325" y="565" font-size="11.5" fill="#5b6678">59-dim proprioceptive obs, deterministic;</text>
+  <text x="325" y="581" font-size="11.5" fill="#5b6678">velocity command injected each step;</text>
+  <text x="325" y="597" font-size="11.5" fill="#5b6678">50 Hz control (dt 0.005 s × decim. 4),</text>
+  <text x="325" y="613" font-size="11.5" fill="#5b6678">commands clamped to training hull</text>
+  <rect x="590" y="506" width="250" height="134" rx="8" fill="#ffffff" stroke="#dde3ec"/>
+  <text x="605" y="530" font-size="13" font-weight="600" fill="#1a2233">head camera (RTX render)</text>
+  <text x="605" y="549" font-size="11.5" fill="#5b6678">egocentric, ~0.36 m height,</text>
+  <text x="605" y="565" font-size="11.5" fill="#5b6678">512×512 RGB, 90° HFOV,</text>
+  <text x="605" y="581" font-size="11.5" fill="#5b6678">rendered ON DEMAND (1 frame per</text>
+  <text x="605" y="597" font-size="11.5" fill="#5b6678">get_observation; 4 for look_around);</text>
+  <text x="605" y="613" font-size="11.5" fill="#5b6678">debug markers off (no leakage)</text>
+  <text x="40" y="686" font-size="11.5" fill="#5b6678">Runtime: DGX Spark (aarch64, single GB10 GPU, headless) · Isaac Sim 5.1.0-rc.19 · Isaac Lab 2.3.2</text>
+</svg>
+
+<h3>One turn, end to end</h3>
+
+<p>A <strong>turn</strong> is one model-request/response cycle plus the motion it
+triggers. The numbered steps below match the circled numbers in the diagram:</p>
+
+<ol>
+  <li><strong>Render → observation payload.</strong> The harness renders one
+      512×512 RGB frame from the head camera on demand (rendering is decoupled from
+      physics stepping so 50&nbsp;Hz control does not pay a 50&nbsp;Hz render cost)
+      and assembles the observation: image, <code>compass_deg</code> — heading
+      reported with the noise and precision of the robot's real IMU (inertial
+      measurement unit — the orientation sensor, a BNO055 chip on the physical
+      duck) — dead-reckoned <code>position_estimate {x, y}</code>, and
+      <code>status</code> flags (<code>bumped</code>, <code>fell</code>,
+      <code>distance_moved_m</code>), plus the re-injected memory block: the model's
+      own map in MapGPT grammar, its carried-forward plan, trajectory line, and
+      unexplored-exit list.</li>
+  <li><strong>LLM call — sim frozen.</strong> The payload goes to the provider API
+      (Anthropic or OpenAI). Physics advances <em>only</em> inside
+      <code>env.step()</code>, so however long the API takes, the robot is
+      motionless and stable. <span class="src">source: AGENTS.md §5 "Pausing is
+      safe"</span></li>
+  <li><strong>Model responds with a tool call</strong> — a motion macro
+      (<code>move</code>, <code>turn_to_heading</code>, <code>send_velocity</code>),
+      a memory write (<code>update_room</code>, <code>mark_exit</code>,
+      <code>correct_position</code>, <code>update_plan</code>, …), another
+      observation request, or <code>declare_done()</code>.</li>
+  <li><strong>Clamp + execute.</strong> Motion commands are clamped to the policy's
+      training hull (vx&nbsp;∈&nbsp;(−0.148,&nbsp;0.222)&nbsp;m/s,
+      vy&nbsp;∈&nbsp;(±0.111), wz&nbsp;∈&nbsp;(±0.5)&nbsp;rad/s) and run as a
+      closed-loop macro: N&nbsp;=&nbsp;50&nbsp;×&nbsp;duration control steps at
+      50&nbsp;Hz (the physics engine steps every 0.005&nbsp;s and the policy acts
+      once per 4 physics steps — "decimation&nbsp;4" — giving 50 actions per
+      simulated second), each injecting the velocity command and letting the RL
+      policy produce joint targets. <code>move</code> auto-stops on collision and reports a
+      bump; <code>turn_to_heading</code> closes the loop on the compass
+      (±5° tolerance). <span class="src">source: parent
+      <code>isaac_lab_env/open_duck_mini_v2/env_cfg.py:189–190</code>
+      (dt 0.005 s, decimation 4)</span></li>
+  <li><strong>Pause.</strong> Execution ends (target reached, bump, timeout, or
+      duration elapsed) and the sim freezes again. The harness integrates the
+      commanded velocity into the dead-reckoning estimate and updates status.</li>
+  <li><strong>Bookkeeping → next turn.</strong> The tool result is appended to the
+      conversation; the turn and policy-second budgets are decremented; images older
+      than K=10 turns are dropped (the memory block survives truncation). If a cap
+      is hit or <code>declare_done()</code> was called, the stage ends and scoring
+      runs; otherwise, back to step 1.</li>
+</ol>
+
+<div class="note"><strong>Memory principle (the line we never cross):</strong> the
+harness <em>stores and formats</em>; the LLM <em>perceives, estimates, and
+decides</em>. No geometric fact enters memory unless the model asserted it. The
+three declared sensor-realistic exceptions — compass heading, dead-reckoned
+position from commanded velocity, and closed-loop macros — mirror the real robot's
+IMU and command interface. Ground-truth position is never given to the model.</div>
+
+<h2 id="s3">3. Why the simulator pauses while the model thinks</h2>
+
+<p>The locomotion policy consumes a velocity command every control step at
+50&nbsp;Hz <span class="src">source: parent <code>env_cfg.py:189–190</code>
+(§10)</span>; a real-time world would therefore consume commands at 50 steps per
+wall-clock second, while a frontier-model API round trip (vision input, long
+context, tool schema) delivers roughly <strong>0.2–0.4 decisions per
+second</strong> — an order-of-magnitude estimate, to be measured in the sanity
+episode (§11), but on any plausible value the gap exceeds two orders of
+magnitude. If the world kept moving during inference, every trial would mostly
+measure network latency and queue times: the duck would walk seconds past its
+intended stopping point, and the benchmark would compare API latencies rather
+than model capabilities.</p>
+
+<p>So the sim <strong>pauses between LLM calls</strong>. This is safe by
+construction in Isaac Lab: physics advances only inside <code>env.step()</code>;
+not stepping means frozen, with no background integration
+<span class="src">source: AGENTS.md §5, verified against local Isaac Lab
+source 2026-07-26</span>. This is the same protocol as Anthropic's robotics paper:
+it measures <em>capability, not latency</em>. The trade-off is honest and stated:
+results are an upper bound relative to a real-time deployment, where latency would
+add difficulty. Time-based metrics therefore count <strong>policy-seconds</strong>
+(simulated seconds of commanded motion), never wall-clock.</p>
+
+<h2 id="s4">4. Process model: one simulator process, sequential trials</h2>
+
+<p>Isaac Sim runs on NVIDIA's Omniverse "kit" application framework; a cold start
+(extension loading, RTX renderer init, PhysX scene cooking) takes <em>minutes</em>
+on this machine. The DGX Spark also has a single GB10 GPU, and the parent project's
+hard-won rule applies: <strong>one Isaac Sim / GPU job at a time</strong> — a
+second kit process reliably dies during its init banner.</p>
+
+<div class="decision"><strong>Locked:</strong> the entire batch (3 models × 4 seeds
+× up to 2 stages = up to 24 stage-episodes) runs inside <strong>ONE persistent
+Isaac Sim process</strong> (<code>duck_embody/sim/session.py</code>), with trials
+strictly sequential and an environment <em>reset</em> — not a process restart —
+between trials. <em>Why:</em> kit startup is minutes per launch and the one-GPU-job
+rule forbids parallelism anyway; a persistent session turns a multi-hour relaunch
+tax into seconds per trial.</div>
+
+<p>Consequences of this choice:</p>
+<ul>
+  <li><strong>The runner must be resumable.</strong> <code>runner.py</code> (today
+      a docstring stub — §11) will record each completed trial's raw JSON as it
+      lands in <code>results/raw/</code>; if the session dies mid-batch,
+      restarting will skip completed trials rather than re-running them
+      (re-running selected trials would be selection bias).</li>
+  <li><strong>Reset hygiene matters.</strong> Between trials the env resets robot
+      pose (to the seed's spawn point + heading), policy recurrent state (none —
+      the actor is an MLP, but previous-action and gait-phase buffers reset with
+      the env), dead-reckoning integrator, and the agent's conversation/memory.
+      The apartment scene itself is static and persists.</li>
+  <li><strong>Nothing else may touch the GPU.</strong> Writers, reviewers, and
+      analysis scripts never launch kit processes while a batch could be live;
+      scoring will expose <code>--report-only</code>-style paths that work from
+      archived JSON without Isaac (also stubbed today — §11).</li>
+</ul>
+
+<h2 id="s5">5. Repo map (annotated)</h2>
+
+<p>Layout as of the skeleton commit
+<span class="src">source: AGENTS.md §7; verified against the working tree
+2026-07-26 — deviations from both are annotated inline</span>:</p>
+
+<pre><code>docs/            PLAN.md · EXPERIMENTS.md · METRICS.md · designs/ (these docs)
+policy/          vendored v4_robust artifacts (checkpoint, yamls, ONNX) + provenance
+                 — the batch must never depend on ~/IsaacLab log dirs mid-run
+assets/          fetch_assets.sh + checksums (USD binaries gitignored; mirrored
+                 locally so the batch never depends on the S3 bucket mid-run)
+duck_embody/
+  env/           embody_env_cfg.py  — the ONLY file allowed to import the parent repo
+                 apartment_layout.py — scene spec AND scoring ground truth (one dict)
+                 scene_builder · camera
+  sim/           policy_wrapper (RSL-RL adapter + command injection) ·
+                 session (the persistent-sim process wrapper, §4)
+  agent/         loop · tools · memory · prompts · providers/{anthropic,openai}
+                 (providers/vllm.py also exists in the tree — dead stub from the
+                 dropped open-weight-VLM option; removal is an open task, §11)
+  tasks/         find_kitchen (+ return_home continuation stage)
+  runner.py      resumable sequential batch driver
+  scoring.py     all metrics (unit-tested BEFORE any batch — hard rule)
+  charts.py      figures for the results README
+scripts/         build-order smoke tests: inspect_assets → smoke_camera →
+                 smoke_displacement → render_scene_survey → run_trial
+configs/         models/*.yaml · benchmark.yaml — frozen before the batch
+                 (not yet written — models/ holds only a placeholder README)
+tests/           test_scoring (gate) · test_memory · test_layout
+results/         raw JSON · figures · videos (committed — they are the portfolio)
+</code></pre>
+
+<div class="warning"><strong>Single-source-of-truth rule:</strong>
+<code>apartment_layout.py</code> is simultaneously the scene specification and the
+scoring ground truth (room polygons, adjacency, spawn points, oracle shortest
+paths). Scoring must never depend on anything else, or the map-accuracy and SPL
+metrics silently diverge from the world the robot actually walked.</div>
+
+<h2 id="s6">6. Parent-repo dependency contract</h2>
+
+<p>The parent robot project (<code>~/Projects/Open_Duck_Mini_Jetson</code>, branch
+<code>v2</code>) owns the robot model (USD — Universal Scene Description, the
+Pixar/NVIDIA scene file format), the Isaac Lab environment definitions, and the
+trained locomotion policy. Duck Embody consumes it under a deliberately narrow
+contract:</p>
+
+<table>
+<tr><th>Term</th><th>Contract</th></tr>
+<tr><td>Access</td><td><strong>Read-only.</strong> Duck Embody never modifies, commits to, or reconfigures the parent repo.</td></tr>
+<tr><td>Import surface</td><td>Exactly <strong>one file</strong> — <code>duck_embody/env/embody_env_cfg.py</code> — may import from the parent. Importing its <code>isaac_lab_env</code> package also registers the duck gym tasks as a side effect.</td></tr>
+<tr><td>Version pin</td><td>The parent commit is recorded in <code>pyproject.toml</code>/README at first import. Verified state today: branch <code>v2</code>, HEAD <code>34f70fd</code> <span class="src">source: <code>git -C ~/Projects/Open_Duck_Mini_Jetson branch --show-current; rev-parse</code> (§10)</span>.</td></tr>
+<tr><td>Policy artifacts</td><td><strong>Vendored</strong> into <code>policy/</code>: <code>model_2999.pt</code> + <code>params/{agent,env}.yaml</code> + <code>exported/policy.onnx</code> from <code>~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/</code>, with provenance in <code>policy/README.md</code>. Vendoring means the batch cannot break if the training log dir moves. As of 2026-07-26 the directory holds only the provenance README — copying the artifacts is an open task (§11).</td></tr>
+<tr><td>Inference path</td><td>The <code>.pt</code> checkpoint via RSL-RL in-sim, deterministic (mean actions). The exported ONNX is fixed-batch [1,59] and parity-unverified — it is vendored for provenance, not used for the batch.</td></tr>
+</table>
+
+<p>The policy being wrapped, <strong>v4_robust</strong>, is a PPO
+(Proximal Policy Optimization, the standard on-policy RL algorithm) policy trained
+with dynamics randomization. Its actor observes 59 dimensions of proprioception
+only — base angular velocity(3), projected gravity(3), velocity commands(3), joint
+positions(16), joint velocities(16), previous actions(16), gait phase(2); no base
+linear velocity, no vision. Observation normalization is baked into the model —
+inputs must never be pre-normalized again. Eval record: 5/5 gait gate, 0.00% falls
+over 3,200 push-free episodes
+<span class="src">source: parent <code>docs/jetson-mod/v4_comparison.md</code>;
+obs layout: parent <code>.claude/rules/rl-training.md</code> (v4 tracks)</span>.</p>
+
+<h2 id="s7">7. Runtime environment</h2>
+
+<table>
+<tr><th>Item</th><th>Value</th><th>Evidence</th></tr>
+<tr><td>Machine</td><td>DGX Spark, aarch64, single NVIDIA GB10 GPU, CUDA 13.0, headless (no display attached)</td><td class="src">AGENTS.md §4</td></tr>
+<tr><td>Isaac Sim</td><td>5.1.0-rc.19 at <code>~/IsaacSim</code></td><td class="src">cat ~/IsaacSim/VERSION → 5.1.0-rc.19 (§10)</td></tr>
+<tr><td>Isaac Lab</td><td>2.3.2 at <code>~/IsaacLab</code>, commit f4aa17f87e2</td><td class="src">cat ~/IsaacLab/VERSION; git rev-parse (§10)</td></tr>
+<tr><td>Launch pattern</td><td><code>~/IsaacLab/isaaclab.sh -p &lt;script&gt; --headless --enable_cameras</code></td><td class="src">AGENTS.md §4</td></tr>
+<tr><td>Import ordering</td><td><code>AppLauncher</code> must be constructed BEFORE importing <code>torch</code> or any <code>isaaclab</code> module — kit sets up CUDA/extension state that later imports depend on</td><td class="src">AGENTS.md §4</td></tr>
+<tr><td>Headless rendering</td><td><code>--enable_cameras</code> is required for RGB output with no display; first frames can be gray while materials compile — warm up render steps before capturing frames for the model</td><td class="src">AGENTS.md §5</td></tr>
+<tr><td>Parent repo</td><td><code>~/Projects/Open_Duck_Mini_Jetson</code>, branch <code>v2</code> @ 34f70fd, read-only</td><td class="src">git -C … (§10)</td></tr>
+<tr><td>Policy checkpoint (source)</td><td><code>~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt</code>, 4,748,341 bytes, mtime Jul 7 02:14</td><td class="src">ls -la (§10)</td></tr>
+<tr><td>Control rate</td><td>50 Hz control = sim dt 0.005 s × decimation 4; <code>duration_s</code> → N = 50 × duration_s steps</td><td class="src">parent env_cfg.py:189–190 (§10)</td></tr>
+<tr><td>API access</td><td>Anthropic + OpenAI, keys via environment variables / gitignored <code>.env</code> only</td><td class="src">AGENTS.md §3 rule 6</td></tr>
+</table>
+
+<div class="warning"><strong>Gotcha carried from the parent project:</strong> two
+inherited env behaviors will silently sabotage agent control if left at defaults —
+<code>heading_command=True</code> overwrites the wz command from an internal
+heading controller every step (fix pattern: parent
+<code>scripts/evaluate_policies.py:1412</code>, verified), and the env's
+<code>time_out</code> termination teleports the robot to a random pose at
+<code>episode_length_s</code>. Both are neutralized in
+<code>embody_env_cfg.py</code>. Details live in the
+<a href="02-policy-playback.html">policy-playback &amp; env config doc</a>; they are
+flagged here because they shape the SIM-layer interface.</div>
+
+<h2 id="s8">8. Trial lifecycle: spawn, caps, bumps, falls</h2>
+
+<p>A <strong>trial</strong> is one (model, seed) pair. The seed (101–104, identical
+set for every model) selects a spawn point and heading from the layout's
+<code>spawn_points</code>. Each trial contains up to two <strong>stages</strong> in
+the same episode:</p>
+
+<ol>
+  <li><strong>find_kitchen</strong> — success when the robot base is within
+      0.35&nbsp;m of the kitchen-counter target region AND the model calls
+      <code>declare_done()</code>. Declaring done in the wrong place scores as a
+      failure with partial progress.</li>
+  <li><strong>return_home</strong> (continuation, only if stage 1 succeeded) —
+      success when the base is within 0.5&nbsp;m of the spawn point +
+      <code>declare_done()</code>. This stage is the direct test of the map the
+      model built: it must navigate back through territory it has only seen once.</li>
+</ol>
+
+<p><strong>Caps</strong>, per stage: 40 model turns and 240 policy-seconds of
+commanded motion. Hitting either cap ends the stage and is <strong>scored as a
+failure</strong> (with progress recorded). Capped or failed trials are never
+selectively retried — retrying only the bad ones is selection bias.</p>
+
+<h3>Bump vs. fall</h3>
+
+<table>
+<tr><th></th><th>Bump</th><th>Fall</th></tr>
+<tr><td>What it is</td><td>Contact between the robot and a wall or furniture while walking</td><td>The trunk tips past a tilt/height threshold — the robot is down</td></tr>
+<tr><td>What happens</td><td><code>move</code> auto-stops; <code>status.bumped=true</code> in the next observation; counted in metrics; trial continues</td><td><strong>Trial ends immediately</strong>, scored as a failure with partial progress</td></tr>
+<tr><td>Why</td><td>Bumps are recoverable information ("there is a wall here") — for a blind-legged policy at duck scale they are part of normal exploration</td><td>The policy is 59-dim proprioceptive with no get-up skill: once down, the duck physically cannot recover, so continuing would be theater</td></tr>
+</table>
+
+<div class="warning">The parent env's stock fall detector is trunk-contact-only
+(&gt;1&nbsp;N on <code>trunk_assembly</code>). In a furnished apartment that would
+misclassify a chest-high brush against a table as a fatal fall. The embody env
+replaces it: tilt/height defines a fall; object contact is demoted to a bump
+observation <span class="src">source: AGENTS.md §5 (fall detection gotcha)</span>.
+Exact thresholds are an open question (§11) pending the smoke tests.</div>
+
+<h2 id="s9">9. Relation to Anthropic's embody harness (honest framing)</h2>
+
+<p>Duck Embody is <strong>inspired by, not derived from</strong>, Anthropic's
+"How Claude Performs on Robotics Tasks" (Frontier Red Team, Jul&nbsp;9&nbsp;2026)
+<span class="src">source: https://www.anthropic.com/research/claude-plays-robotics
+(HTTP 200, 2026-07-26)</span>. Their harness, <code>safety-research/embody</code>,
+is <strong>unreleased</strong> — the GitHub repo returns 404, verified today
+<span class="src">source: curl github.com/safety-research/embody → 404;
+api.github.com → "Not Found" (§10)</span>. Everything here is a from-scratch
+build: no code, prompts, or scenes were available to copy even if we wanted to.</p>
+
+<p>What we deliberately keep from the paper's protocol: paused-sim tool-calling
+turns, egocentric frames, capability-not-latency framing, multi-model comparison
+on frozen configs, and the post-episode "quiz the model about its own map" idea
+(their explore-report pattern → our layout QA). What we deliberately change:
+a bipedal duck instead of a Unitree Go2 quadruped, an apartment search task with a
+two-stage return leg, and — the core contribution — the
+<strong>memory scaffolding their harness lacked</strong>: a model-authored
+persistent map, dead-reckoned position, and cognitive loop closure, re-injected
+every turn. Their headline failure mode (unstable spatial memory,
+self-localization, long open-loop plans) is exactly the variable this design
+isolates.</p>
+
+<p class="meta">Honest limits, stated up front: N=4 seeds per model is a
+comparison, not a statistical claim (bootstrap CIs + full per-trial tables are
+always reported); paused sim is an upper bound on real-time performance; the
+sim-only result feeds — but does not prove — the parent robot project's Phase 5
+(on-robot VLM) plans.</p>
+
+<h2 id="s10">10. Validation performed</h2>
+
+<p>All checks run on this machine on 2026-07-26 by the author of this doc. No
+Isaac Sim / kit process was launched.</p>
+
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>Isaac Sim present + version</td><td><code>ls ~/IsaacSim; cat ~/IsaacSim/VERSION</code></td><td>Dir present; VERSION = <code>5.1.0-rc.19</code></td></tr>
+<tr><td>Isaac Lab present + version</td><td><code>ls ~/IsaacLab; cat ~/IsaacLab/VERSION; git -C ~/IsaacLab rev-parse --short HEAD</code></td><td>Dir present; VERSION = <code>2.3.2</code>; HEAD = <code>f4aa17f87e2</code></td></tr>
+<tr><td>Policy checkpoint exists</td><td><code>ls -la ~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt</code></td><td><code>-rw-rw-r-- … 4748341 Jul 7 02:14</code></td></tr>
+<tr><td>Checkpoint sibling artifacts</td><td><code>ls …/params …/exported</code></td><td><code>agent.yaml env.yaml</code>; <code>policy.onnx policy.onnx.data policy.pt</code></td></tr>
+<tr><td>Parent repo branch + pin</td><td><code>git -C ~/Projects/Open_Duck_Mini_Jetson branch --show-current; rev-parse --short HEAD</code></td><td><code>v2</code>; <code>34f70fd</code></td></tr>
+<tr><td>Anthropic article reachable</td><td><code>curl -sI https://www.anthropic.com/research/claude-plays-robotics</code></td><td><code>HTTP/2 200</code></td></tr>
+<tr><td>embody harness unreleased</td><td><code>curl -s -o /dev/null -w "%{http_code}" https://github.com/safety-research/embody</code>; <code>curl https://api.github.com/repos/safety-research/embody</code></td><td><code>404</code>; <code>{"message": "Not Found", "status": "404"}</code></td></tr>
+<tr><td>heading_command fix citation</td><td><code>grep -n heading_command parent/scripts/evaluate_policies.py</code></td><td>Line 1412: <code>term.cfg.heading_command = False</code></td></tr>
+<tr><td>50 Hz control claim</td><td><code>grep -n "sim.dt\|decimation" parent/isaac_lab_env/open_duck_mini_v2/env_cfg.py</code></td><td>Lines 189–190: <code>self.sim.dt = 0.005</code>, <code>self.decimation = 4</code></td></tr>
+<tr><td>Repo map matches tree</td><td><code>find ~/Projects/duck-embody -maxdepth 4</code> vs AGENTS.md §7; <code>ls configs/models/</code></td><td>Matches except: <code>providers/vllm.py</code> exists in the tree (dead stub; AGENTS.md §7 still lists it, contradicting the locked Anthropic+OpenAI-only decision — removal is an open task, §11) and <code>configs/models/*.yaml</code> are not yet written (<code>configs/models/</code> holds only a placeholder README). All other §5 paths present; <code>docs/designs/</code> created by this doc</td></tr>
+<tr><td>policy/ vendoring status</td><td><code>cat ~/Projects/duck-embody/policy/README.md; ls policy/</code></td><td>Provenance README only — artifacts not yet copied (open task, §11)</td></tr>
+</table>
+
+<h2 id="s11">11. Open questions</h2>
+
+<ul>
+  <li><strong>Camera freeze pending smoke test.</strong> 90° HFOV at ~0.36 m is the
+      plan, but the head-mount path is unresolved (the robot USD is instanceable;
+      the head frame's forward axis is local −Z). <code>scripts/smoke_camera.py</code>
+      must settle mount point and FOV BEFORE the config freeze.</li>
+  <li><strong>Real achieved speed vs. commanded.</strong> Net displacement at
+      vx=0.2 m/s was never measured in the parent repo (its metrics are
+      instantaneous velocity errors). <code>scripts/smoke_displacement.py</code>
+      must run before the 240 policy-second cap and dead-reckoning scale are
+      trusted — if the duck achieves, say, 0.15 m/s, both need recalibration.</li>
+  <li><strong>Fall-detector thresholds.</strong> Tilt/height numbers for the
+      replacement fall termination are unspecified; they must be chosen so that
+      normal gait oscillation and furniture bumps never trigger them.</li>
+  <li><strong>Reset hygiene in one persistent process.</strong> Whether repeated
+      env resets across ~24 stage-episodes leak state (PhysX warm-start caches,
+      renderer memory growth) is unverified until the sanity episode runs
+      back-to-back trials.</li>
+  <li><strong>Policy artifacts not yet vendored.</strong> <code>policy/</code>
+      holds only the provenance README; copying <code>model_2999.pt</code> +
+      yamls + ONNX (with checksums) is an open task on the critical path.</li>
+  <li><strong>runner.py and scoring.py are docstring stubs.</strong> The
+      resumability and offline re-scoring behaviors described in §4 are design
+      intent, not implemented code; scoring must be unit-tested before any batch
+      (hard rule).</li>
+  <li><strong>providers/vllm.py is a dead stub.</strong> The locked model set
+      (Anthropic + OpenAI only) removed the open-weight-VLM option, but the stub
+      remains in the tree and AGENTS.md §7 still lists it; delete the file and
+      update AGENTS.md §7 in the same commit.</li>
+  <li><strong>docs/designs/index.html</strong> (the "all design docs" link target)
+      now exists as a hand-written index of the six docs (reading order +
+      canonical-constants quick reference, created 2026-07-26); it must be kept
+      in sync as docs are added or retitled.</li>
+  <li><strong>API-cadence figure.</strong> The 0.2–0.4 decisions-per-second API
+      cadence in §3 is an order-of-magnitude estimate, not a measurement; the
+      sanity episode should log real per-call round-trip times. (The other side of
+      the comparison — 50&nbsp;Hz control — is verified against parent
+      <code>env_cfg.py:189–190</code>, §10.)</li>
+</ul>
+
+</main>
+</body>
+</html>

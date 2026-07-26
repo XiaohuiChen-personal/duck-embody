@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doc 04 — Camera &amp; Observation Pipeline</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Camera &amp; Observation Pipeline</h1>
+<p class="meta">Doc 04 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This document specifies everything about how the
+Duck Embody robot <em>sees</em>: which sensors exist (and which deliberately do not), where the simulated camera
+is mounted and why the head's coordinate frame is a trap, how we render frames on demand without slowing the
+physics simulation, the exact JSON payload the language model receives on every <code>get_observation()</code>
+call, and the hygiene rules that keep privileged simulator information from leaking into the images. No prior
+robotics or Isaac Sim knowledge is assumed — every term of art is defined on first use. Read
+<a href="01-system-architecture.html">Doc 01</a> (system
+overview) first if you want the big picture; this doc goes deep on one subsystem.</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#philosophy">Sensor philosophy: pure vision + IMU</a></li>
+<li><a href="#mount">Mount design and the head frame trap</a></li>
+<li><a href="#fallback">Instanceable-USD risk and the three-rung fallback ladder</a></li>
+<li><a href="#params">Camera parameters and rationale</a></li>
+<li><a href="#pipeline">Capture pipeline: on-demand rendering</a></li>
+<li><a href="#payload">Observation payload spec</a></li>
+<li><a href="#hygiene">Info-leak hygiene</a></li>
+<li><a href="#duckheight">Duck-height recognizability risk</a></li>
+<li><a href="#validation">Validation performed</a></li>
+<li><a href="#openq">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="philosophy">1. Sensor philosophy: pure vision + IMU</h2>
+
+<p>The model navigating the apartment gets exactly three sensing channels, and nothing else:</p>
+
+<table>
+<tr><th>Channel</th><th>What the model receives</th><th>Real-hardware analog</th></tr>
+<tr><td><strong>Camera</strong></td><td>One egocentric RGB frame per <code>get_observation()</code> (four per <code>look_around()</code>)</td><td>IMX219 CSI camera module planned for the robot's head <span class="src">source: parent task_plan.md:128 ("CSI camera module: ~3g, mounted in head"), :1724 ("CSI camera module (IMX219)")</span></td></tr>
+<tr><td><strong>Compass</strong></td><td><code>compass_deg</code> — true heading in degrees</td><td>BNO055 IMU in the trunk; its fusion output gives absolute heading <span class="src">source: parent .claude/rules/hardware-specs.md (IMU: BNO055)</span></td></tr>
+<tr><td><strong>Dead-reckoned position</strong></td><td><code>position_estimate {x, y}</code>, integrated from <em>commanded</em> velocity, labeled as an estimate that may drift</td><td>What the real robot could compute onboard with no external tracking</td></tr>
+</table>
+
+<p><em>Dead reckoning</em> means estimating your position by integrating how fast you told yourself to move for
+how long — like counting paces in a dark room. It drifts: slip, bumps, and imperfect velocity tracking
+accumulate error, and nothing corrects it automatically. That drift is deliberate. The model must notice
+drift visually and fix it itself via <code>correct_position(x, y, reason)</code> — the cognitive equivalent
+of <em>loop closure</em> (recognizing "I've been here before" and snapping the map back into consistency),
+which classical SLAM (Simultaneous Localization and Mapping — algorithms that build a geometric map while
+tracking position in it) does with math. This project has <strong>no SLAM anywhere</strong>; the language
+model is the mapper.</p>
+
+<div class="decision"><strong>Locked: no depth camera, no lidar, no ground-truth position — ever.</strong>
+WHY: the sensor suite mirrors the physical Open Duck Mini build exactly (one RGB camera in the head, one
+BNO055 IMU, nothing else), so any navigation strategy the model develops in sim transfers conceptually to
+the real robot, and the benchmark measures perception + reasoning rather than privileged-state lookup.
+Ground truth exists in the simulator and is used for <em>scoring only</em>; it never enters a prompt.</div>
+
+<div class="note">The declared sensor-realistic exceptions (compass heading, dead-reckoned position,
+closed-loop motion macros) are the <em>only</em> places the harness computes anything geometric for the
+model. Everything else follows the memory principle: the harness stores and formats; the LLM perceives,
+estimates, and decides.</div>
+
+<h2 id="mount">2. Mount design and the head frame trap</h2>
+
+<p>The camera is head-mounted and egocentric (first-person), at roughly <strong>0.36 m</strong> above the
+floor — between the robot's standing trunk height (~0.17 m <span class="src">source: parent CLAUDE.md video-audit
+checklist, "trunk upright near 0.17 m"</span>) and its full ~0.42 m height, matching where the head sits in the
+MJCF model's default pose. The exact height lands wherever the head link actually is at the policy's default
+joint angles; the 0.36–0.41 m band is the design envelope and the smoke test (Section 3) prints the measured value.</p>
+
+<h3>2.1 The frame trap</h3>
+
+<p>The robot model is authored in MJCF (MuJoCo's XML robot-description format) and converted to USD (Universal
+Scene Description, the scene format Isaac Sim uses). In the MJCF, the head link is <em>not</em> oriented the way
+you'd guess. The body chain from trunk to head is:</p>
+
+<pre><code>base (robot.xml:73)
+└─ trunk_assembly (:75)
+   └─ neck_pitch_assembly   quat (0.707107  0.707107 0 0)  = +90° about X   [joint neck_pitch, :177]
+      └─ head_pitch_to_yaw  quat (1 0 0 0)  = identity                      [joint head_pitch, :187]
+         └─ neck_yaw_assembly quat (0.707107 -0.707107 0 0) = −90° about X  [joint head_yaw, :191]
+            └─ head_assembly  quat (0.707107 0 -0.707107 0) = −90° about Y  [joint head_roll, :200]</code></pre>
+<p><span class="src">source: mini_bdx/robots/open_duck_mini_v2/robot.xml:175–214 (parent repo), verified by grep 2026-07-26</span></p>
+
+<p>A <em>quaternion</em> (w, x, y, z) encodes a 3-D rotation. At the default (zero) joint angles the two
+X-rotations cancel, leaving the head_assembly frame rotated <strong>−90° about Y relative to the trunk</strong>.
+Working out what that does to the axes: head-local <strong>+X points at the ceiling</strong>, head-local
+<strong>+Z points backward</strong>, and robot-forward is head-local <strong>−Z</strong>.</p>
+
+<div class="warning"><strong>THE FRAME TRAP.</strong> Isaac Lab's <code>CameraCfg.OffsetCfg</code> takes a
+mount rotation plus a <code>convention</code> that defines which axis is "forward": <code>"world"</code> =
++X forward, <code>"ros"</code> = +Z forward, <code>"opengl"</code> = −Z forward
+<span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/sensors/camera/camera_cfg.py:30–38</span>.
+Parent a camera under <code>head_assembly</code> with an identity rotation and: in <code>"world"</code>
+convention it films <strong>the ceiling</strong> (head +X = trunk up); in the default <code>"ros"</code>
+convention it films <strong>straight backward</strong> (head +Z = trunk −X). The mount quaternion must
+compensate for the −90°-about-Y head frame. The computed corrective rotation for a forward-looking camera in
+<code>"world"</code> convention is +90° about Y, i.e. <code>rot=(0.70711, 0, 0.70711, 0)</code> — but
+quaternion sign conventions are notoriously easy to flip, so <code>smoke_camera.py</code> verifies the actual
+pixels before anything is frozen (Section 3).</div>
+
+<svg viewBox="0 0 720 240" role="img" aria-label="Side view: trunk frame with X forward and Z up, head frame rotated so head minus Z points forward and head X points up">
+  <rect x="0" y="0" width="720" height="240" fill="#f6f8fb" rx="8"/>
+  <!-- floor -->
+  <line x1="30" y1="200" x2="690" y2="200" stroke="#5b6678" stroke-width="2"/>
+  <text x="620" y="222" font-size="13" fill="#5b6678">floor</text>
+  <!-- duck body -->
+  <ellipse cx="240" cy="150" rx="70" ry="42" fill="#dde3ec" stroke="#5b6678"/>
+  <circle cx="330" cy="80" r="30" fill="#dde3ec" stroke="#5b6678"/>
+  <line x1="290" y1="122" x2="318" y2="102" stroke="#5b6678" stroke-width="3"/>
+  <text x="196" y="155" font-size="13" fill="#1a2233">trunk</text>
+  <text x="312" y="46" font-size="13" fill="#1a2233">head</text>
+  <!-- trunk axes -->
+  <g stroke-width="2.5">
+    <line x1="240" y1="150" x2="310" y2="150" stroke="#0b6bcb" marker-end="url(#a1)"/>
+    <line x1="240" y1="150" x2="240" y2="95"  stroke="#3a9d5d" marker-end="url(#a2)"/>
+  </g>
+  <text x="298" y="172" font-size="13" fill="#0b6bcb">trunk +X (forward)</text>
+  <text x="150" y="98"  font-size="13" fill="#3a9d5d">trunk +Z (up)</text>
+  <!-- head axes -->
+  <g stroke-width="2.5">
+    <line x1="330" y1="80" x2="330" y2="30" stroke="#f5a623" marker-end="url(#a3)"/>
+    <line x1="330" y1="80" x2="400" y2="80" stroke="#c0392b" stroke-dasharray="6 4" marker-end="url(#a4)"/>
+  </g>
+  <text x="340" y="28"  font-size="13" fill="#f5a623">head +X (ceiling!)</text>
+  <text x="404" y="66"  font-size="13" fill="#c0392b">head −Z (forward) — camera optical axis must align here</text>
+  <defs>
+    <marker id="a1" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#0b6bcb"/></marker>
+    <marker id="a2" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#3a9d5d"/></marker>
+    <marker id="a3" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#f5a623"/></marker>
+    <marker id="a4" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z" fill="#c0392b"/></marker>
+  </defs>
+</svg>
+
+<h3>2.2 Head motion during walking</h3>
+
+<p>The head rides on four actuated joints (<code>neck_pitch</code>, <code>head_pitch</code>,
+<code>head_yaw</code>, <code>head_roll</code> <span class="src">source: robot.xml:177,187,191,200</span>).
+The locomotion policy controls all of them, but its training reward includes a
+<code>joint_deviation_head</code> penalty (weight −0.1) that holds the head near its default pose — the head
+is ~21% of body mass and flailing it destabilizes walking
+<span class="src">source: parent .claude/rules/rl-training.md, reward table</span>. Two consequences:</p>
+
+<ul>
+<li><strong>No motion blur, no mid-stride frames.</strong> The sim pauses between LLM calls (physics only
+advances inside <code>env.step()</code>), so every frame is captured with the robot standing still after its
+last command completes. Rendering is instantaneous in sim time.</li>
+<li><strong>Tiny residual gaze offset.</strong> The policy holds the head <em>near</em> defaults, not exactly
+at them, so the camera may sit a few degrees off perfectly-level. We accept this as honest embodiment —
+a real duck robot's gaze wobbles too — rather than faking a stabilized gimbal for
+<code>get_observation()</code>. (The <code>look_around()</code> virtual gimbal is the one declared exception;
+see Section 5.3.)</li>
+</ul>
+
+<h2 id="fallback">3. Instanceable-USD risk and the three-rung fallback ladder</h2>
+
+<p>The robot USD was generated with <code>make_instanceable=True</code>
+<span class="src">source: parent scripts/convert_mjcf_to_usd.py:66</span>. <em>Instanceable</em> USD means the
+link geometry lives in a shared reference that many parallel training environments reuse to save GPU memory —
+but instanced subtrees are read-only at the prim level ("prim" = a node in the USD scene graph), so
+<strong>parenting a new camera prim under an instanced head link may simply fail</strong>. We won't know until
+we try, and we must not guess: this is the first thing the build order smoke-tests.</p>
+
+<div class="decision"><strong>Locked: <code>smoke_camera.py</code> is the first <em>Isaac-Sim-launching</em>
+smoke test in the build order.</strong> (<code>inspect_assets.py</code> precedes it in the overall build order
+— AGENTS.md §7 — but runs offline via pxr, no GPU/kit process.) WHY: every downstream design choice (mount
+frame, FOV tuning, look_around implementation) depends on which rung of the ladder works. The script loads the
+scene, attaches the camera per rung 1, renders one PNG, and a human looks at it; it also performs one
+<code>Camera.set_world_poses()</code> reposition + re-render to validate the look_around mechanism (Section
+5.3). One run settles the frame trap, the instanceable question, the reposition path, and the pipeline
+end-to-end at once. (Run rule: it launches Isaac Sim, so it obeys the one-GPU-job rule and is run by the
+owner, never by doc writers/reviewers.)</div>
+
+<p>Fallback ladder, in order of preference:</p>
+
+<table>
+<tr><th>Rung</th><th>Approach</th><th>Trade-off</th></tr>
+<tr><td><strong>1</strong></td><td>Attach the camera to the articulation root link (<code>/Robot/base</code>; the MJCF root body is <code>base</code>, robot.xml:73) with a fixed offset approximating the head pose (~0.19 m up from base origin, slightly forward, level pitch). The articulation root is typically not inside the instanced geometry subtree, so parenting there usually works even on instanceable assets. Isaac Lab's own robot-camera tutorial mounts exactly this way: <code>CameraCfg(prim_path="{ENV_REGEX_NS}/Robot/base/front_cam", offset=OffsetCfg(pos=..., rot=..., convention="ros"))</code> <span class="src">source: ~/IsaacLab/scripts/tutorials/04_sensors/add_sensors_on_robot.py:72–81</span></td><td>Camera no longer rides the neck joints — gaze is rigidly trunk-relative. Acceptable: the policy holds the head near defaults anyway (Section 2.2), and one fixed frame is <em>more</em> reproducible across models.</td></tr>
+<tr><td><strong>2</strong></td><td>Regenerate the USD with <code>make_instanceable=False</code>, output into <code>duck-embody/assets/</code>. The parent repo (read-only to this project) is untouched. We run 1 environment, not 4096, so the memory savings instanceable buys are irrelevant here.</td><td>A second copy of the robot asset to keep in sync if the parent model ever changes (it's frozen post-v2.1, so low risk).</td></tr>
+<tr><td><strong>3</strong></td><td>Viewport render path: <code>ManagerBasedRLEnv.render()</code> with <code>render_mode="rgb_array"</code> returns an (x, y, 3) numpy image from the viewport camera and needs <em>no sensor prim at all</em> <span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py:243–259</span>. Point the viewport at the robot with <code>ViewerCfg(origin_type="asset_body", asset_name=..., body_name=...)</code> — <code>"asset_body"</code> tracks a specific body of a specific asset <span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/envs/common.py:40–49</span>.</td><td>Third-person-ish control of eye/lookat rather than a true rigidly-mounted egocentric sensor; resolution tied to viewport config. Last resort.</td></tr>
+</table>
+
+<h2 id="params">4. Camera parameters and rationale</h2>
+
+<table>
+<tr><th>Parameter</th><th>Value</th><th>Rationale</th></tr>
+<tr><td>Resolution</td><td>512 × 512 RGB</td><td>Enough detail for a VLM to name furniture; small enough to keep per-turn API payloads cheap. Downscaled from the render if the render buffer is larger.</td></tr>
+<tr><td>Horizontal FOV</td><td>90° (in sim)</td><td>See below. Achieved in Isaac's pinhole model by setting <code>horizontal_aperture = 2 × focal_length</code> (HFOV = 2·atan(aperture/2f)); e.g. <code>focal_length=12.0, horizontal_aperture=24.0</code>. Defaults are <code>focal_length=24.0</code>, <code>horizontal_aperture=20.955</code> (both nominally cm in Isaac Lab's docstrings; only the ratio matters for FOV) <span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/sim/spawners/sensors/sensors_cfg.py:45,63</span>.</td></tr>
+<tr><td>Pitch</td><td>Level (0°), tuned from survey renders before freeze</td><td>A 0.36 m camera looking level sees walls and doorways; pitch gets a final tune during the Section 8 survey-render gate, then freezes.</td></tr>
+<tr><td>Frames per call</td><td>1 (<code>get_observation</code>), 4 (<code>look_around</code>)</td><td>On-demand only; no streaming (Section 5).</td></tr>
+</table>
+
+<p><strong>Why 90° and not the stock IMX219's FOV?</strong> The stock IMX219 module is a ~62° horizontal FOV
+part — too narrow indoors at duck height: in a 0.35 m-wide doorway world, a 62° camera sees one wall and no
+context, forcing constant look_around calls. Wide-FOV IMX219 variants (the same sensor behind wide-angle
+lenses) are sold at roughly 120–160° <span class="src">source: Arducam/Waveshare IMX219 product range; exact
+part chosen at purchase time</span>. We pick 90° in sim as a defensible middle: wide enough to navigate,
+narrow enough to avoid heavy fisheye distortion that a rectilinear pinhole sim camera can't reproduce anyway.
+The sim choice <em>informs the later hardware purchase</em> (buy the wide variant closest to the frozen sim
+FOV) — noted as a parity decision, not perfect parity today.</p>
+
+<div class="decision"><strong>Locked: one camera config for all three models, frozen before the batch
+runs.</strong> WHY: the camera is part of the benchmark definition, like the ruler is part of the race. FOV,
+resolution, pitch, and mount are tuned once against survey renders (Section 8) and the smoke test, then
+frozen; per-model camera tweaks would make cross-model numbers meaningless. Subject to smoke-test adjustment
+<em>before</em> freeze only.</div>
+
+<h2 id="pipeline">5. Capture pipeline: on-demand rendering</h2>
+
+<h3>5.1 Why on-demand</h3>
+
+<p>Isaac Lab environments step physics in a decimation loop: our env runs physics at dt = 0.005 s and applies
+policy actions every 4 physics steps = 50 Hz <span class="src">source: parent
+isaac_lab_env/open_duck_mini_v2/env_cfg.py:189–190</span>. Adding an RTX sensor (Isaac's ray-traced camera
+family) flips <code>sim.has_rtx_sensors()</code> to true, and then the step loop calls
+<code>sim.render()</code> every <code>sim.render_interval</code> physics steps
+<span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py:179,194–195</span>.
+The locomotion base config sets <code>render_interval = decimation</code> (= 4)
+<span class="src">source: ~/IsaacLab/source/isaaclab_tasks/.../velocity/velocity_env_cfg.py:312</span> — i.e.
+a naive camera renders at <strong>50 Hz</strong> while the model only ever looks at one frame per turn.
+At 240 policy-seconds per stage that is ~12,000 wasted ray-traced renders per stage.</p>
+
+<div class="decision"><strong>Locked: raise <code>sim.render_interval</code> so the step loop (almost) never
+renders, and render explicitly exactly when an observation is requested.</strong> WHY: frames are consumed
+per LLM turn, not per control step; rendering only on demand keeps wall-clock dominated by physics, not RTX.
+The explicit render happens while the sim is paused between turns, so the frame always shows the settled
+post-command state.</div>
+
+<h3>5.2 Warmup: the gray-frame problem</h3>
+
+<p>Isaac's renderer streams in MDL materials (NVIDIA's Material Definition Language — the shader descriptions
+that make wood look like wood) asynchronously. The first frames after a scene load or reset can come back
+gray/black/partially shaded. Isaac Lab itself acknowledges this: the simulation context performs 2 extra
+render calls after a hard reset "to warm up replicator buffers"
+<span class="src">source: ~/IsaacLab/source/isaaclab/isaaclab/sim/simulation_context.py:526–530</span>, and
+<code>ManagerBasedRLEnvCfg.num_rerenders_on_reset</code> (default 0) exists precisely to re-render after
+resets when RTX sensors are present <span class="src">source:
+~/IsaacLab/source/isaaclab/isaaclab/envs/manager_based_env_cfg.py:126, manager_based_rl_env.py:224–227</span>.
+Two renders are not always enough for a full apartment of SimReady assets, so the harness performs
+<strong>N warmup render calls (N configurable, default 10) after scene load and after every reset, before the
+first captured frame</strong>, and the smoke test visually confirms frame N is fully shaded. Warmup frames
+are discarded, never sent to the model.</p>
+
+<h3>5.3 The pipeline, end to end</h3>
+
+<pre><code>model calls get_observation()
+  │  (sim is paused; last motion command already completed)
+  ├─ 1. explicit render call(s)            # rung 1/2: camera.update() after sim.render()
+  │                                        # rung 3: env.render() → rgb_array
+  ├─ 2. grab RGB buffer (H×W×3 uint8)
+  ├─ 3. downscale to 512×512 if needed
+  ├─ 4. JPEG-encode (quality ~85)
+  ├─ 5. base64 → Anthropic/OpenAI image content block
+  └─ 6. assemble JSON payload (Section 6) → tool result to the model</code></pre>
+
+<p><strong><code>look_around()</code></strong> = 4 captures at compass bearings 0°/90°/180°/270°, taken while
+the sim stays paused. Mechanism on rungs 1/2: reposition the camera to the head pose at each absolute bearing
+via <code>Camera.set_world_poses()</code> (or <code>set_world_poses_from_view()</code>), render, capture, then
+restore the original pose. These are the supported runtime-repositioning APIs (world/env frame) —
+<code>CameraCfg.OffsetCfg</code> is an init-time spawn config and Isaac Lab exposes no API to mutate a spawned
+camera's mount rotation, so "rotate the offset in place" is not implementable <span class="src">source:
+~/IsaacLab/source/isaaclab/isaaclab/sensors/camera/camera.py:287 (<code>set_world_poses</code>), :336
+(<code>set_world_poses_from_view</code>); <code>OffsetCfg</code> is a config dataclass consumed only at spawn
+(camera.py:127–138)</span>. Under rung 3 (viewport render path, no camera prim) there is no true equivalent —
+look_around would have to be approximated by re-aiming the viewport (<code>ViewerCfg</code> eye/lookat) or
+dropped on that rung; unresolved until the smoke test picks the rung (Section 10). The robot does not move in
+any case: no joint commands, no physics steps, no head-servo motion. This is a <em>virtual gimbal</em> —
+physically it corresponds to a pan the real robot's head_yaw could approximately perform, but we implement it
+as a camera reposition for determinism and declare it in the methods write-up as one of the sensor-realistic
+exceptions. It exists because turning the whole robot 4 × 90° to look around costs policy-seconds and injects
+dead-reckoning error into a purely perceptual act.</p>
+
+<h2 id="payload">6. Observation payload spec</h2>
+
+<p>Every <code>get_observation()</code> tool result contains exactly one image block plus one JSON text block.
+Field names and structure are frozen with the camera config. Concrete example:</p>
+
+<pre><code>[
+  {
+    "type": "image",
+    "source": { "type": "base64", "media_type": "image/jpeg", "data": "&lt;512×512 JPEG&gt;" }
+  },
+  {
+    "type": "text",
+    "text": "{
+      \"compass_deg\": 87.4,
+      \"position_estimate\": {
+        \"x\": 1.42, \"y\": -0.31,
+        \"note\": \"dead-reckoned estimate, may drift — correct via correct_position\"
+      },
+      \"status\": {
+        \"bumped\": false,
+        \"fell\": false,
+        \"distance_moved_m\": 0.48
+      }
+    }"
+  }
+]</code></pre>
+
+<p class="src">Formatting note: the <code>"text"</code> block's string value is shown with raw newlines and
+indentation for readability only — the wire payload is one JSON-escaped single-line string
+(<code>\n</code>-escaped). A literal copy of the block above is not valid JSON: RFC 8259 forbids unescaped
+control characters inside strings.</p>
+
+<h3>6.1 Provider transport (Anthropic vs OpenAI)</h3>
+
+<p>The example above is the <em>Anthropic</em> rendering: image block + text block inside a
+<code>tool_result</code>. What is frozen is the <strong>logical</strong> payload — one image and one JSON
+status object per observation, identical field names, identical values, for all three models. The wire-level
+transport is provider-specific and is <em>not</em> symmetric: OpenAI's chat-completions API accepts only
+string content in tool-role messages, so an image block cannot ride inside the tool result the way Anthropic's
+<code>tool_result</code> image block does. The harness therefore needs an explicit OpenAI adapter — e.g. the
+JSON as the tool-result string plus the frame injected as an image part in an accompanying user message, or
+Responses-API-specific handling. The adapter must preserve semantic equivalence (same image, same JSON, no
+per-model content differences — the no-per-model-tuning rule applies to transport too); its exact mechanism is
+verified against the live API and frozen during the harness dry run, before the batch (open question,
+Section 10).</p>
+
+<h3>6.2 Field semantics</h3>
+
+<table>
+<tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+<tr><td><code>compass_deg</code></td><td>float, degrees [0, 360)</td><td>True heading (BNO055-realistic absolute compass; declared exception). Same heading convention as the layout (<a href="03-scene-design.html">Doc 03</a> §3): degrees counter-clockwise from +x, so 0° = +x (east) and 90° = +y (north).</td></tr>
+<tr><td><code>position_estimate.x/y</code></td><td>float, meters</td><td>Dead-reckoned world position integrated from commanded velocities since spawn (or since the last <code>correct_position</code>). Always labeled as an estimate. <strong>Never</strong> ground truth.</td></tr>
+<tr><td><code>status.bumped</code></td><td>bool</td><td>True if the last motion command auto-stopped on a detected collision.</td></tr>
+<tr><td><code>status.fell</code></td><td>bool</td><td>True if the robot fell (which also ends the trial; the final observation reports it).</td></tr>
+<tr><td><code>status.distance_moved_m</code></td><td>float, meters</td><td>Dead-reckoned distance actually covered by the most recent motion command (vs. requested — shortfall signals an obstruction).</td></tr>
+</table>
+
+<p><code>look_around()</code> returns four image blocks, each preceded by a one-line text label
+(<code>"view at compass 0°"</code>, …, using absolute compass bearings), plus the same JSON text block once.
+No other fields exist; anything the model wants remembered goes through the map/memory tools by its own
+assertion.</p>
+
+<h2 id="hygiene">7. Info-leak hygiene</h2>
+
+<p>A rendered frame can accidentally contain privileged information that no real camera would see. Rules:</p>
+
+<ul>
+<li><strong><code>debug_vis</code> OFF everywhere.</strong> The inherited locomotion config sets
+<code>debug_vis=True</code> on the velocity command term <span class="src">source:
+~/IsaacLab/source/isaaclab_tasks/.../velocity/velocity_env_cfg.py:101</span>, which draws arrows showing
+commanded vs. actual velocity into the rendered scene. Left on, every frame would hand the model a visual
+readout of its own commanded motion — and worse, sensor debug markers from any other term would literally
+draw ground truth into the pixels. The embody env config force-disables <code>debug_vis</code> on every
+command term and sensor.</li>
+<li><strong>No HUD, no overlays, no viewport gizmos</strong> (axes tripods, selection outlines, physics
+debug wireframes) in any captured frame.</li>
+<li><strong>Declared affordances only.</strong> If any overlay is ever added (e.g., a compass rose burned
+into the frame corner), it must be declared in the methods write-up as part of the benchmark interface and
+applied identically to all three models. Default: none.</li>
+<li><strong>Smoke-test check.</strong> The <code>smoke_camera.py</code> PNG is inspected specifically for
+stray debug geometry before the config freezes.</li>
+</ul>
+
+<h2 id="duckheight">8. Duck-height recognizability risk</h2>
+
+<p>The apartment is scaled to 0.4× human scale (<a href="03-scene-design.html">Doc 03</a>, scene design), which puts counters at roughly
+0.9 m × 0.4 = <strong>~0.36 m — the same height as the camera</strong>. A camera at exactly countertop height
+sees counter <em>edges</em>, not counter <em>tops</em>: the canonical "kitchen" visual signature (sink,
+stovetop, counter surface) may be invisible, and rooms may be genuinely hard for a VLM to name from duck
+height. This is a real risk to the whole benchmark: if no model can recognize the kitchen, the task measures
+lens height, not navigation ability.</p>
+
+<div class="decision"><strong>Locked: survey-render acceptance gate before layout freeze.</strong> WHY: cheap
+insurance against an unwinnable benchmark. Before the layout freezes, render a survey set of frames from the
+duck camera (several positions and headings per room, frozen camera config), show them to a VLM that is
+<em>not</em> one of the three benchmark models, and require it to name each room correctly from its frames
+alone. If rooms are unrecognizable, fix the <em>scene</em> (prop choice, distinctive floor/wall colors per
+room, visible landmark objects at duck height) — never the per-model camera. The gate, prompt, and pass
+criteria are recorded in the methods write-up.</div>
+
+<div class="warning">The gate uses an out-of-benchmark VLM to avoid tuning the scene to any contestant's
+strengths. Passing the gate does not guarantee the benchmark models will recognize rooms — it only
+establishes the scene is recognizable in principle from duck height.</div>
+
+<h2 id="validation">9. Validation performed</h2>
+
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>head_assembly quaternion + body chain</td><td><code>grep -n "head_assembly\|neck_pitch\|head_pitch\|head_yaw\|head_roll" .../mini_bdx/robots/open_duck_mini_v2/robot.xml</code> + read lines 175–216</td><td>Confirmed: <code>&lt;body name="head_assembly" pos="0.04095 0 -0.01915" quat="0.707107 0 -0.707107 0"&gt;</code> at robot.xml:198; chain neck_pitch_assembly (:175, +90° X) → head_pitch_to_yaw (:185, identity) → neck_yaw_assembly (−90° X) → head_assembly (−90° Y); joints at :177/:187/:191/:200; root body <code>base</code> at :73</td></tr>
+<tr><td>USD conversion is instanceable</td><td><code>grep -n make_instanceable .../scripts/convert_mjcf_to_usd.py</code></td><td>Confirmed: line 66, <code>make_instanceable=True,  # Reduces memory for parallel envs</code></td></tr>
+<tr><td>Robot-mounted CameraCfg reference exists</td><td><code>ls -la ~/IsaacLab/scripts/tutorials/04_sensors/add_sensors_on_robot.py</code> + grep CameraCfg</td><td>Confirmed: file exists (6,449 bytes); CameraCfg at <code>{ENV_REGEX_NS}/Robot/base/front_cam</code> with OffsetCfg pos/rot, <code>convention="ros"</code> (lines 72–81)</td></tr>
+<tr><td>Step-loop renders every render_interval when RTX sensors present</td><td><code>grep -n render_interval ~/IsaacLab/source/isaaclab/isaaclab/envs/manager_based_rl_env.py</code> + read step()</td><td>Confirmed: lines 179 (<code>is_rendering = has_gui() or has_rtx_sensors()</code>) and 194–195 (<code>if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering: self.sim.render()</code>); <code>render()</code> rgb_array path at :243–259</td></tr>
+<tr><td>render_interval defaults</td><td>grep in <code>simulation_cfg.py</code> and <code>velocity_env_cfg.py</code></td><td>Confirmed: <code>SimulationCfg.render_interval = 1</code> (simulation_cfg.py:368); locomotion base sets <code>self.sim.render_interval = self.decimation</code> (velocity_env_cfg.py:312); duck env dt=0.005, decimation=4 (parent env_cfg.py:189–190) → 50 Hz naive render rate</td></tr>
+<tr><td>ViewerCfg supports asset_body tracking (rung 3)</td><td><code>grep -n asset_body ~/IsaacLab/source/isaaclab/isaaclab/envs/common.py</code></td><td>Confirmed: <code>origin_type: Literal["world","env","asset_root","asset_body"]</code> at common.py:40</td></tr>
+<tr><td>Warmup renders exist but are minimal (2)</td><td>grep "warm" in <code>simulation_context.py</code> + read context; grep <code>num_rerenders_on_reset</code></td><td>Confirmed: 2 post-reset warmup renders "to warm up replicator buffers" (simulation_context.py:526–530); <code>num_rerenders_on_reset: int = 0</code> default (manager_based_env_cfg.py:126)</td></tr>
+<tr><td>Velocity-command debug arrows on by default (leak)</td><td><code>grep -n debug_vis</code> in velocity_env_cfg.py and duck env_cfg.py</td><td>Confirmed: <code>debug_vis=True</code> on <code>base_velocity</code> (velocity_env_cfg.py:101); duck env_cfg.py does not override it → must be force-disabled in the embody env</td></tr>
+<tr><td>Head camera is the planned real-hardware sensor</td><td><code>grep -n -i "camera\|imx219\|csi" .../docs/jetson-mod/task_plan.md</code></td><td>Confirmed: line 128 "CSI camera module: ~3g, mounted in head"; line 1724 "CSI camera module (IMX219)"</td></tr>
+<tr><td>Pinhole FOV math inputs</td><td>grep <code>focal_length</code> / <code>horizontal_aperture</code> in <code>sensors_cfg.py</code></td><td>Confirmed: defaults <code>focal_length = 24.0</code> (sensors_cfg.py:45, docstring "in cm") and <code>horizontal_aperture = 20.955</code> (:63, "in cm"); tutorial add_sensors_on_robot.py:79 passes both defaults explicitly; 90° HFOV requires aperture = 2 × focal_length (unit-free ratio)</td></tr>
+<tr><td>Runtime camera repositioning API exists (look_around, rungs 1/2)</td><td><code>grep -n "def set_world_poses" ~/IsaacLab/source/isaaclab/isaaclab/sensors/camera/camera.py</code> + read camera_cfg.py</td><td>Confirmed: <code>set_world_poses</code> at camera.py:287, <code>set_world_poses_from_view</code> at :336 (world/env frame); no API mutates a spawned camera's offset rotation — <code>OffsetCfg</code> is a config dataclass consumed only at spawn (camera.py:127–138)</td></tr>
+</table>
+<p class="src">All paths relative to /home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson (parent repo) or
+~/IsaacLab (Isaac Lab 2.3.2). All greps run 2026-07-26. No Isaac Sim / kit process was launched for this
+document.</p>
+
+<h2 id="openq">10. Open questions</h2>
+
+<ul>
+<li><strong>Does rung 1 actually work on this asset?</strong> Whether a camera prim can be parented under
+<code>/Robot/base</code> on our instanceable USD — and whether the corrective mount quaternion is exactly
+<code>(0.70711, 0, 0.70711, 0)</code> in <code>"world"</code> convention or a sign-flipped variant — is
+unknown until <code>smoke_camera.py</code> produces its PNG. Both are answered by the first Isaac-Sim smoke test.</li>
+<li><strong>Exact camera height at policy defaults.</strong> The 0.36 m nominal is derived from model
+geometry, not yet measured in-sim at the v4_robust default pose; the smoke test prints the measured head/camera
+world height.</li>
+<li><strong>Is warmup N=10 enough for the full apartment?</strong> Isaac Lab's built-in 2 renders cover
+replicator buffers, not slow MDL streaming of many SimReady props. N is configurable; the smoke test decides
+the frozen value.</li>
+<li><strong>Can render_interval be raised without side effects?</strong> Setting a very large
+<code>sim.render_interval</code> suppresses in-step renders, but interactions with sensor
+<code>update_period</code> and the explicit render call need one integration test (the step loop warns that
+cameras needing faster rendering "lead to unexpected behavior" — we need slower, which should be safe, but it
+is unverified).</li>
+<li><strong>90° FOV final?</strong> Frozen only after survey renders; if duck-height room recognition fails at
+90°, widening (e.g., to 100° — the top of the AGENTS.md §2 camera envelope of ~90–100°) is on the table before
+freeze, with the hardware-parity note updated to match. Going beyond 100° would require widening the AGENTS.md
+envelope in the same change (AGENTS.md is the single source of truth).</li>
+<li><strong>look_around mechanism per rung.</strong> The rung-1/2 implementation — reposition via
+<code>Camera.set_world_poses()</code> to the head pose at 4 absolute bearings, restore afterwards (Section
+5.3) — is specified against the Isaac Lab source but unverified in-sim until <code>smoke_camera.py</code>
+exercises a reposition + re-render. Under rung 3 (viewport path, no camera prim) look_around has no true
+equivalent: approximate via <code>ViewerCfg</code> eye/lookat re-aiming, or declare the tool unavailable on
+that rung. Settled by the first Isaac-Sim smoke test.</li>
+<li><strong>OpenAI tool-result image transport.</strong> The Anthropic-side payload is concrete (Section 6);
+the OpenAI-side adapter (tool-result string + follow-up user-message image part, vs Responses-API handling) is
+asserted from provider-API knowledge, not yet verified against the live API. Verify the mechanism, assert
+semantic equivalence with the Anthropic rendering, and freeze the adapter during the harness dry run, before
+the batch.</li>
+<li><strong>JPEG quality / payload size.</strong> Quality ~85 at 512×512 is an estimate (~50–120 KB/frame);
+actual token/latency cost per provider is measured during the harness dry run, before the batch.</li>
+<li><strong>look_around at bearing vs. relative angles.</strong> Current spec uses absolute compass bearings
+0/90/180/270; an alternative is robot-relative (ahead/left/behind/right). Absolute wins for map-building
+consistency, but the prompt-comprehension trade-off is untested — settled in the harness dry run, frozen
+before the batch.</li>
+</ul>
+
+</main>
+</body>
+</html>

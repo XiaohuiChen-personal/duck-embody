@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duck Embody — Low-Level Design Docs</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Duck Embody — Low-Level Design Docs</h1>
+<p class="meta">Design-doc index - 2026-07-26</p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Duck Embody</strong> puts a frontier LLM in control of the Open Duck Mini v2 — a
+42&nbsp;cm bipedal robot — inside an <em>unknown</em> duck-scale apartment in Isaac Sim: the model
+issues tool calls that drive a pretrained RL locomotion policy (v4_robust, PPO), and there is
+<strong>no classical SLAM anywhere</strong> — the LLM authors its own map as text, dead-reckons its
+position from commanded velocity, and corrects drift cognitively via loop-closure tools. Three
+models (Fable&nbsp;5, Opus&nbsp;5, GPT&nbsp;5.6&nbsp;sol) attempt the same two-stage task
+(<code>find_kitchen</code>, then <code>return_home</code>) over the same four seeds under one
+frozen prompt/camera/tool configuration; scoring compares success, path efficiency, map accuracy,
+and dead-reckoning drift against the layout ground truth. The project is inspired by Anthropic's
+"How Claude Performs on Robotics Tasks" (Jul&nbsp;2026; their harness is unreleased) and doubles as
+a portfolio piece and a sim prototype for the parent robot project's Phase&nbsp;5.</p>
+
+<div class="note"><strong>Rules vs. designs:</strong> <code>AGENTS.md</code> at the repo root is
+the binding rules source — hard rules, locked decisions, and canonical constants. The documents
+below are the per-component low-level designs built under it. Where any design doc and
+<code>AGENTS.md</code> disagree, <code>AGENTS.md</code> wins and the doc must be fixed.</div>
+
+<h2>Reading order</h2>
+
+<table>
+<tr><th>#</th><th>Doc</th><th>Scope (one sentence)</th></tr>
+<tr><td>01</td><td><a href="01-system-architecture.html">System Architecture &amp; Runtime</a></td>
+<td>The top-level map: three layers (sim / agent / benchmark), the anatomy of one paused-sim turn, the one-persistent-process batch model, the parent-repo contract, and the trial lifecycle.</td></tr>
+<tr><td>02</td><td><a href="02-policy-playback.html">Locomotion Policy Playback &amp; Environment Config</a></td>
+<td>How the frozen v4_robust policy is loaded and fed LLM-chosen velocity commands: the 59-dim observation contract, command-injection defusal, the env-config delta, and the motion macros.</td></tr>
+<tr><td>03</td><td><a href="03-scene-design.html">Apartment Scene Design</a></td>
+<td>The 0.4&times; duck-scale apartment: floor plan and dimensions, <code>apartment_layout.py</code> as single source of truth, asset sourcing with verified URLs, scene-builder mechanics, and the validation ladder.</td></tr>
+<tr><td>04</td><td><a href="04-camera-observation.html">Camera &amp; Observation Pipeline</a></td>
+<td>How the robot sees: head-mount design and the frame trap, on-demand RTX rendering, the exact observation payload, info-leak hygiene, and the duck-height recognizability gate.</td></tr>
+<tr><td>05</td><td><a href="05-agent-harness.html">Agent Loop, Tools &amp; Memory (LLM-as-SLAM)</a></td>
+<td>The agent harness: turn lifecycle, the full 12-tool schema, the model-authored memory rendered in MapGPT grammar, provider adapters (Anthropic/OpenAI), and error-handling policy.</td></tr>
+<tr><td>06</td><td><a href="06-benchmark-evaluation.html">Benchmark Protocol &amp; Scoring</a></td>
+<td>How results are produced: the fairness freeze, trial protocol, per-trial JSON schema, every metric formula (SR, progress, SPL, map accuracy, drift, layout QA), statistics, runner design, and the pre-batch test gate.</td></tr>
+</table>
+
+<h2>Canonical constants (quick reference)</h2>
+
+<p class="meta">Values below restate the canon in <code>AGENTS.md</code>; every design doc must
+agree with them exactly.</p>
+
+<table>
+<tr><th>Item</th><th>Canonical value</th></tr>
+<tr><td>Models (locked)</td><td>Fable&nbsp;5 (<code>claude-fable-5</code>, Anthropic) · Opus&nbsp;5 (<code>claude-opus-5</code>, Anthropic) · GPT&nbsp;5.6&nbsp;sol (OpenAI). One prompt, one camera config, one tool set — no per-model tuning.</td></tr>
+<tr><td>Task</td><td><code>find_kitchen</code> ("Find the kitchen and walk to the counter"), then continuation <code>return_home</code> in the same episode.</td></tr>
+<tr><td>Success radii</td><td>find_kitchen: base within <strong>0.35&nbsp;m</strong> of the kitchen-counter target region + <code>declare_done</code> · return_home: within <strong>0.5&nbsp;m</strong> of spawn + <code>declare_done</code>.</td></tr>
+<tr><td>Seeds / trials</td><td>N=4 fixed seeds {101, 102, 103, 104}, identical across models (seed → spawn point + heading from the layout's <code>spawn_points</code>); 3 models × 4 seeds = 12 trials, sequential in ONE persistent Isaac Sim process.</td></tr>
+<tr><td>Caps (per stage)</td><td><strong>40 model turns</strong> · <strong>240 policy-seconds</strong> of commanded motion · a fall ends the trial. Cap hits and timeouts are scored failures, never selectively retried.</td></tr>
+<tr><td>Command hull</td><td>vx ∈ (−0.148, 0.222) m/s · vy ∈ (−0.111, 0.111) m/s · wz ∈ (−0.5, 0.5) rad/s — everything clamped; vy is near-useless (~9 s/m), prefer turn-then-drive.</td></tr>
+<tr><td>Control / sim</td><td>50&nbsp;Hz control (sim dt 0.005&nbsp;s × decimation 4); <code>duration_s</code> → N = 50 × duration_s steps; sim PAUSES between LLM calls (capability, not latency).</td></tr>
+<tr><td>Policy</td><td>v4_robust (RSL-RL PPO, <code>model_2999.pt</code>, vendored into <code>policy/</code>); 59-dim actor obs (ang_vel 3, gravity 3, commands 3, joint_pos 16, joint_vel 16, actions 16, gait_phase 2 — no base_lin_vel); normalization baked in, never pre-normalize; eval record 5/5 gait gate, 0.00% falls / 3,200 episodes.</td></tr>
+<tr><td>Camera (frozen)</td><td>Head-mounted egocentric, ~0.36&nbsp;m height, 512×512 RGB, 90° horizontal FOV (smoke-test adjustable only BEFORE freeze), 1 frame per <code>get_observation</code>.</td></tr>
+<tr><td>Scene</td><td>Duck-scale 0.4×; apartment 4.8 × 3.6&nbsp;m; rooms <code>living_room</code> / <code>kitchen</code> / <code>bedroom</code> / <code>hallway</code>; walls 0.5&nbsp;m high / 0.03&nbsp;m thick; doorways 0.35&nbsp;m (duck body ~0.16&nbsp;m); target = kitchen counter (Sektion_Cabinet run).</td></tr>
+<tr><td>Tools (canonical names)</td><td><code>get_observation</code> · <code>look_around</code> · <code>turn_to_heading(heading_deg)</code> · <code>move(distance_m)</code> · <code>send_velocity(vx, vy, wz, duration_s)</code> · <code>update_room</code> · <code>add_landmark</code> · <code>mark_exit</code> · <code>set_current_room</code> · <code>correct_position(x, y, reason)</code> · <code>update_plan</code> · <code>declare_done</code>.</td></tr>
+<tr><td>Context policy</td><td>System prompt + first turn + last K=10 turns kept; memory block re-injected EVERY turn; images older than K turns dropped.</td></tr>
+<tr><td>Memory principle</td><td>"The harness stores and formats; the LLM perceives, estimates, and decides." Declared sensor-realistic exceptions: compass heading (BNO055-realistic), dead-reckoned position from commanded velocity, closed-loop macros. Ground truth is NEVER shown to the model. Map rendered in MapGPT grammar.</td></tr>
+<tr><td>Metrics</td><td>Success rate · progress = clip(1 − d_final/d_initial, 0, 1) · SPL = S·l/max(p, l) · time-to-kitchen (policy-seconds) · turns used · bumps · falls · map accuracy (room-node P/R + adjacency edge accuracy) · dead-reckoning drift at goal · post-episode layout QA (5 fixed questions). Mean ± bootstrap 95% CI over N=4, per-trial table always shown.</td></tr>
+<tr><td>Runtime</td><td>DGX Spark (aarch64, single GB10 GPU, headless); Isaac Sim 5.1.0-rc.19; Isaac Lab 2.3.2; ONE Isaac Sim / GPU job at a time; parent repo read-only; API keys via env vars only.</td></tr>
+</table>
+
+<p class="meta">This index is hand-maintained; keep it in sync when docs are added or retitled.
+Public repo: <a href="https://github.com/XiaohuiChen-personal/duck-embody">XiaohuiChen-personal/duck-embody</a>.</p>
+
+</main>
+</body>
+</html>

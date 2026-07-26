@@ -6,7 +6,7 @@ never duplicate rules there. **Update this file whenever a decision changes**; i
 the project's institutional memory and is deliberately context-rich so a fresh agent
 can pick up work with no other briefing.
 
-Last updated: 2026-07-26 (project start; skeleton commit).
+Last updated: 2026-07-26 (design docs drafted + adversarially reviewed; pending owner approval).
 
 ---
 
@@ -53,6 +53,20 @@ The concrete implementation plan will live in `docs/PLAN.md` (placeholder until
 written). The apartment layout dict (`duck_embody/env/apartment_layout.py`) is
 **simultaneously the scene spec and the scoring ground truth** — never let scoring
 depend on anything else.
+
+**Low-level design docs** (`docs/designs/`, HTML — start at
+[`index.html`](docs/designs/index.html); status: DRAFT pending owner approval).
+**Read the relevant doc BEFORE implementing a component**; if implementation must
+deviate, update the doc in the same commit:
+
+| Component you're touching | Read |
+|---|---|
+| Overall architecture, process model, runtime, turn lifecycle | `docs/designs/01-system-architecture.html` |
+| Policy loading, command injection, env cfg, motion macros, fall/bump logic | `docs/designs/02-policy-playback.html` |
+| Apartment layout, assets, scene builder, scene validation | `docs/designs/03-scene-design.html` |
+| Camera mount, capture pipeline, observation payload, look_around | `docs/designs/04-camera-observation.html` |
+| Agent loop, tool schema, memory/map, prompts, providers, error policy | `docs/designs/05-agent-harness.html` |
+| Trial protocol, log schema, metric formulas, runner, tests, reporting | `docs/designs/06-benchmark-evaluation.html` |
 
 ## 3. Hard rules
 
@@ -101,7 +115,9 @@ depend on anything else.
   `https://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/Isaac/5.1`
   - `…/Isaac/Environments/` — Simple_Room/Office/Hospital/warehouses (NO apartment;
     "Limited Use no-modification" license — do not remix).
-  - `…/NVIDIA/Assets/ArchVis/Residential/…` — sofas/beds/fridge/oven/kitchen —
+  - `Assets/ArchVis/Residential/…` (bucket-root sibling of `Assets/Isaac/`, NOT under the
+    5.1 tree; the earlier `…/NVIDIA/Assets/ArchVis/…` path 404s — corrected 2026-07-26,
+    see design doc 03 §5/§10) — sofas/beds/fridge/oven/kitchen —
     **visual-only, no colliders** (verified by USD inspection); add bbox collider proxies.
   - `Assets/simready_content/common_assets/props/` — armchair, sofa, tables, chairs,
     desks, cabinets — **colliders + semantic labels included**; no bed/fridge/TV.
@@ -190,7 +206,7 @@ duck_embody/
   env/           embody_env_cfg (imports parent repo) · apartment_layout (ground truth)
                  · scene_builder · camera
   sim/           policy_wrapper (RSL-RL adapter, cmd injection) · session (persistent sim)
-  agent/         loop · tools · memory · prompts · providers/{anthropic,openai,vllm}
+  agent/         loop · tools · memory · prompts · providers/{anthropic,openai}
   tasks/         find_kitchen (+ return_home continuation)
   runner.py      resumable sequential batch · scoring.py · charts.py
 scripts/         inspect_assets → smoke_camera → smoke_displacement →
@@ -204,7 +220,11 @@ results/         raw JSON · figures · videos (committed)
 
 - [x] Design + feasibility research complete (2026-07-26; see §2 decisions, §5 gotchas)
 - [x] Repo skeleton, rules, README draft
-- [ ] docs/PLAN.md (consolidated plan) — pending owner go
+- [x] Low-level design docs (`docs/designs/01–06` + index) — written, adversarially
+      reviewed (19-agent pass; caught & fixed: 0.153 m/s eval misread, ArchVis path
+      404, look_around mechanism, compass convention, cost/runtime bounds) —
+      **DRAFT, pending owner approval**
+- [ ] docs/PLAN.md (consolidated plan) — pending owner approval of designs + go
 - [ ] Vendor policy artifacts into `policy/`
 - [ ] Smoke tests (camera PNG, net displacement, asset inspection)
 - [ ] Apartment scene + survey renders

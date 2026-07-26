@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · Locomotion Policy Playback &amp; Environment Config</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Locomotion Policy Playback &amp; Environment Config</h1>
+<p class="meta">Doc 02 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This doc is for anyone implementing or reviewing
+the layer of Duck Embody that makes the robot's legs work: how we load a pretrained walking controller
+(a neural network trained with reinforcement learning), how we feed it velocity commands chosen by an LLM,
+and how we reconfigure the training environment so it behaves like a single persistent apartment instead of
+a 4,096-robot training farm. No robotics or Isaac Sim background is assumed — every term of art is defined
+on first use. The commanding LLM harness itself (tools, memory, scoring) is covered in
+<a href="05-agent-harness.html">doc 05</a> (agent harness) and
+<a href="06-benchmark-evaluation.html">doc 06</a> (benchmark &amp; scoring); here we
+stop at the boundary "the harness asks for (vx, vy, wz) for N steps" and go downward from there.</p>
+
+<nav class="toc">
+<strong>Contents</strong>
+<ol>
+<li><a href="#s1">The trained policy: v4_robust</a></li>
+<li><a href="#s2">The 59-dim observation contract</a></li>
+<li><a href="#s3">Policy loading design</a></li>
+<li><a href="#s4">Command injection — the core mechanism</a></li>
+<li><a href="#s5">DuckEmbodyEnvCfg vs. OpenDuckRobustEnvCfg_PLAY</a></li>
+<li><a href="#s6">Motion macros: turn_to_heading, move, send_velocity</a></li>
+<li><a href="#s7">Known unknowns</a></li>
+<li><a href="#s8">Gotcha summary</a></li>
+<li><a href="#s9">Validation performed</a></li>
+<li><a href="#s10">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="s1">1. The trained policy: v4_robust</h2>
+
+<p><strong>What a locomotion policy is.</strong> The Open Duck Mini v2 is a 42 cm bipedal robot with 16
+actuated joints. Walking is controlled by a <em>policy</em>: a small neural network (MLP, hidden layers
+512/256/128) that runs at 50 Hz, reads a 59-number snapshot of the robot's state (the "observation",
+section 2), and outputs 16 joint-position targets. It was trained with <em>PPO</em> (Proximal Policy
+Optimization, a reinforcement-learning algorithm) — the network learned to walk by trial and error across
+4,096 simulated robots in parallel <span class="src">source: parent isaac_lab_env/open_duck_mini_v2/env_cfg.py:185
+(<code>self.scene.num_envs = 4096</code>)</span>. Duck Embody does <strong>zero training</strong>: we play back
+this frozen network and let an LLM choose the velocity commands it tracks.</p>
+
+<p><strong>Provenance.</strong> The policy is <code>v4_robust</code>, trained in the parent robot project
+(Open_Duck_Mini_Jetson, branch v2) with RSL-RL (a lightweight GPU PPO implementation) on the corrected
+layout-v2.1 robot model. Checkpoint:</p>
+<pre><code>~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt</code></pre>
+<p>(vendored into this repo's <code>policy/</code> directory so the public repo is self-contained; see open
+questions). It was trained with an <em>asymmetric actor/critic</em>: the critic (value network, training-only)
+sees 62 dims including true base linear velocity; the actor (the deployed network) sees only 59 dims,
+because the real robot's IMU cannot measure linear velocity
+<span class="src">source: agent.yaml <code>obs_groups: {actor: [policy], critic: [critic]}</code>,
+~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/params/agent.yaml lines 6&ndash;10</span>.
+Training included dynamics domain randomization (random pushes, mass/CoM/friction perturbations)
+<span class="src">source: parent env_cfg.py:278&ndash;346 (<code>OpenDuckRobustEnvCfg</code>)</span>.</p>
+
+<p><strong>Why we trust it.</strong> Under the parent project's evaluation protocol (3,200 episodes:
+5 command conditions × 10 windows × 64 envs, 30 s each, deterministic, seed 42), v4_robust scored a
+<strong>5/5 gait-validity gate and 0.00% falls</strong>, plus a passing manual video audit
+<span class="src">source: parent docs/jetson-mod/v4_comparison.md line 62 (v4_robust row: gate 5/5,
+falls 0.0) and line 70 (0.0 falls in all five conditions)</span>. Caveat for our use case: those numbers are
+push-free, flat-ground, <em>fixed-command</em> 30 s windows — see section 7 for the regimes our project
+enters that the eval never touched.</p>
+
+<div class="decision"><strong>Locked:</strong> v4_robust (<code>model_2999.pt</code>, run 2026-07-07_00-15-43)
+is the only locomotion policy in Duck Embody. WHY: it is the parent project's deployment mainline with the
+cleanest measured record on the current robot model, and freezing one policy keeps the LLM comparison fair.</div>
+
+<h2 id="s2">2. The 59-dim observation contract</h2>
+
+<p>Every control step, the environment assembles this vector and the policy returns 16 actions. The
+source of truth is the training run's own config dump (<code>params/env.yaml</code> in the checkpoint
+directory) — not any document, including this one. Order matters; the concatenation is:</p>
+
+<table>
+<tr><th>#</th><th>Name</th><th>Dims</th><th>Meaning</th><th>env.yaml func <span class="src">(params/env.yaml line)</span></th></tr>
+<tr><td>1</td><td>base_ang_vel</td><td>3</td><td>Trunk angular velocity in body frame (gyro)</td><td><code>mdp.observations:base_ang_vel</code> <span class="src">:365</span></td></tr>
+<tr><td>2</td><td>projected_gravity</td><td>3</td><td>Gravity direction in body frame (tilt sense)</td><td><code>mdp.observations:projected_gravity</code> <span class="src">:378</span></td></tr>
+<tr><td>3</td><td>velocity_commands</td><td>3</td><td>Commanded (vx, vy, wz) — what the LLM controls</td><td><code>mdp.observations:generated_commands</code> <span class="src">:391</span></td></tr>
+<tr><td>4</td><td>joint_pos</td><td>16</td><td>Joint angles relative to default pose (rad)</td><td><code>mdp.observations:joint_pos_rel</code> <span class="src">:401</span></td></tr>
+<tr><td>5</td><td>joint_vel</td><td>16</td><td>Joint velocities (rad/s)</td><td><code>mdp.observations:joint_vel_rel</code> <span class="src">:414</span></td></tr>
+<tr><td>6</td><td>actions</td><td>16</td><td>Previous action vector</td><td><code>mdp.observations:last_action</code> <span class="src">:427</span></td></tr>
+<tr><td>7</td><td>gait_phase</td><td>2</td><td>[cos, sin] of the reference gait cycle phase</td><td><code>imitation_reward:gait_phase_observation</code> <span class="src">:437</span></td></tr>
+<tr><td colspan="2"><strong>Total</strong></td><td><strong>59</strong></td><td colspan="2">No <code>base_lin_vel</code> — that is critic-only (62 dims, env.yaml :452+)</td></tr>
+</table>
+
+<div class="warning"><strong>Normalization is baked in — never pre-normalize.</strong> The checkpoint was
+trained with <code>obs_normalization: true</code> on both actor and critic MLPs
+<span class="src">source: params/agent.yaml lines 30, 42</span>, and RSL-RL's
+<code>get_inference_policy()</code> returns a callable that applies the learned running mean/std internally.
+Feed it <em>raw</em> environment observations. Normalizing upstream would double-normalize and produce
+garbage actions that look almost plausible — the worst kind of bug.</div>
+
+<div class="warning"><strong>The gait_phase trap.</strong> Dims 58&ndash;59 come from
+<code>gait_phase_observation()</code>, which does <em>not</em> own its phase counter. The counter
+(<code>_step_idx</code>) lives inside the <code>ImitationReward</code> <em>reward</em> term and is advanced
+once per step by the reward computation; the observation function merely looks the reward instance up in a
+module-global registry (<code>_instances: dict[int, ImitationReward]</code>) keyed by <code>id(env)</code>,
+and <strong>returns zeros if no instance is registered</strong>
+<span class="src">source: parent isaac_lab_env/open_duck_mini_v2/imitation_reward.py:45 (registry),
+:154 (registration in the term's __init__), :290 (counter advance inside the reward call),
+:295&ndash;308 (observation reads the registry, zero-fallback)</span>.
+Consequence: if you strip the reward manager or remove the imitation reward term ("we're not training, who
+needs rewards?"), 2 of 59 obs dims silently freeze at zero and gait quality degrades with no error message.
+<strong>Design: DuckEmbodyEnvCfg keeps the full reward manager computing every step.</strong> The reward
+values are discarded; the side effect is what we need. The wasted compute is irrelevant at num_envs=1.</div>
+
+<h2 id="s3">3. Policy loading design</h2>
+
+<p>We follow the proven adapter from the parent repo's evaluation harness
+(<code>RslRlPolicy</code>, parent scripts/evaluate_policies.py:1205&ndash;1255) rather than inventing a loader:</p>
+
+<pre><code># duck_embody/policy_io.py (design)
+from importlib import metadata
+from rsl_rl.runners import OnPolicyRunner
+from isaaclab_rl.rsl_rl import RslRlVecEnvWrapper, handle_deprecated_rsl_rl_cfg
+from isaaclab_tasks.utils.parse_cfg import load_cfg_from_registry
+
+agent_cfg = load_cfg_from_registry(TASK_ID, "rsl_rl_cfg_entry_point")
+agent_cfg = handle_deprecated_rsl_rl_cfg(agent_cfg, metadata.version("rsl-rl-lib"))  # REQUIRED
+env_w   = RslRlVecEnvWrapper(gym_env, clip_actions=agent_cfg.clip_actions)
+runner  = OnPolicyRunner(env_w, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+runner.load(CHECKPOINT_PATH)
+policy  = runner.get_inference_policy(device=env_w.device)  # deterministic MEAN actions
+</code></pre>
+
+<ul>
+<li><strong>The shim is not optional.</strong> rsl-rl-lib 5.x renamed config keys; loading our config
+without <code>handle_deprecated_rsl_rl_cfg</code> crashes <code>OnPolicyRunner</code> with
+<code>KeyError: 'class_name'</code>
+<span class="src">source: parent scripts/evaluate_policies.py:1208&ndash;1210 (docstring), :1219&ndash;1221
+(shim call + comment), :1176 (version lookup); installed rsl-rl-lib is 5.0.1</span>.</li>
+<li><strong>Deterministic inference.</strong> <code>get_inference_policy()</code> returns mean actions (no
+sampling noise) with normalization applied — same mode as the 3,200-episode eval record, so playback
+behavior matches the evidence we trust <span class="src">source: evaluate_policies.py:1230&ndash;1231</span>.</li>
+<li><strong><code>torch.no_grad()</code>, NOT <code>torch.inference_mode()</code>.</strong> Stepping the env
+inside <code>inference_mode</code> marks lazily-created sim-state tensors as inference tensors; a later
+out-of-scope <code>env.reset()</code> (we reset between trials!) then fails with
+"Inplace update to inference tensor outside InferenceMode"
+<span class="src">source: evaluate_policies.py:1446&ndash;1450 (comment + no_grad block)</span>.
+All Duck Embody stepping loops use <code>no_grad</code>.</li>
+</ul>
+
+<div class="decision"><strong>Locked:</strong> load via OnPolicyRunner + deprecation shim +
+<code>get_inference_policy</code>, step under <code>torch.no_grad()</code>. WHY: byte-for-byte the pattern
+already validated by 3,200 eval episodes in the parent repo; novelty here buys only risk.</div>
+
+<h2 id="s4">4. Command injection — the core mechanism</h2>
+
+<p>This is the single most important (and most booby-trapped) piece of the playback layer. The environment
+inherits Isaac Lab's <code>UniformVelocityCommand</code> term, which was designed to <em>generate random
+training commands</em> — three of its behaviors will silently fight an external commander:</p>
+
+<table>
+<tr><th>Trap</th><th>What it does</th><th>Evidence</th></tr>
+<tr><td>Heading controller overwrite</td><td>With <code>heading_command=True</code> (the inherited default) and
+<code>rel_heading_envs=1.0</code>, <code>_update_command()</code> recomputes <code>wz</code> <em>every step</em>
+from a P-controller on a random heading target — any wz you wrote is clobbered before the policy sees it.</td>
+<td><span class="src">IsaacLab velocity_command.py:143&ndash;159 (heading branch writes
+<code>vel_command_b[env_ids, 2]</code>); defaults heading_command=True, rel_heading_envs=1.0 at
+velocity_env_cfg.py:98&ndash;99</span></td></tr>
+<tr><td>Standing-env zeroing</td><td><code>rel_standing_envs=0.02</code>: on each resample the env has a 2%
+chance to be flagged "standing", after which <code>_update_command()</code> zeroes the whole command every step.</td>
+<td><span class="src">velocity_command.py:141, :162&ndash;163; default 0.02 at velocity_env_cfg.py:97</span></td></tr>
+<tr><td>10 s resampler</td><td><code>resampling_time_range=(10.0, 10.0)</code>: every 10 s the term draws a fresh
+random command from <code>cfg.ranges</code>, discarding whatever was in <code>vel_command_b</code>.</td>
+<td><span class="src">scheduler: command_manager.py:161&ndash;163, :184 (CommandTerm.compute decrements
+<code>time_left</code>, redraws it from <code>resampling_time_range</code>); redraw itself:
+velocity_command.py:130&ndash;141; default at velocity_env_cfg.py:96</span></td></tr>
+</table>
+
+<p>The parent repo already solved the fixed-command version of this problem in
+<code>apply_condition()</code> <span class="src">source: parent scripts/evaluate_policies.py:1386&ndash;1416</span>,
+whose docstring notes the key fact that makes the design safe: the live term reads
+<code>cfg.ranges / cfg.heading_command / cfg.rel_standing_envs</code> <em>dynamically</em> on every
+resample, so mutating the cfg on a built env works. Our design extends it for per-turn command changes:</p>
+
+<pre><code># One-time, at env build (defuse the traps):
+term = env.command_manager.get_term("base_velocity")
+term.cfg.heading_command    = False        # heading P-ctrl can never overwrite wz
+term.cfg.rel_standing_envs  = 0.0          # no random standing zeroing
+term.cfg.resampling_time_range = (1.0e9, 1.0e9)   # resampler effectively never fires
+
+# Per LLM-commanded segment (belt AND suspenders):
+def set_command(term, vx, vy, wz):          # values pre-clamped to the training hull
+    term.cfg.ranges.lin_vel_x = (vx, vx)    # belt: IF anything ever resamples,
+    term.cfg.ranges.lin_vel_y = (vy, vy)    #   it can only redraw the same value
+    term.cfg.ranges.ang_vel_z = (wz, wz)
+    term.vel_command_b[:, 0] = vx           # suspenders: take effect immediately,
+    term.vel_command_b[:, 1] = vy           #   no waiting for a resample event
+    term.vel_command_b[:, 2] = wz
+</code></pre>
+
+<p>The direct <code>vel_command_b</code> write is safe precisely <em>because</em> of the one-time defusal:
+with the heading branch off and standing fraction 0, <code>_update_command()</code> becomes a no-op
+<span class="src">source: velocity_command.py:143&ndash;163 — both mutation sites are gated on
+<code>cfg.heading_command</code> and the standing mask</span>, and with the resample interval pinned to
+~31 years of sim time the redraw never triggers within a 240-policy-second stage. The degenerate ranges are
+retained anyway so that an env <em>reset</em> (between trials, which does resample all envs) also deals the
+intended command. All commands are clamped to the training hull vx ∈ (−0.148, 0.222), vy ∈ (−0.111, 0.111),
+wz ∈ (−0.5, 0.5) m/s / rad/s before injection
+<span class="src">source: parent env_cfg.py:215&ndash;217 (training ranges)</span>.</p>
+
+<div class="decision"><strong>Locked:</strong> defuse-once + pin-ranges + direct-write per segment.
+WHY: it is the parent repo's proven <code>apply_condition</code> pattern, extended with the direct buffer
+write so per-turn command changes take effect on the very next control step instead of the next resample.</div>
+
+<h2 id="s5">5. DuckEmbodyEnvCfg vs. OpenDuckRobustEnvCfg_PLAY</h2>
+
+<p><code>DuckEmbodyEnvCfg</code> subclasses the parent's playback config
+<code>OpenDuckRobustEnvCfg_PLAY</code> <span class="src">source: parent env_cfg.py:349&ndash;370</span>
+(which already disables domain randomization, observation corruption, and pushes). Full delta:</p>
+
+<table>
+<tr><th>Change</th><th>PLAY value</th><th>DuckEmbody value</th><th>Why</th></tr>
+<tr><td><code>scene.num_envs</code></td><td>50 <span class="src">env_cfg.py:355</span></td><td><strong>1</strong></td>
+<td>One robot in one apartment; camera + LLM drive a single agent.</td></tr>
+<tr><td><code>terminations.time_out</code></td><td><code>mdp.time_out</code> at <code>episode_length_s=40</code>
+<span class="src">velocity_env_cfg.py:270; env_cfg.py:356</span></td><td><strong>None</strong></td>
+<td>Isaac Lab auto-resets a done env inside <code>env.step()</code> — at t=40 s the robot would silently
+<em>teleport</em> back to spawn mid-trial. Trials run to caps managed by the harness, not the env clock.</td></tr>
+<tr><td><code>terminations.base_contact</code></td><td>illegal_contact, trunk_assembly &gt; 1 N
+<span class="src">velocity_env_cfg.py:271&ndash;274; retargeted to trunk_assembly at parent env_cfg.py:223&ndash;225</span></td>
+<td><strong>Removed</strong></td>
+<td>In an apartment the trunk <em>will</em> brush furniture and walls; a 1 N touch must not end the episode.
+Trunk contact instead sets the <code>bumped</code> status flag returned by <code>get_observation</code>/<code>move</code>.</td></tr>
+<tr><td>Fall termination</td><td>(covered by base_contact)</td><td><strong>Added:</strong> tilt &gt; 60°
+(projected-gravity test) OR base height &lt; 0.09 m</td>
+<td>A real fall must end the trial (scored failure). Tilt+height detects "robot is down" without punishing
+furniture brushes. Nominal trunk height ≈ 0.17 m, so 0.09 m is unambiguous. When this fires, the harness
+reads <code>terminated</code> from the step return and aborts the trial <em>before</em> acting on any
+post-reset (teleported) state.</td></tr>
+<tr><td><code>events.reset_base</code></td><td>±0.5 m random xy, random yaw
+<span class="src">parent env_cfg.py:235&ndash;249</span></td><td><strong>Pinned per-seed spawn</strong></td>
+<td>Seeds 101&ndash;104 map to fixed spawn points + headings from the layout's <code>spawn_points</code>;
+degenerate pose_range (x,x)/(y,y)/(yaw,yaw) set before each trial's reset.</td></tr>
+<tr><td><code>commands.base_velocity.debug_vis</code></td><td>True (inherited)
+<span class="src">velocity_env_cfg.py:101</span></td><td><strong>False</strong></td>
+<td>The command term draws velocity arrows above the robot; they would render into the head camera and
+leak the commanded velocity into the LLM's images.</td></tr>
+<tr><td>Command term cfg</td><td>heading_command inherited True, resample 10 s, standing 2%</td>
+<td><strong>Defused at build</strong> (section 4)</td><td>LLM owns the command channel.</td></tr>
+<tr><td>Rewards</td><td>Full DuckRewards manager</td><td><strong>Kept unchanged</strong></td>
+<td>ImitationReward's step counter feeds the gait_phase obs dims (section 2 trap).</td></tr>
+<tr><td>Scene</td><td>Empty plane</td><td>+ apartment (walls, props, per <a href="03-scene-design.html">doc 03</a>)</td><td>The task world.</td></tr>
+</table>
+
+<div class="warning"><strong>Auto-reset is the sneakiest failure mode in this table.</strong> Isaac Lab
+manager-based envs reset any env whose termination manager reports done, inside the same
+<code>env.step()</code> call, and return the <em>post-reset</em> observation. With the stock PLAY config a
+Duck Embody trial would hit <code>time_out</code> at 40 s and the robot would be teleported to a
+<em>random</em> pose near the env origin — <code>reset_base</code> redraws xy in ±0.5 m and yaw in ±π
+(this table's own reset_base row) — or to exactly the pinned spawn once DuckEmbodyEnvCfg's degenerate
+ranges are set. Either way, no exception is raised — dead-reckoning, the LLM's map, and scoring would all
+silently corrupt. Hence <code>time_out=None</code> and harness-side cap enforcement.</div>
+
+<h2 id="s6">6. Motion macros: turn_to_heading, move, send_velocity</h2>
+
+<p>The LLM does not micro-manage 50 Hz control. It calls three motion tools, each of which runs a
+closed-loop (or fixed-duration) stepping loop over the frozen policy. Shared math: control runs at 50 Hz
+(<code>sim.dt=0.005 s × decimation 4</code> <span class="src">source: parent env_cfg.py:189&ndash;190</span>),
+so <code>duration_s</code> maps to <code>N = round(50 × duration_s)</code> control steps. Commands are
+injected via section 4's <code>set_command()</code>; every loop iteration checks the fall flag and the
+bump sensor. "Dead reckoning" = estimating position by integrating commanded velocity over time; it drifts,
+and that drift is a measured feature of the study, not a bug to hide.</p>
+
+<h3>6.1 turn_to_heading(heading_deg)</h3>
+<pre><code>def turn_to_heading(heading_deg, tol_deg=5.0, timeout_s=8.0):
+    target = wrap_to_pi(deg2rad(heading_deg))
+    for _ in range(int(50 * timeout_s / CHUNK)):        # CHUNK = 10 steps = 0.2 s
+        err = wrap_to_pi(target - compass_rad())        # compass: BNO055-realistic heading
+        if abs(err) &lt;= deg2rad(tol_deg):
+            set_command(0, 0, 0); step(CHUNK)           # settle
+            return ok(turned_to=heading_deg)
+        wz = clip(KP_TURN * err, -0.5, +0.5)            # P-control, clamped to hull
+        set_command(0, 0, wz); step(CHUNK)
+    return timeout(final_heading=compass_deg())
+</code></pre>
+<p><code>KP_TURN</code> initial value 1.5 (saturates at 0.5 rad/s for errors &gt; ~19°, proportional inside);
+tuned once during the smoke test, then frozen. This mirrors Isaac Lab's own heading controller structure
+(P-gain then clip to <code>ranges.ang_vel_z</code>) <span class="src">source: velocity_command.py:153&ndash;159,
+stiffness 0.5 at velocity_env_cfg.py:100</span> — we just point it at the LLM's target instead of a random one.</p>
+
+<h3>6.2 move(distance_m)</h3>
+<pre><code>def move(distance_m):
+    dist    = min(distance_m, 1.5)                      # cap per call
+    goal_s  = dist / 0.2                                # commanded vx = 0.2 m/s
+    for chunk in range(int(50 * goal_s * 1.5 / CHUNK)): # 1.5x time margin
+        set_command(0.2, 0, 0); step(CHUNK)
+        integrate_dead_reckoning(vx=0.2, dt=0.2)        # x += k*0.2*0.2*cos(h), etc.
+        if bumped():                                     # trunk contact force sustained
+            set_command(0, 0, 0); step(CHUNK)
+            return stopped(reason="bump", moved=dr_distance())
+        if dr_distance() &gt;= dist:
+            set_command(0, 0, 0); step(CHUNK)
+            return ok(moved=dr_distance())
+    return timeout(moved=dr_distance())
+</code></pre>
+<p><code>k</code> is the velocity-realization factor (commanded → achieved m/s) measured by
+<code>smoke_displacement.py</code> before freeze (section 7); until measured it is 1.0. Bump detection reads
+the existing trunk contact sensor (the same signal the removed <code>base_contact</code> termination used),
+debounced over a few chunks so a single 1 N grazing spike doesn't halt a legitimate squeeze through a
+0.35 m doorway.</p>
+
+<h3>6.3 send_velocity(vx, vy, wz, duration_s)</h3>
+<pre><code>def send_velocity(vx, vy, wz, duration_s):
+    vx, vy, wz = clamp_to_hull(vx, vy, wz)              # section 4 hull
+    d  = clip(duration_s, 0.2, 3.0)
+    set_command(vx, vy, wz); step(round(50 * d))
+    set_command(0, 0, 0)                                 # never leave a command running
+    integrate_dead_reckoning(vx, vy, wz, d)
+    return status()
+</code></pre>
+<p>Raw escape hatch for the LLM (e.g. backing out of a corner with vx &lt; 0). Every macro ends by zeroing
+the command — the sim pauses between LLM turns, and a nonzero command must never be left armed across a
+multi-minute LLM think.</p>
+
+<h2 id="s7">7. Known unknowns</h2>
+
+<p>Honesty section: things the parent repo's evidence does <em>not</em> cover, with our mitigation.</p>
+
+<ul>
+<li><strong>Net displacement was never measured.</strong> The parent eval's velocity metric is an
+instantaneous L2 error between commanded and achieved velocity (v4_robust: 0.153 m/s
+<span class="src">source: v4_comparison.md line 62, v_xy err column</span>) — it never integrated position.
+Commanded 0.2 m/s could realize as ~0.17 m/s net and the eval would not distinguish "tracks with small
+symmetric noise" from "tracks with a consistent shortfall" — and a mean L2 error of 0.153 m/s against
+commands of ~0.2 m/s magnitude leaves plenty of room for exactly such a shortfall. Dead reckoning built
+on commanded velocity inherits that unknown bias. <em>Mitigation:</em> <code>smoke_displacement.py</code> (harness smoke test, runs
+in the one persistent Isaac Sim process) drives fixed forward/turn segments, measures ground-truth
+displacement, and calibrates the realization factor <code>k</code> and expected drift rate — <strong>before</strong>
+the caps, scoring constants, and prompt are frozen.</li>
+<li><strong>Long constant-command holds are untested.</strong> Eval episodes held one command for 30 s; a
+Duck Embody stage allows up to 240 policy-seconds with commands held across many macro calls. Slow
+instabilities (thermal-like drift in gait phase alignment, yaw creep) would be invisible in the record.
+<em>Mitigation:</em> smoke test includes a 120 s straight-line hold.</li>
+<li><strong>Step command changes are untested.</strong> Training resampled commands every 10 s with the env
+mid-gait; eval never switched commands inside a window. Our macros switch commands every 0.2 s chunk
+(turn P-control) and at every macro boundary. The policy's previous-action and gait-phase obs should absorb
+this, but "should" is not evidence. <em>Mitigation:</em> smoke test includes turn→drive→turn transitions and
+watches for stumbles.</li>
+<li><strong>Apartment terrain ≠ eval terrain.</strong> Eval was an empty plane; doorway squeezes and prop
+contact are new. Falls there are scored honestly as falls (a fall ends the trial), and bump counts are a
+reported metric.</li>
+</ul>
+
+<h2 id="s8">8. Gotcha summary</h2>
+
+<table>
+<tr><th>#</th><th>Gotcha</th><th>Symptom if ignored</th><th>Evidence (file:line)</th></tr>
+<tr><td>1</td><td>Heading controller overwrites wz every step</td><td>Robot ignores turn commands, wanders
+toward random headings</td><td>IsaacLab velocity_command.py:150&ndash;159; defaults velocity_env_cfg.py:98&ndash;99</td></tr>
+<tr><td>2</td><td>2% standing-env command zeroing</td><td>Robot randomly freezes for a whole resample period</td>
+<td>velocity_command.py:141, 162&ndash;163; velocity_env_cfg.py:97</td></tr>
+<tr><td>3</td><td>10 s resampler clobbers written commands</td><td>Injected command survives ≤ 10 s then goes random</td>
+<td>command_manager.py:161&ndash;163, :184 (scheduler); velocity_command.py:130&ndash;141 (redraw);
+velocity_env_cfg.py:96</td></tr>
+<tr><td>4</td><td>gait_phase obs fed by the ImitationReward <em>reward</em> term via module-global registry</td>
+<td>Strip rewards → 2 obs dims freeze at zero, gait quietly degrades</td>
+<td>parent imitation_reward.py:45, 154, 290, 295&ndash;308</td></tr>
+<tr><td>5</td><td>rsl-rl-lib 5.x config rename</td><td><code>KeyError: 'class_name'</code> at runner construction</td>
+<td>parent evaluate_policies.py:1219&ndash;1221 (shim), :1208&ndash;1210</td></tr>
+<tr><td>6</td><td><code>inference_mode</code> poisons sim tensors</td><td>Next <code>env.reset()</code> crashes:
+"Inplace update to inference tensor"</td><td>parent evaluate_policies.py:1446&ndash;1450</td></tr>
+<tr><td>7</td><td>Obs normalization baked into checkpoint</td><td>Pre-normalizing double-normalizes → subtly broken gait</td>
+<td>params/agent.yaml:30,42 (<code>obs_normalization: true</code>)</td></tr>
+<tr><td>8</td><td>Auto-reset teleports robot inside <code>env.step()</code> at time_out</td><td>Robot silently
+teleported to a random near-origin pose (or the pinned spawn, once ranges are degenerate) at t=40 s;
+map/DR/scoring corrupt</td><td>velocity_env_cfg.py:270 (time_out term);
+parent env_cfg.py:356 (episode_length_s=40 in PLAY)</td></tr>
+<tr><td>9</td><td>base_contact terminates on 1 N trunk touch</td><td>Episode ends the first time the duck brushes a chair</td>
+<td>velocity_env_cfg.py:271&ndash;274; parent env_cfg.py:223&ndash;225</td></tr>
+<tr><td>10</td><td>Command debug arrows render into camera</td><td>LLM sees its own commanded velocity drawn in the world</td>
+<td>velocity_env_cfg.py:101 (<code>debug_vis=True</code> default)</td></tr>
+</table>
+
+<h2 id="s9">9. Validation performed</h2>
+
+<p>All checks run 2026-07-26 on this machine, read-only (no Isaac Sim / kit process launched).</p>
+
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>apply_condition location + mechanism</td><td><code>grep -n apply_condition scripts/evaluate_policies.py</code>; read 1386&ndash;1416</td>
+<td>Confirmed at :1386; manager-based branch sets heading_command=False, rel_standing_envs=0.0, degenerate ranges at :1411&ndash;1416</td></tr>
+<tr><td>rsl-rl shim requirement</td><td>read evaluate_policies.py 1180&ndash;1255</td>
+<td>Confirmed: import :1187&ndash;1190, docstring :1208&ndash;1210 ("REQUIRED with rsl-rl-lib 5.0.1 … KeyError 'class_name'"), call :1221, version lookup :1176</td></tr>
+<tr><td>no_grad-not-inference_mode comment</td><td>read evaluate_policies.py 1444&ndash;1450</td>
+<td>Confirmed at :1446&ndash;1450, wording matches section 3</td></tr>
+<tr><td>_update_command overwrite behavior</td><td><code>sed -n '143,164p' IsaacLab .../mdp/commands/velocity_command.py</code></td>
+<td>Confirmed: def at :143, heading branch writes <code>vel_command_b[env_ids, 2]</code> :150&ndash;159, standing zeroing :162&ndash;163; resample :130&ndash;141</td></tr>
+<tr><td>Resample scheduler location</td><td><code>grep -n 'time_left\|resampling_time_range' IsaacLab .../managers/command_manager.py</code></td>
+<td>Confirmed: <code>time_left -= dt</code> :161, trigger :163&ndash;165, redraw from
+<code>resampling_time_range</code> :184 — all in the <code>CommandTerm</code> base class.
+velocity_command.py:116 (cited by an earlier draft) is <code>_update_metrics</code> normalization, not the scheduler</td></tr>
+<tr><td>Inherited command defaults</td><td><code>sed -n '88,101p' IsaacLab .../velocity/velocity_env_cfg.py</code></td>
+<td>Confirmed :96&ndash;101: resampling (10,10), rel_standing 0.02, rel_heading 1.0, heading_command True, stiffness 0.5, debug_vis True</td></tr>
+<tr><td>gait_phase registry side effect</td><td><code>grep -n '_instances\|gait_phase_observation\|_step_idx' imitation_reward.py</code> + read 280&ndash;308</td>
+<td>Confirmed: registry :45, registration :154, counter advance :290, observation w/ zero-fallback :295&ndash;308 (spec said ~290&ndash;308; function is 295&ndash;308)</td></tr>
+<tr><td>Parent env_cfg key values</td><td><code>grep -n 'episode_length_s\|base_contact\|reset_base\|lin_vel_x' env_cfg.py</code> + read 180&ndash;420</td>
+<td>Confirmed: dt/decimation :189&ndash;190, num_envs 4096 :185, hull ranges :215&ndash;217, base_contact→trunk_assembly :223&ndash;225, reset_base ±0.5 m :235&ndash;249, PLAY class :349 (num_envs 50 :355, eplen 40 :356, fixed fwd ranges :357&ndash;359)</td></tr>
+<tr><td>time_out + base_contact terms exist upstream</td><td><code>grep -n 'time_out\|illegal_contact' velocity_env_cfg.py</code></td>
+<td>Confirmed :270 (time_out DoneTerm) and :271&ndash;274 (illegal_contact, threshold 1.0)</td></tr>
+<tr><td>59-dim actor obs order</td><td><code>grep -n func .../2026-07-07_00-15-43/params/env.yaml</code></td>
+<td>Confirmed order at :365/:378/:391/:401/:414/:427/:437 = ang_vel, gravity, commands, joint_pos, joint_vel, last_action, gait_phase (3+3+3+16+16+16+2=59); critic adds base_lin_vel :452</td></tr>
+<tr><td>Normalization + obs_groups baked in</td><td>read params/agent.yaml 1&ndash;45</td>
+<td>Confirmed: obs_groups actor=[policy] critic=[critic] :6&ndash;10; obs_normalization true :30 (actor), :42 (critic)</td></tr>
+<tr><td>Checkpoint exists</td><td><code>ls ~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/</code></td>
+<td>Confirmed: model_2999.pt present (with model_0…2900 + params/ + exported/)</td></tr>
+<tr><td>Eval record claim</td><td><code>grep -n v4_robust docs/jetson-mod/v4_comparison.md</code> + header row :58 for column order</td>
+<td>Confirmed line 62: gate 5/5, falls 0.0, v_xy err 0.153, wz err 0.067 (0.0753 in the same row is the
+<em>Jerk</em> column — an earlier draft misread it as the velocity error); line 70: 0.0 falls in all 5 conditions</td></tr>
+<tr><td>Section 3 snippet APIs resolve</td><td><code>grep -n</code> over IsaacLab sources</td>
+<td>Confirmed: <code>load_cfg_from_registry</code> at isaaclab_tasks/utils/parse_cfg.py:20 (now imported in the
+snippet); <code>RslRlVecEnvWrapper.device</code> set at rsl_rl/vecenv_wrapper.py:53, so
+<code>env_w.device</code> is valid (parent evaluate_policies.py:1231 equivalently uses the unwrapped env's device)</td></tr>
+<tr><td>rsl-rl-lib installed version</td><td><code>python3 -c "importlib.metadata.version('rsl-rl-lib')"</code></td>
+<td>5.0.1</td></tr>
+</table>
+
+<h2 id="s10">10. Open questions</h2>
+
+<ul>
+<li><strong>Velocity realization factor.</strong> Is commanded 0.2 m/s ≈ achieved 0.2 m/s in net
+displacement? Unknown until <code>smoke_displacement.py</code> runs (section 7). All dead-reckoning and
+time-cap arithmetic in this doc assumes k≈1 provisionally.</li>
+<li><strong>KP_TURN value.</strong> 1.5 is a starting guess (upstream uses 0.5 for its own heading
+controller); the smoke test must confirm convergence within tolerance without oscillation, then freeze it.</li>
+<li><strong>Bump debounce threshold.</strong> Force level and persistence (N steps &gt; 1 N?) that separates
+"doorway squeeze" from "real collision" needs empirical tuning in the apartment scene.</li>
+<li><strong>Fall-detector thresholds.</strong> 60° tilt / 0.09 m height are engineering picks; verify against
+a deliberately toppled robot in the smoke test that they fire on real falls and never during aggressive turns.</li>
+<li><strong>Checkpoint vendoring.</strong> <code>policy/</code> in this repo currently contains only a
+README; the actual copy of <code>model_2999.pt</code> (+ params/env.yaml + params/agent.yaml, which this doc
+treats as source of truth) must land before the public repo is self-contained.</li>
+<li><strong>num_envs=1 obs-normalizer edge cases.</strong> The eval record used 50&ndash;64 envs; nothing in
+RSL-RL's inference path is batch-size dependent in principle, but the smoke test should confirm identical
+single-env behavior (e.g. no BatchNorm-style surprises — the model is a plain MLP, so risk is low).</li>
+<li><strong>Reset-between-trials hygiene.</strong> After pinning per-seed spawn via degenerate
+<code>reset_base</code> ranges, confirm that a manual <code>env.reset()</code> between sequential trials in
+the one persistent process fully clears contact-sensor history and the ImitationReward step counter
+(it zeroes <code>_step_idx</code> on reset per imitation_reward.py:189&ndash;191 — verify at runtime).</li>
+</ul>
+
+</main>
+</body>
+</html>

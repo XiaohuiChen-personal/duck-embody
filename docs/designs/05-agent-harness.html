@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Doc 05 — Agent Loop, Tools &amp; Memory (LLM-as-SLAM)</title>
+<style>
+:root{--ink:#1a2233;--muted:#5b6678;--line:#dde3ec;--bg:#ffffff;--panel:#f6f8fb;--accent:#0b6bcb;--warn-bg:#fff7ed;--warn-line:#f5a623;--ok-bg:#f0f9f1;--ok-line:#3a9d5d;--dec-bg:#eef4ff;--dec-line:#0b6bcb;}
+*{box-sizing:border-box}body{margin:0;padding:2rem 1rem;font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+main{max-width:920px;margin:0 auto}h1{font-size:1.9rem;margin:.2rem 0 .4rem}h2{font-size:1.35rem;margin-top:2.2rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}h3{font-size:1.1rem;margin-top:1.6rem}
+p,li{max-width:78ch}code{background:var(--panel);padding:.1em .35em;border-radius:4px;font-size:.92em}
+pre{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:8px;overflow-x:auto;font-size:.85rem;line-height:1.5}pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}th{background:var(--panel);text-align:left}th,td{border:1px solid var(--line);padding:.5rem .7rem;vertical-align:top}
+.banner{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:8px;padding:.7rem 1rem;margin:1rem 0;font-weight:600}
+.decision{background:var(--dec-bg);border-left:4px solid var(--dec-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warning{background:var(--warn-bg);border-left:4px solid var(--warn-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.note{background:var(--ok-bg);border-left:4px solid var(--ok-line);padding:.7rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.meta{color:var(--muted);font-size:.9rem}.src{color:var(--muted);font-size:.85em}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:1rem 1.4rem;margin:1.2rem 0}nav.toc ol{margin:.3rem 0 .2rem 1.1rem;padding:0}
+a{color:var(--accent)}svg{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Agent Loop, Tools &amp; Memory (LLM-as-SLAM)</h1>
+<p class="meta">Doc 05 - Duck Embody low-level design - 2026-07-26 - <a href="index.html">all design docs</a></p>
+<div class="banner">DRAFT — pending owner approval</div>
+
+<p><strong>Who should read this / what you'll learn.</strong> This document is the low-level design of the
+agent harness: the loop that lets a large language model (LLM — a text-and-image model such as Claude,
+called over an API) drive a simulated 42&nbsp;cm bipedal robot through an unknown apartment using
+<em>tool calls</em> (structured function invocations the model emits instead of prose). It assumes no
+robotics or Isaac Sim background: every term of art — SLAM, dead reckoning, loop closure, frontier — is
+defined on first use. After reading you will know the exact turn lifecycle, the full tool schema, the
+memory data structures and how they render into the prompt, the provider adapters for the Anthropic and
+OpenAI APIs, and the error-handling and scoring boundaries. Code homes:
+<code>duck_embody/agent/loop.py</code>, <code>tools.py</code>, <code>memory.py</code>,
+<code>prompts.py</code> (currently docstring skeletons).</p>
+
+<nav class="toc"><strong>Contents</strong>
+<ol>
+<li><a href="#core">The core question: can an LLM be its own SLAM?</a></li>
+<li><a href="#primer">SLAM for newcomers — what we keep, replace, drop</a></li>
+<li><a href="#loop">Episode loop design</a></li>
+<li><a href="#tools">Tool surface — full schema and semantics</a></li>
+<li><a href="#memory">Memory system low-level design</a></li>
+<li><a href="#prompt">Prompt design</a></li>
+<li><a href="#providers">Provider abstraction</a></li>
+<li><a href="#errors">Error handling policy</a></li>
+<li><a href="#priorart">Prior-art anchoring</a></li>
+<li><a href="#failures">What we predict will fail</a></li>
+<li><a href="#validation">Validation performed</a></li>
+<li><a href="#open">Open questions</a></li>
+</ol>
+</nav>
+
+<h2 id="core">1. The core question: can an LLM be its own SLAM?</h2>
+
+<p>Anthropic's <a href="https://www.anthropic.com/research/claude-plays-robotics">"How Claude Performs on
+Robotics Tasks"</a> (Frontier Red Team, Jul&nbsp;9&nbsp;2026) reported a consistent negative finding: models
+navigating a quadruped from egocentric camera frames struggled with <em>spatial memory</em> — they re-explored
+visited areas, lost track of where they were, and leaned heavily on whatever was in the recent context window.
+Their harness (<code>safety-research/embody</code>) is unreleased
+<span class="src">source: 404 verified 2026-07-26, per AGENTS.md §1</span>, and it deliberately provided little
+memory scaffolding. Duck Embody asks the follow-up question: <strong>if we give the model a well-designed
+externalized memory — but make the model itself author every fact in it — can it navigate an unknown apartment
+reliably?</strong> That is, we replace SLAM (defined below) with the model's own cognition plus a text notebook
+the harness faithfully re-displays.</p>
+
+<div class="decision"><strong>Boundary principle (locked): "The harness stores and formats; the LLM perceives,
+estimates, and decides."</strong> No geometric fact enters memory unless the model asserted it from its own
+observations. WHY: the moment the harness starts injecting ground truth (real positions, real room labels,
+a geometry-built graph), the benchmark stops measuring the model's spatial cognition and starts measuring
+our scaffolding. Three declared, sensor-realistic exceptions mirror what a real robot's hardware provides
+for free: (a)&nbsp;<strong>compass heading</strong> (the BNO055 IMU on the physical duck gives absolute yaw),
+(b)&nbsp;<strong>dead-reckoned position</strong> integrated from <em>commanded</em> velocity (drifts honestly —
+commanded ≠ actual), and (c)&nbsp;<strong>closed-loop motion macros</strong> (<code>turn_to_heading</code>,
+<code>move</code>) that servo on those same two signals. Ground-truth position is <em>never</em> given to the
+model. <span class="src">source: AGENTS.md §3 rule 5</span></div>
+
+<h2 id="primer">2. SLAM for newcomers — what we keep, replace, drop</h2>
+
+<p><strong>SLAM</strong> (Simultaneous Localization And Mapping) is the classical robotics answer to "where am
+I, and what does this place look like?". A SLAM system provides three services: <strong>localization</strong>
+(a running estimate of the robot's pose — position + heading), <strong>mapping</strong> (a persistent model of
+the environment, e.g. an occupancy grid or landmark graph), and <strong>loop closure</strong> (recognizing
+"I've been here before" and snapping the accumulated pose error back to the earlier estimate). Under the hood
+it does heavy geometry: probabilistic filtering, bundle adjustment, uncertainty propagation over thousands of
+raw sensor readings.</p>
+
+<p>We keep the three <em>services</em> but re-implement each as language, and drop the geometric machinery —
+a deliberate mirror of the "keyframe" philosophy in visual SLAM (keep a sparse set of informative snapshots,
+discard the raw stream):</p>
+
+<table>
+<tr><th>SLAM service</th><th>Classical implementation</th><th>Duck Embody implementation</th><th>Keep / replace / drop</th></tr>
+<tr><td>Localization</td><td>Filter fusing odometry + vision</td><td>Harness integrates commanded velocity into an (x,&nbsp;y) estimate (dead reckoning — declared exception); compass gives heading</td><td><strong>Keep</strong> as breadcrumb position log</td></tr>
+<tr><td>Mapping</td><td>Occupancy grid / feature map</td><td>Model-authored room / exit / landmark graph stored as text, rendered back every turn</td><td><strong>Replace</strong>: landmark memory as language</td></tr>
+<tr><td>Loop closure</td><td>Place recognition + pose-graph optimization</td><td>Model re-recognizes a landmark and calls <code>correct_position(x, y, reason)</code> — cognitive loop closure</td><td><strong>Replace</strong>: cognition instead of optimization</td></tr>
+<tr><td>Geometric optimization</td><td>Bundle adjustment, pose-graph solvers</td><td>—</td><td><strong>Drop</strong></td></tr>
+<tr><td>Uncertainty propagation</td><td>Covariance tracking</td><td>— (the model is told the estimate drifts; no numeric covariance)</td><td><strong>Drop</strong></td></tr>
+<tr><td>Raw sensor history</td><td>Full scan/image archive</td><td>— (images older than the K=10-turn window are dropped; the map text is the durable record)</td><td><strong>Drop</strong> — keyframe philosophy</td></tr>
+</table>
+
+<h2 id="loop">3. Episode loop design</h2>
+
+<p>One <strong>trial</strong> = one seed (101–104; seed selects spawn point + heading from the layout's
+<code>spawn_points</code>) × one model, run inside the single persistent Isaac Sim process
+<span class="src">source: AGENTS.md §3 rule 1 (one GPU job; kit startup is minutes)</span>. A trial contains up
+to two <strong>stages</strong>: <code>find_kitchen</code> ("Find the kitchen and walk to the counter") and the
+continuation <code>return_home</code> in the same episode. The sim is <strong>paused between LLM calls</strong> —
+physics only advances inside <code>env.step()</code>, which only the motion tools drive. This measures
+capability, not API latency (the paper's protocol). At 50&nbsp;Hz control (sim dt 0.005&nbsp;s × decimation 4),
+a command of <code>duration_s</code> maps to N&nbsp;=&nbsp;50&nbsp;×&nbsp;duration_s control steps.</p>
+
+<h3>3.1 Turn lifecycle (pseudocode)</h3>
+
+<pre><code># duck_embody/agent/loop.py (planned)
+def run_stage(stage, state, sim, provider, tools):
+    while True:
+        # 1. Assemble the request — sim is PAUSED here
+        msgs = [state.first_turn] + last_k_turns(state.transcript[1:], K=10)  # [1:]: no duplicate
+        #   first turn while it is still inside the K window (early turns would
+        #   otherwise pay the spawn image's token cost twice)
+        mem  = render_memory_block(state.memory, state.counters)  # re-injected EVERY turn
+        req  = build_request(SYSTEM_PROMPT, mem, msgs, tools)     # images older than K dropped
+
+        # 2. Model call (deterministic decoding where supported; retry 429/5xx w/ backoff)
+        turn = provider.send(req)
+        state.turns += 1
+        log_usage(turn.usage)                                     # token + cost accounting
+
+        # 3. Dispatch tool calls IN ORDER; motion tools advance physics via env.step()
+        results = []
+        for i, call in enumerate(turn.tool_calls):
+            if call.name == "declare_done":
+                # The declare_done turn is KEPT: append it with a tool_result for
+                # EVERY call id in it (the echoed assistant turn must have its
+                # tool_use blocks answered, sec 7.2). declare_done's own result
+                # carries the stage outcome -- on stage 1, the return_home
+                # objective (sec 3.3). Calls listed after declare_done are not
+                # executed; they get a structured not_executed result.
+                results.append(stage_end_result(stage, state))
+                results += [not_executed(c) for c in turn.tool_calls[i+1:]]
+                state.transcript.append(turn, results)
+                return end_stage(stage, state, reason="declare_done")
+            results.append(dispatch(call, sim, state))            # bad call -> structured error
+            if state.fell:
+                return end_stage(stage, state, reason="fall")     # a fall ends the TRIAL
+                                                                  # (no further model calls, so
+                                                                  # the dropped turn is moot)
+        state.transcript.append(turn, results)                    # all results, one message
+
+        # 4. Caps (checked after execution; capped stages scored as failures, never retried)
+        if state.turns >= 40:            return end_stage(stage, state, reason="turn_cap")
+        if state.policy_seconds >= 240:  return end_stage(stage, state, reason="motion_cap")
+</code></pre>
+
+<h3>3.2 Stop conditions</h3>
+<table>
+<tr><th>Condition</th><th>Trigger</th><th>Effect</th></tr>
+<tr><td><code>declare_done</code></td><td>Model calls the tool</td><td>Stage ends immediately; scoring runs (success iff within the target radius — 0.35&nbsp;m of the kitchen-counter target region for <code>find_kitchen</code>, 0.5&nbsp;m of spawn for <code>return_home</code>)</td></tr>
+<tr><td>Turn cap</td><td>40 model turns in the stage</td><td>Stage ends; scored failure with partial progress</td></tr>
+<tr><td>Motion cap</td><td>240 policy-seconds of commanded motion in the stage</td><td>Stage ends; scored failure with partial progress</td></tr>
+<tr><td>Fall</td><td><code>status.fell</code> from the sim</td><td><strong>Trial</strong> ends (both stages); scored failure with partial progress</td></tr>
+</table>
+
+<h3>3.3 Stage transition: find_kitchen → return_home</h3>
+<p>When <code>find_kitchen</code> ends via <code>declare_done</code>, the harness: (1)&nbsp;scores stage 1 from
+ground truth (the model never sees the score), (2)&nbsp;resets the per-stage counters (turns → 0,
+policy-seconds → 0), (3)&nbsp;keeps the memory object and the transcript window intact — the whole point is
+that the map built on the way out should pay off on the way back; the declare_done turn itself stays in the
+transcript, with every tool call it bundled (memory writes included) answered by a tool_result (§3.1) — and
+(4)&nbsp;delivers the new objective <em>as the declare_done call's tool_result</em>, in the same user message
+as the turn's other results (satisfying the tool_use/tool_result pairing, §7.2):
+<em>"New objective: return to your starting position and call declare_done when you are there."</em>
+If stage 1 ends by cap or fall, <code>return_home</code> is not attempted and is scored as a failure
+(see <a href="#open">open questions</a> for the cap case).</p>
+
+<div class="warning"><strong>Multiple tool calls per turn are allowed and executed in listed order.</strong>
+This lets a model bundle memory writes (<code>update_room</code>, <code>mark_exit</code>,
+<code>update_plan</code>) with one motion command in a single turn — important because the 40-turn cap counts
+<em>model calls</em>, not tool calls. All results return in one message, per Anthropic's parallel-tool-use
+guidance — not an API-rejected shape (consecutive same-role messages are merged server-side), but splitting
+results across messages silently trains the model to stop making parallel calls (§7.2). Motion tools inside
+one turn execute sequentially and each advances physics; policy-seconds accumulate across them.</div>
+
+<h2 id="tools">4. Tool surface — full schema and semantics</h2>
+
+<p>Canonical, provider-neutral schema (the adapters in §7 translate it mechanically). The harness clamps and
+validates every argument independently of the schema — the schema is documentation for the model, the harness
+is the enforcer.</p>
+
+<pre><code>[
+  {"name": "get_observation",
+   "description": "One egocentric camera frame (512x512 RGB, 90 deg HFOV, head-mounted at ~0.36 m) plus compass heading, dead-reckoned position estimate, and status flags.",
+   "input_schema": {"type": "object", "properties": {}, "required": []}},
+
+  {"name": "look_around",
+   "description": "Four frames at compass headings 0/90/180/270 deg via virtual camera-mount rotation while the sim is paused. The robot does NOT move.",
+   "input_schema": {"type": "object", "properties": {}, "required": []}},
+
+  {"name": "turn_to_heading",
+   "description": "Rotate in place to an absolute compass heading. Closed-loop on the compass, tolerance +/-5 deg; yaw rate clamped to the trained hull; times out rather than spinning forever.",
+   "input_schema": {"type": "object",
+     "properties": {"heading_deg": {"type": "number", "description": "Target absolute heading, degrees [0,360)"}},
+     "required": ["heading_deg"]}},
+
+  {"name": "move",
+   "description": "Walk forward at vx=0.2 m/s, closed-loop on dead-reckoned distance. Max 1.5 m per call. Auto-stops on collision and reports the bump.",
+   "input_schema": {"type": "object",
+     "properties": {"distance_m": {"type": "number", "description": "Forward distance in meters, (0, 1.5]"}},
+     "required": ["distance_m"]}},
+
+  {"name": "send_velocity",
+   "description": "Raw escape hatch: command (vx, vy, wz) for duration_s. Clamped to the policy's training hull: vx in (-0.148, 0.222) m/s, vy in (-0.111, 0.111) m/s, wz in (-0.5, 0.5) rad/s. duration_s in [0.2, 3.0]. Note vy is near-useless for navigation (~9 s/m) - prefer turn-then-drive.",
+   "input_schema": {"type": "object",
+     "properties": {"vx": {"type": "number"}, "vy": {"type": "number"},
+                    "wz": {"type": "number"}, "duration_s": {"type": "number"}},
+     "required": ["vx", "vy", "wz", "duration_s"]}},
+
+  {"name": "update_room",
+   "description": "Create or update a room node in YOUR map with a visual description you observed.",
+   "input_schema": {"type": "object",
+     "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+     "required": ["name", "description"]}},
+
+  {"name": "add_landmark",
+   "description": "Attach a landmark description to a room in YOUR map.",
+   "input_schema": {"type": "object",
+     "properties": {"room": {"type": "string"}, "description": {"type": "string"}},
+     "required": ["room", "description"]}},
+
+  {"name": "mark_exit",
+   "description": "Record an exit/doorway from a room at an absolute compass direction. status is 'unexplored' or 'leads_to:&lt;room&gt;'.",
+   "input_schema": {"type": "object",
+     "properties": {"room": {"type": "string"},
+                    "direction_deg": {"type": "number"},
+                    "status": {"type": "string", "description": "'unexplored' or 'leads_to:&lt;room&gt;'"}},
+     "required": ["room", "direction_deg", "status"]}},
+
+  {"name": "set_current_room",
+   "description": "Assert which of YOUR rooms you are currently in.",
+   "input_schema": {"type": "object",
+     "properties": {"name": {"type": "string"}}, "required": ["name"]}},
+
+  {"name": "correct_position",
+   "description": "Reset the dead-reckoning integrator to (x, y) because you re-recognized a landmark (cognitive loop closure). Give the reason; every correction is logged.",
+   "input_schema": {"type": "object",
+     "properties": {"x": {"type": "number"}, "y": {"type": "number"},
+                    "reason": {"type": "string"}},
+     "required": ["x", "y", "reason"]}},
+
+  {"name": "update_plan",
+   "description": "Replace your standing plan. It is carried forward and re-injected every turn until you change it.",
+   "input_schema": {"type": "object",
+     "properties": {"text": {"type": "string"}}, "required": ["text"]}},
+
+  {"name": "declare_done",
+   "description": "End the current stage and trigger scoring. Call ONLY when you believe you are at the objective.",
+   "input_schema": {"type": "object", "properties": {}, "required": []}}
+]
+</code></pre>
+
+<h3>4.1 Perception tools</h3>
+<table>
+<tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
+<tr><td><code>get_observation()</code></td><td>Renders one frame from the head camera; reads the integrator and sim status. No physics steps.</td><td>image + <code>compass_deg</code> + <code>position_estimate {x, y}</code> + <code>status {bumped, fell, distance_moved_m}</code> (fields describe the <em>last</em> motion command)</td><td>None expected; render failure → infra path (§8)</td></tr>
+<tr><td><code>look_around()</code></td><td>Renders 4 frames at absolute headings 0/90/180/270° by rotating the virtual camera mount while paused; the robot body does not move, so no fall risk and no policy-seconds.</td><td>4 labeled images + the same state block as <code>get_observation</code></td><td>None expected; higher token cost (4 images) — the model pays for it in context</td></tr>
+</table>
+
+<h3>4.2 Motion tools</h3>
+<table>
+<tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
+<tr><td><code>turn_to_heading(heading_deg)</code></td><td>Closed-loop yaw on the compass: commands wz (clamped to ±0.5 rad/s) until |error| ≤ 5°, then stops.</td><td>final <code>compass_deg</code>, achieved error, policy-seconds used</td><td><strong>Timeout</strong>: if tolerance is not reached within the internal time budget, the macro stops and reports <code>timed_out: true</code> with the residual error — the model decides whether to retry. Fall during turn ends the trial.</td></tr>
+<tr><td><code>move(distance_m)</code></td><td>Drives forward at vx=0.2 m/s, servoing on dead-reckoned distance; caps at 1.5 m per call.</td><td><code>distance_moved_m</code> (dead-reckoned), <code>bumped</code>, new <code>position_estimate</code>, policy-seconds used</td><td><strong>Auto-stop on collision</strong>: contact detection halts the command early and reports <code>bumped: true</code> plus the distance actually covered (the bump counter feeds the metrics). Falls end the trial. Argument &gt; 1.5 clamped with a note in the result.</td></tr>
+<tr><td><code>send_velocity(vx, vy, wz, duration_s)</code></td><td>Raw command, every field clamped to the training hull; duration clamped to [0.2, 3.0] s.</td><td>executed (clamped) command echo, <code>bumped</code>, new estimate, policy-seconds used</td><td>Clamping is silent-but-reported: the result echoes what actually ran. Unlike <code>move</code>, there is <strong>no auto-stop</strong>: the command runs its full (clamped) duration even through contact; collisions are reported afterwards via <code>bumped: true</code> in the status (each bumped command increments the bump counter — see doc <a href="06-benchmark-evaluation.html">06</a> §5.6). Falls end the trial.</td></tr>
+</table>
+<p><span class="src">source: hull from parent repo .claude/rules/rl-training.md (velocity command ranges,
+clipped to the reference-motion grid hull); vy near-uselessness (~9 s/m) + turn-then-drive preference from
+AGENTS.md §5 (command envelope gotcha — the parent file does not contain that claim); policy v4_robust eval
+record in parent docs/jetson-mod/v4_comparison.md</span></p>
+
+<h3>4.3 Memory tools (write YOUR map)</h3>
+<table>
+<tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
+<tr><td><code>update_room(name, description)</code></td><td>Upsert a room node</td><td>ack + current room count</td><td>None; overwriting a description is legal (the model may revise)</td></tr>
+<tr><td><code>add_landmark(room, description)</code></td><td>Append a landmark string to a room</td><td>ack</td><td>Unknown <code>room</code> → structured error naming the known rooms (counts as a normal tool result, not a wasted turn)</td></tr>
+<tr><td><code>mark_exit(room, direction_deg, status)</code></td><td>Record/update an exit; keyed on (room, direction_deg rounded to nearest 15°)</td><td>ack</td><td>Unknown room → structured error; malformed <code>status</code> (not <code>unexplored</code> / <code>leads_to:&lt;room&gt;</code>) → structured error with the two legal forms</td></tr>
+<tr><td><code>set_current_room(name)</code></td><td>Assert current room</td><td>ack</td><td>Unknown room → structured error suggesting <code>update_room</code> first</td></tr>
+<tr><td><code>correct_position(x, y, reason)</code></td><td>Resets the integrator's (x, y); heading is never reset (compass is absolute). Appends to the correction log.</td><td>ack with old→new delta</td><td>None rejected — a bad anchor is the model's error to make; the log makes it measurable (§10)</td></tr>
+<tr><td><code>update_plan(text)</code></td><td>Replaces the standing plan verbatim</td><td>ack</td><td>None</td></tr>
+</table>
+
+<h3>4.4 Control</h3>
+<table>
+<tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
+<tr><td><code>declare_done()</code></td><td>Ends the stage; triggers scoring against ground truth the model never sees</td><td>a final tool_result — the declare_done turn is kept in the transcript with every call answered (§3.1); on stage 1 that tool_result carries the return_home instruction (§3.3), on stage 2 the trial is over</td><td>Declaring in the wrong place is simply a scored failure — no retry, no hint</td></tr>
+</table>
+
+<h2 id="memory">5. Memory system low-level design</h2>
+
+<h3>5.1 Data structures (<code>duck_embody/agent/memory.py</code>)</h3>
+
+<pre><code>@dataclass
+class Room:                 # created only by update_room (model-asserted)
+    name: str
+    description: str
+    landmarks: list[str]
+
+@dataclass
+class Exit:                 # created only by mark_exit
+    room: str
+    direction_deg: float    # absolute compass direction of the doorway
+    status: str             # "unexplored" | "leads_to:&lt;room&gt;"
+
+@dataclass
+class Crumb:                # appended by the HARNESS after every motion command
+    x: float; y: float; heading_deg: float      # from the integrator + compass
+
+@dataclass
+class Correction:           # appended on every correct_position call
+    turn: int; old_xy: tuple; new_xy: tuple; reason: str
+
+@dataclass
+class Memory:
+    rooms: dict[str, Room]
+    exits: list[Exit]
+    breadcrumbs: list[Crumb]
+    current_room: str | None
+    plan: str
+    corrections: list[Correction]
+
+class PositionIntegrator:
+    """Dead reckoning: per 50 Hz control step, rotate the COMMANDED body-frame
+    velocity (vx, vy) into the world frame using the compass heading and
+    accumulate x += v_world_x * dt, y += v_world_y * dt.  Commanded != actual
+    (slip, gait dynamics, bumps), so the estimate drifts honestly.
+    correct_position(x, y) overwrites (x, y); heading is never reset."""
+</code></pre>
+
+<p><strong>Dead reckoning</strong> means estimating position by integrating velocity over time from a known
+start — the naval technique. Ours integrates the <em>commanded</em> velocity (what the LLM asked for), not
+measured velocity, because the deployed observation stack has no linear-velocity sensor
+<span class="src">source: parent .claude/rules/rl-training.md — v4_robust actor obs is 59-dim with NO
+base_lin_vel; BNO055 cannot measure it</span>. The breadcrumb trail is the harness's only autonomous write
+into memory, and it is pure sensor-realistic state (declared exception (b) in §1) — it records where the
+integrator <em>thinks</em> the robot has been, never where it truly is.</p>
+
+<h3>5.2 The rendered memory block — MapGPT grammar, concrete example</h3>
+
+<p>Every turn, the harness renders <code>Memory</code> into one text block and injects it — so it survives
+context truncation. Rendering follows the MapGPT map-as-prompt grammar: numbered "Place" nodes, explicit
+adjacency lines, a one-line trajectory, and a separate unexplored-exits list (their finding: models plan
+better over an explicit textual map than over raw history). Example, mid-trial:</p>
+
+<pre><code>== YOUR MAP (authored by you; rendered verbatim by the harness) ==
+Place 1: living_room -- sofa along the west wall, armchair opposite, blue rug in center
+  landmarks: coffee table; armchair by the south wall
+Place 2: hallway -- narrow, wooden floor, doorways along the south side
+Connections: living_room &lt;-&gt; hallway
+Trajectory: living_room -&gt; hallway
+Unexplored exits:
+  - hallway: exit at 0 deg (unexplored)
+  - hallway: exit at 270 deg (unexplored)
+  - living_room: exit at 0 deg (unexplored)
+
+== STATE (sensor-derived; the declared exceptions) ==
+Position estimate: x=0.90, y=2.75  (dead-reckoned from commanded velocity; drifts)
+Compass heading: 88 deg
+Current room (your assertion): hallway
+Breadcrumbs (last 5): (0.50,0.50,90) (0.53,1.11,88) (0.85,1.95,68) (0.88,2.56,87) (0.90,2.75,88)
+Budget: turns 12/40, policy-seconds 63.4/240
+
+== YOUR PLAN (update_plan to change; carried forward otherwise) ==
+Kitchen unlikely behind me. Follow the hallway east (exit at 0 deg) and check the
+next doorway at 270 deg; if tiled floor or counters appear, switch to contextual
+search for the counter.
+</code></pre>
+
+<p class="src">Heading convention throughout (compass, breadcrumbs, exit directions): degrees
+counter-clockwise from +x, so 0° = east and 90° = north — the layout convention of
+<a href="03-scene-design.html">Doc 03</a> §3. The dead-reckoning integrator is initialized at the
+seed's spawn coordinates (the "known start" of dead reckoning), so estimates and the scorer's true
+poses share one world frame — the example above is seed 101, spawn (0.5,&nbsp;0.5) heading 90°.</p>
+
+<div class="note"><strong>Why re-inject every turn instead of trusting the transcript?</strong> The Anthropic
+paper observed models leaning on the recent past and forgetting older discoveries. Context policy: system
+prompt + first turn + last K=10 turns are kept; older turns — and any images inside them, including the first
+turn's image once it ages past K — are dropped. The memory block is the one artifact exempt from truncation:
+it is regenerated fresh into every request, so a fact asserted on turn 3 is still in front of the model on
+turn 38, at constant token cost.</div>
+
+<h3>5.3 <code>correct_position</code> — cognitive loop closure</h3>
+
+<p><strong>Loop closure</strong> in SLAM: when the robot recognizes a previously-visited place, the system
+corrects the accumulated pose drift. Here the recognition and the correction are both the model's job: it sees
+(say) the blue rug it described on turn 2, reasons "this is living_room, which I mapped around my
+(0.5,&nbsp;0.5) start, so my estimate x=1.9 is drifted," and calls <code>correct_position(0.6, 0.6,
+"recognized blue rug in living_room")</code>. The harness obeys unconditionally and logs <code>(turn, old_xy, new_xy, reason)</code>.
+The log serves two metrics: the dead-reckoning drift metric (|estimate − true| at goal, computed post-hoc
+against ground truth) and a qualitative audit of whether corrections helped or hurt — mis-anchored corrections
+are a predicted failure mode (§10).</p>
+
+<h2 id="prompt">6. Prompt design</h2>
+
+<p>One system prompt, frozen before the batch, identical for all three models — <strong>no per-model
+tuning</strong> <span class="src">source: AGENTS.md §3 rule 4</span>. Outline
+(<code>duck_embody/agent/prompts.py</code>):</p>
+
+<ol>
+<li><strong>Embodiment &amp; physics.</strong> You are a 42&nbsp;cm bipedal robot; camera at ~0.36&nbsp;m,
+90° HFOV — furniture looks large; doorways are ~0.35&nbsp;m wide vs your ~0.16&nbsp;m body, so center yourself
+before passing. Walking is slow (max 0.222&nbsp;m/s forward); turning in place then driving beats sideways
+motion. A fall ends the trial — prefer short moves near obstacles.</li>
+<li><strong>Tool documentation.</strong> The §4 schema descriptions, plus worked usage notes (e.g. "bundle
+memory writes with your motion command — turns are your scarcest budget").</li>
+<li><strong>Navigation doctrine — a CogNav-style state machine.</strong> Operate in three explicit modes and
+name your current mode in your plan: <em>broad search</em> (sweep unexplored exits to grow the map),
+<em>contextual search</em> (kitchen-correlated evidence seen — tile, counters, appliances — bias exploration
+toward it), <em>verify</em> (believe you're at the counter: confirm with an observation before
+<code>declare_done</code>).</li>
+<li><strong>Frontier scoring.</strong> A <em>frontier</em> is the boundary between explored and unexplored
+space — here, the unexplored-exits list. Each turn, briefly rate each unexplored exit for kitchen-likelihood
+from visual evidence and pick deliberately, rather than defaulting to the nearest.</li>
+<li><strong>Plan carry-forward.</strong> Your plan is re-shown every turn; either act consistently with it or
+call <code>update_plan</code> — silent divergence is the failure pattern to avoid (MapGPT's carry-forward
+result).</li>
+<li><strong>Honesty rules.</strong> Record only what you observed: never invent a room you haven't entered;
+mark uncertain exits <code>unexplored</code> rather than guessing <code>leads_to</code>; when lost, say so in
+the plan and navigate to a mapped landmark to re-anchor.</li>
+</ol>
+
+<h2 id="providers">7. Provider abstraction</h2>
+
+<h3>7.1 Common interface</h3>
+
+<pre><code>class Provider(Protocol):
+    def send(self, system: str, messages: list[Msg], tools: list[ToolDef]) -&gt; AssistantTurn: ...
+
+@dataclass
+class AssistantTurn:
+    text: str                          # any prose the model wrote
+    tool_calls: list[ToolCall]         # (id, name, args: dict) - args always a parsed dict
+    usage: Usage                       # input/output tokens -&gt; per-trial cost accounting
+    raw: Any                           # provider-native turn, echoed back verbatim next turn
+</code></pre>
+
+<ul>
+<li><strong>Deterministic decoding where the API supports it</strong>: the OpenAI adapter sends
+<code>temperature=0</code> — <em>pending</em> a one-call probe that GPT&nbsp;5.6&nbsp;sol accepts it (OpenAI's
+recent reasoning-model families reject non-default <code>temperature</code>; unverifiable locally — §12); see
+the warning below for Anthropic.</li>
+<li><strong>max_tokens</strong> per model config (<code>configs/models/*.yaml</code> — one YAML per model:
+API params, context K, image size <span class="src">source: configs/models/README.md</span>).</li>
+<li><strong>Retry</strong>: exponential backoff + jitter on HTTP 429 / 5xx / connection errors (both official
+SDKs do this natively; we set the retry count and log every retry). Exhaustion → infra-failed trial (§8).</li>
+<li><strong>Accounting</strong>: token counts from each response's usage object, multiplied by the price sheet
+in the model config; reported per trial.</li>
+</ul>
+
+<div class="warning"><strong>"temperature 0" cannot be sent to the Anthropic models.</strong> The locked models
+<code>claude-fable-5</code> and <code>claude-opus-5</code> reject <code>temperature</code> /
+<code>top_p</code> / <code>top_k</code> with HTTP 400 (sampling parameters were removed on Opus 4.7+ and
+Fable 5), and Fable 5's extended thinking is always on. So the determinism-of-decoding intent is realized, at
+most, on the OpenAI adapter — and even that is unverified until the §12 temperature probe runs (if
+GPT&nbsp;5.6&nbsp;sol also rejects <code>temperature=0</code>, no locked model supports deterministic decoding);
+the Anthropic adapter omits sampling parameters entirely and we accept run-to-run variation from the models
+themselves. Trial-level reproducibility comes from fixed sim seeds, not decoding.
+<span class="src">source: Anthropic model docs via claude-api skill reference (cached 2026-06-24); tool-use
+docs page HTTP 200 verified 2026-07-26</span></div>
+
+<h3>7.2 Anthropic adapter (Messages API tool use)</h3>
+<ul>
+<li>Tools pass through almost verbatim: <code>{name, description, input_schema}</code>.</li>
+<li>The assistant turn contains <code>tool_use</code> content blocks: <code>{id, name, input}</code> with
+<code>input</code> already a parsed object.</li>
+<li>Results go back as <strong>one user message</strong> whose content is a list of
+<code>tool_result</code> blocks — <code>{type: "tool_result", tool_use_id, content: [...]}</code> — one per
+call, <em>all in the same message</em> (splitting them degrades the model's parallel-call behavior).
+Camera frames ride inside a tool_result's content as base64 image blocks:
+<code>{type: "image", source: {type: "base64", media_type: "image/jpeg", data: ...}}</code>
+(frames are JPEG-encoded per <a href="04-camera-observation.html">Doc 04</a> §5.3).</li>
+<li>The prior assistant turn's <code>content</code> is echoed back unchanged (including thinking blocks on
+Fable 5 — required for multi-turn continuity).</li>
+<li><code>stop_reason</code> is checked before reading content; a <code>refusal</code> falls into the
+derailment path of §8, not the infra path.</li>
+</ul>
+<p><span class="src">source: https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.md
+(HTTP 200, 2026-07-26)</span></p>
+
+<h3>7.3 OpenAI adapter (chat completions tool calling)</h3>
+<ul>
+<li>Tools are wrapped: <code>{type: "function", function: {name, description, parameters}}</code> —
+<code>parameters</code> is the same JSON Schema.</li>
+<li>The assistant message carries <code>tool_calls</code>:
+<code>{id, type: "function", function: {name, arguments}}</code> where <code>arguments</code> is a
+<strong>JSON string</strong> that must be parsed (and can fail to parse — §8).</li>
+<li>Results go back as <strong>separate <code>role: "tool"</code> messages</strong>, one per call, each with
+<code>tool_call_id</code> — the opposite convention from Anthropic's single user message.</li>
+<li>Images ride as user-content parts: <code>{type: "image_url", image_url: {url:
+"data:image/jpeg;base64,..."}}</code>.</li>
+</ul>
+<p><span class="src">source: https://platform.openai.com/docs/guides/function-calling (HTTP 200,
+2026-07-26)</span></p>
+
+<table>
+<tr><th>Difference</th><th>Anthropic Messages API</th><th>OpenAI chat completions</th></tr>
+<tr><td>Tool definition</td><td><code>{name, description, input_schema}</code></td><td><code>{type:"function", function:{name, description, parameters}}</code></td></tr>
+<tr><td>Call arguments</td><td>parsed object (<code>input</code>)</td><td>JSON <em>string</em> (<code>arguments</code>) — adapter parses</td></tr>
+<tr><td>Returning results</td><td><code>tool_result</code> blocks, all in <em>one</em> user message</td><td>one <code>role:"tool"</code> message <em>per call</em></td></tr>
+<tr><td>System prompt</td><td>top-level <code>system</code> parameter</td><td>leading system/developer message</td></tr>
+<tr><td>Images</td><td>base64 <code>image</code> content blocks (valid inside tool_result)</td><td><code>image_url</code> data-URL parts</td></tr>
+</table>
+
+<div class="decision"><strong>Model IDs are configured values, not hardcoded.</strong> The batch reads
+<code>configs/models/*.yaml</code> at run time; the locked entries are <code>claude-fable-5</code>,
+<code>claude-opus-5</code> (both confirmed current Anthropic model IDs — <code>claude-fable-5</code> is the ID
+of the session model writing this doc, and both appear in Anthropic's current-model catalog), and OpenAI's
+GPT&nbsp;5.6&nbsp;sol. WHY: IDs in one place, price sheet next to them, zero magic strings in the loop. API
+keys come from environment variables only <span class="src">source: AGENTS.md §3 rule 6</span>.</div>
+
+<h2 id="errors">8. Error handling policy</h2>
+
+<table>
+<tr><th>Failure class</th><th>Detection</th><th>Policy</th></tr>
+<tr><td>Malformed / unknown tool call</td><td>Unknown name; args fail validation; unparseable <code>arguments</code> JSON (OpenAI)</td><td>Return a <em>structured error</em> to the model as that call's tool result — <code>{error: "unknown_tool" | "invalid_args", detail, hint}</code>. The turn still counts against the 40-turn cap. The model is expected to self-correct; the harness never guesses intent.</td></tr>
+<tr><td>Refusal / derailment</td><td>Anthropic <code>stop_reason: "refusal"</code>; or a turn with no tool call (prose only, empty, off-task)</td><td>The harness appends a fixed nudge ("No tool call received — you must act via tools; call get_observation if unsure") and continues. The episode runs to its caps and is <strong>scored as a failure if it never succeeds — never selectively retried</strong>. Retrying only the trials that derailed would be selection bias in the model's favor.</td></tr>
+<tr><td>API failure</td><td>HTTP 429 / 5xx / connection error / timeout</td><td>Retry with exponential backoff + jitter (bounded attempts). If exhausted, the trial is marked <strong>infra-failed</strong>: it is rerun <em>whole</em> (same seed, fresh episode), the rerun is logged in the results JSON as an infra rerun, and infra failures are reported separately from model failures — they say nothing about the model.</td></tr>
+<tr><td>Sim-side fault (render error, physics NaN)</td><td>Harness exception outside the model's control</td><td>Infra path, same as API failure: log, rerun whole, report separately.</td></tr>
+</table>
+
+<div class="warning"><strong>The line between "model failure" and "infra failure" is drawn at agency.</strong>
+If the model <em>could have</em> acted differently (bad tool call, refusal, wandering to the turn cap), the
+trial is a scored model failure. If nothing the model emitted caused the fault (network, GPU, kit), it is
+infra and the whole trial reruns. This line is what makes the N=4 per-model numbers honest.</div>
+
+<h2 id="priorart">9. Prior-art anchoring</h2>
+
+<p>Four systems anchor this design. <a href="https://arxiv.org/abs/2401.07314">MapGPT</a> (Chen et&nbsp;al.,
+ACL 2024; <a href="https://github.com/chen-judge/MapGPT">github.com/chen-judge/MapGPT</a>) showed that
+rendering a topological map <em>into the prompt</em> — numbered place nodes, explicit adjacency, and an
+agent-updated plan carried across turns — beats raw history for vision-language navigation; we adopt its map
+grammar (§5.2) and plan carry-forward (§6.5) wholesale, but where MapGPT's map comes from an oracle discrete
+navigation graph, ours is authored entirely by the model.
+<a href="https://arxiv.org/abs/2412.10439">CogNav</a> models object-goal navigation as an LLM-driven cognitive
+state machine (broad search → contextual search → candidate verification); we borrow it as prompt doctrine
+rather than code (§6.3).
+<a href="https://arxiv.org/abs/2510.04195">"Constructing coherent spatial memory in LLM agents through graph
+rectification"</a> (the LLM-MapRepair line of work) demonstrates that LLM-built maps accumulate
+<em>structural</em> errors — duplicate nodes, wrong edges — that compound unless explicitly repaired; that
+finding motivates both <code>correct_position</code> and our decision to log every correction and graph edit
+for post-hoc audit rather than assuming the map is sound.
+Finally, Anthropic's <a href="https://www.anthropic.com/research/claude-plays-robotics">embody
+experiments</a> used an <code>explore_report</code>-style debrief to probe what the model actually retained;
+our post-episode layout QA (5 fixed questions answered from the model's own map, scored against the layout
+ground truth) is the direct descendant of that idea.
+<span class="src">sources: all four URLs fetched 2026-07-26, HTTP 200; arXiv titles verified from page
+&lt;title&gt; tags — see §11</span></p>
+
+<h2 id="failures">10. What we predict will fail (honest)</h2>
+
+<ul>
+<li><strong>Revisit loops.</strong> The paper's headline negative result. Even with the map re-injected, a
+model that mis-asserts <code>set_current_room</code> once can walk a corridor twice believing it is new.
+Instrumented via: map-accuracy metric (room node precision/recall + adjacency edge accuracy vs the layout
+ground truth) and the breadcrumb trail, which makes physical loops visible even when the model's map denies
+them.</li>
+<li><strong>Hallucinated exits and phantom rooms.</strong> A 90° FOV frame of a shadowed corner can read as a
+doorway; <code>mark_exit</code> makes the hallucination durable, and frontier scoring (§6.4) then actively
+steers the robot at a wall. Instrumented via: map precision (invented rooms/edges lower it), bump counts
+clustered near hallucinated exits.</li>
+<li><strong>Drift mis-anchoring.</strong> The failure the graph-rectification paper predicts: the model
+"recognizes" the wrong landmark (two rooms share a similar rug) and calls <code>correct_position</code> to a
+wrong anchor — a correction that <em>increases</em> error and can corrupt subsequent mapping. Instrumented
+via: the correction log cross-referenced post-hoc with true pose at each correction turn (did |error| shrink
+or grow?), reported alongside the goal-time drift metric.</li>
+<li><strong>Doorway attrition.</strong> Not a memory failure but a compounding tax: 0.35&nbsp;m doorways vs a
+0.16&nbsp;m body with dead-reckoned lateral error means repeated bumps; each auto-stop costs a turn to
+recover. Instrumented via: bump counts per trial and time-to-kitchen.</li>
+</ul>
+<p>All four are report material either way: the point of the benchmark is to measure exactly these behaviors
+across models, not to engineer them away.</p>
+
+<h2 id="validation">11. Validation performed</h2>
+
+<table>
+<tr><th>Check</th><th>Command / method</th><th>Result</th></tr>
+<tr><td>Anthropic Messages API tool-use doc reachable (API shape source)</td><td><code>curl -s -o /dev/null -w "%{http_code}" -L https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.md</code></td><td>200 (2026-07-26)</td></tr>
+<tr><td>OpenAI tool-calling doc reachable</td><td><code>curl -s -o /dev/null -w "%{http_code}" -L https://platform.openai.com/docs/guides/function-calling</code></td><td>200 (2026-07-26)</td></tr>
+<tr><td>MapGPT repo exists</td><td><code>curl -I https://github.com/chen-judge/MapGPT</code></td><td>200</td></tr>
+<tr><td>MapGPT paper identity</td><td><code>curl -s https://arxiv.org/abs/2401.07314 | grep '&lt;title&gt;'</code></td><td>200; title "MapGPT: Map-Guided Prompting with Adaptive Path Planning for Vision-and-Language Navigation"</td></tr>
+<tr><td>LLM-MapRepair / graph-rectification paper</td><td><code>curl -s https://arxiv.org/abs/2510.04195 | grep '&lt;title&gt;'</code> and <code>curl -I</code></td><td>200; actual title "Constructing coherent spatial memory in LLM agents through graph rectification" (cited by that verified title, not the informal name)</td></tr>
+<tr><td>CogNav paper identity</td><td><code>curl -s https://arxiv.org/abs/2412.10439 | grep '&lt;title&gt;'</code> and <code>curl -I</code></td><td>200; title "CogNav: Cognitive Process Modeling for Object Goal Navigation with LLMs"</td></tr>
+<tr><td>Anthropic robotics post reachable</td><td><code>curl -s -o /dev/null -w "%{http_code}" -L https://www.anthropic.com/research/claude-plays-robotics</code></td><td>200</td></tr>
+<tr><td>Anthropic model IDs</td><td>Session-known IDs + Anthropic current-model catalog (claude-api skill reference, cached 2026-06-24): <code>claude-fable-5</code> (the model writing this doc), <code>claude-opus-5</code> — treated as configured values read from <code>configs/models/*.yaml</code> at run time</td><td>Confirmed; also confirmed both IDs reject <code>temperature</code>/<code>top_p</code>/<code>top_k</code> (400) → §7.1 warning</td></tr>
+<tr><td>Adapter wire shapes (tool_use / tool_result blocks; all results in one user message; base64 image blocks vs role:"tool" messages / data-URL parts)</td><td>Cross-checked against the Anthropic tool-use reference bundled in the claude-api skill (cached 2026-06-24) + the two 200-verified doc pages above</td><td>Shapes in §7.2/§7.3 match</td></tr>
+<tr><td>Code homes exist</td><td><code>wc -l duck_embody/agent/{loop,tools,memory,prompts}.py duck_embody/runner.py</code></td><td>All present as 1-line docstring skeletons (no line-number citations used)</td></tr>
+<tr><td>Model-config source</td><td><code>ls configs/models/</code></td><td>Directory exists with README ("one YAML per model"); per-model YAMLs not yet written — noted in §12</td></tr>
+<tr><td>GPT 5.6 sol accepts <code>temperature=0</code></td><td><strong>NOT verified</strong> — post-cutoff model, no local check possible without an API call; one-call probe scheduled before config freeze</td><td>Open (§12) — the §7.1 deterministic-decoding claim is conditional until this runs</td></tr>
+</table>
+
+<h2 id="open">12. Open questions</h2>
+
+<ul>
+<li><strong>Does <code>return_home</code> run after a stage-1 cap-out?</strong> Current design: no (only after
+<code>declare_done</code>); a capped stage 1 scores both stages as failures. Defensible but debatable — owner
+sign-off needed before scoring is unit-tested.</li>
+<li><strong>Does GPT 5.6 sol accept <code>temperature=0</code>?</strong> Unverified (§11): OpenAI's recent
+reasoning-model families (o-series, gpt-5 lineage) reject non-default sampling parameters, and GPT 5.6 sol is
+post-cutoff. A one-call probe before the config freeze settles it. If rejected, the OpenAI adapter drops the
+parameter and §7.1 is reworded to: no provider supports deterministic decoding for the locked models;
+reproducibility rests on sim seeds alone.</li>
+<li><strong>Anthropic-side nondeterminism.</strong> With sampling parameters rejected and thinking always on
+(Fable 5), the two Anthropic models are not deterministic at fixed seed. We accept and document this
+(fixed seeds control the <em>sim</em>, not decoding) — but should the report include a same-seed repeat run to
+quantify decoding variance? Costs one extra trial per Anthropic model.</li>
+<li><strong>Motion-tools-per-turn cap.</strong> Multiple tool calls per turn are allowed (§3.3). Should the
+harness cap motion tools at one per turn to keep "one look, one move" cadence, or is chaining
+(turn_to_heading + move) legitimate efficiency? Currently uncapped; smoke test will show whether chained
+motion without an intervening observation causes blind bumps.</li>
+<li><strong>look_around render path.</strong> Virtual camera-mount rotation while paused is declared, but the
+Isaac Sim implementation (rotating the camera prim + 4 renders without stepping physics) needs the smoke test
+to confirm no frame-latency artifacts (stale frames after teleporting a camera are a known renderer
+gotcha). Owned by the camera &amp; observation design doc (<a href="04-camera-observation.html">Doc 04</a>
+§5.3); flagged here because <code>look_around</code>'s semantics depend on
+it.</li>
+<li><strong>First-turn image aging.</strong> Policy says images older than K=10 turns are dropped, and the
+kept first turn loses its image too. Is the spawn-point image worth pinning permanently (helps
+return_home re-recognition) or is that scaffolding the model should replace with its own map? Currently:
+dropped, per the uniform rule.</li>
+<li><strong>Per-model image token cost.</strong> 512×512 frames price differently across the three models
+(and <code>look_around</code> sends four). The cost accounting (§7.1) needs measured per-image token counts
+from the smoke test before the batch budget is finalized; <code>configs/models/*.yaml</code> files themselves
+are not yet written.</li>
+</ul>
+
+</main>
+</body>
+</html>
