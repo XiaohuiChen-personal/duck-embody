@@ -260,7 +260,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 
 ## Phase 1 — Sim core (empty plane; apartment in Phase 2)
 
-### T1.1 `[ ]` DuckEmbodyEnvCfg + task registration
+### T1.1 `[x]` DuckEmbodyEnvCfg + task registration
 
 - **Context:** The single subclass of the parent's `OpenDuckRobustEnvCfg_PLAY`
   carrying every fix from doc 02 §5 — where the heading_command hijack, auto-reset
@@ -284,11 +284,45 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   `rsl_rl_cfg_entry_point` → the parent's `OpenDuckRobustPPORunnerCfg` (doc 02 §3's
   loader calls `load_cfg_from_registry(TASK_ID, "rsl_rl_cfg_entry_point")`; omitting
   it raises at T1.2's first construction).
-- **Deliverables:** `embody_env_cfg.py` complete; registration importable.
-- **Unit tests:** none yet (kit needed — validated at T1.3's launch).
-- **Smoke test:** deferred to T1.3.
-- **Acceptance:** every doc 02 §5 row present with a comment naming its rationale;
-  T1.3 launch constructs without error.
+- **Deliverables (done):** `duck_embody/env/embody_env_cfg.py`;
+  `scripts/check_env_cfg.py`.
+- **Unit tests:** none (config values are asserted by the check script below,
+  which needs kit).
+- **Smoke test:** **not deferred to T1.3 after all** — `scripts/check_env_cfg.py`
+  constructs the cfg under a kit app and asserts every §5 delta. Config-only (no
+  scene build, no stepping), so a config error fails here *attributably* instead
+  of surfacing as a confusing error inside T1.3's first real launch.
+- **Acceptance:** PASSED — 27/27 checks, exit 0
+  (`results/logs/t1_1_check_env_cfg.log`): `num_envs==1`; `time_out is None`;
+  `base_contact is None`; tilt fall at 60° + height fall at 0.09 m present;
+  `heading_command False`, `rel_standing_envs 0.0`, `rel_heading_envs 0.0`,
+  `resampling_time_range (1e9,1e9)`, ranges degenerate, `debug_vis False`;
+  `reset_base.pose_range` degenerate; rewards + `gait_phase` obs term SURVIVE;
+  `sim.dt 0.005`, `decimation 4`, `contact_forces` present;
+  `viewer.origin_type=='asset_body'` / `body_name=='trunk_assembly'`;
+  `sim.render_interval == 10000`; both tasks registered with BOTH entry points
+  and **`load_cfg_from_registry(TASK_ID,"rsl_rl_cfg_entry_point")` resolves to
+  `OpenDuckRobustPPORunnerCfg`** — retiring the exact failure the plan warned
+  T1.2 would otherwise hit.
+- **Plan refinements applied (rule 10.1):**
+  1. **Two registered tasks instead of one switchable cfg.** The plan asked for a
+     scene-switchable `apartment=None|LAYOUT` field. A `configclass` field
+     holding the layout dict would be a mutable default shared across instances,
+     and the scene must be built in `__post_init__` either way. Implemented as
+     `DuckEmbody-v0` (empty plane; Phase-1 smokes) and
+     `DuckEmbody-Apartment-v0` (`DuckEmbodyApartmentEnvCfg`, Phase 2 onward),
+     both with both entry points. The apartment subclass imports
+     `scene_builder`/`apartment_layout` **lazily**, so the empty-plane task stays
+     importable before T2.1/T2.2 exist — which is what let T1.1 be verified now.
+  2. **`episode_length_s` raised to 1e6** in addition to `time_out=None`.
+     Belt-and-suspenders: nothing should consult the episode clock once the term
+     is gone, but any path that does cannot trip mid-trial.
+  3. **Parent-pin mismatch warns rather than raises.** Refusing to run would make
+     the harness unusable during parent-side work; a missing parent repo is still
+     fatal. `DUCK_EMBODY_PARENT_REPO` overrides the path.
+  4. `sim.render_interval = 10_000` set here (doc 04 §5.1) rather than in T1.4 —
+     it belongs with the other cfg-level settings and T1.4 only needs the
+     explicit render call.
 
 ### T1.2 `[ ]` Policy wrapper + session + recorder
 
