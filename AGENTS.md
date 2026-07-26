@@ -44,7 +44,7 @@ the parent robot project.
 | Memory | Single **max-scaffold** config (no ablation in MVP): LLM-authored room/exit/landmark graph re-injected every turn, breadcrumbs, dead-reckoned (x,y), `correct_position` loop closure | "Most robust LLM-as-SLAM"; ablation cells are stretch |
 | Motion | Closed-loop macros `turn_to_heading` / `move` (+ raw `send_velocity`) | Motor precision is not the capability under test |
 | Camera | Head-mounted egocentric, ~512 px, ~90–100° HFOV, frozen for all models | Matches planned hardware (IMX219 CSI in head); fairness requires one config |
-| Models | Start 3: one Claude flagship, one GPT 5.6, one open-weight **VLM** (vLLM local); widen to 6 if clean | 6 cold-start integrations is deadline suicide; VLA can't do tool loops |
+| Models | **Fable 5, Opus 5, GPT 5.6 sol** (locked 2026-07-26; add more only as needed later) | Two Anthropic tiers (generational comparison, mirrors the paper) + one cross-lab point; dropping the open-weight VLM removes all local vLLM serving work — providers = Anthropic + OpenAI only |
 | Protocol | Paused sim between LLM calls; 1 obs/turn (+ `look_around` panorama); context = first turn + last K + memory block | Paper's protocol; measures capability, not latency |
 | Repo | This dedicated public repo; parent robot repo is a read-only pinned dependency | Portfolio readability |
 | Trials | N=3–5 per model, fixed seed set, `find_kitchen` + `return_home` continuation | Comparison, not statistical paper |
@@ -209,8 +209,8 @@ results/         raw JSON · figures · videos (committed)
 - [ ] Smoke tests (camera PNG, net displacement, asset inspection)
 - [ ] Apartment scene + survey renders
 - [ ] Agent loop + tools + memory + providers
-- [ ] Sanity LLM episode → freeze configs → batch (3 models × N=3–5)
+- [ ] Sanity LLM episode → freeze configs → batch (Fable 5, Opus 5, GPT 5.6 sol × N=3–5)
 - [ ] Scoring, figures, README results
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
-3rd model → N→3 → panorama tool.
+GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.
