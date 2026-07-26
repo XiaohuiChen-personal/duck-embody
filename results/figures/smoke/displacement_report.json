@@ -1,0 +1,146 @@
+{
+  "seed": 42,
+  "runs": {
+    "a_straight_20s": {
+      "name": "a_straight_20s",
+      "policy_seconds": 20.0,
+      "net_displacement_m": 4.0175,
+      "path_length_m": 4.842,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        3.7335,
+        -1.5073
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 320.76,
+      "heading_change_deg": -36.63,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 102,
+      "video": "results/figures/smoke/displacement_a_straight_20s.mp4",
+      "height_at_end_m": 0.1733
+    },
+    "b_turn_10s": {
+      "name": "b_turn_10s",
+      "policy_seconds": 10.0,
+      "net_displacement_m": 0.0939,
+      "path_length_m": 1.2442,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        -0.043,
+        0.0842
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 166.14,
+      "heading_change_deg": 168.74,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 52,
+      "video": "results/figures/smoke/displacement_b_turn_10s.mp4",
+      "height_at_end_m": 0.1745
+    },
+    "c_stopstart": {
+      "name": "c_stopstart",
+      "policy_seconds": 24.0,
+      "net_displacement_m": 4.0851,
+      "path_length_m": 5.3186,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        3.8404,
+        -1.4194
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 322.21,
+      "heading_change_deg": -35.18,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 160,
+      "video": "results/figures/smoke/displacement_c_stopstart.mp4",
+      "height_at_end_m": 0.1758
+    },
+    "d_longhold_120s": {
+      "name": "d_longhold_120s",
+      "policy_seconds": 120.0,
+      "net_displacement_m": 10.1656,
+      "path_length_m": 29.0857,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        -4.781,
+        -8.9553
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 121.51,
+      "heading_change_deg": 124.12,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 602,
+      "video": "results/figures/smoke/displacement_d_longhold_120s.mp4",
+      "height_at_end_m": 0.1705
+    },
+    "e_turn_drive_turn": {
+      "name": "e_turn_drive_turn",
+      "policy_seconds": 16.0,
+      "net_displacement_m": 1.0436,
+      "path_length_m": 3.1586,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        0.9907,
+        0.3739
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 315.42,
+      "heading_change_deg": -41.97,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 88,
+      "video": "results/figures/smoke/displacement_e_turn_drive_turn.mp4",
+      "height_at_end_m": 0.1709
+    },
+    "f_heading_hold_20s": {
+      "name": "f_heading_hold_20s",
+      "policy_seconds": 20.0,
+      "net_displacement_m": 4.0704,
+      "path_length_m": 5.0736,
+      "start_xy": [
+        0.0131,
+        0.0088
+      ],
+      "end_xy": [
+        4.0767,
+        -0.2266
+      ],
+      "start_heading_deg": 357.39,
+      "final_heading_deg": 357.0,
+      "heading_change_deg": -0.39,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 300,
+      "video": "results/figures/smoke/displacement_f_heading_hold_20s.mp4",
+      "height_at_end_m": 0.1731
+    }
+  },
+  "k_velocity_realisation": 1.0044,
+  "measured_speed_mps": 0.2009,
+  "measured_turn_rate_radps_wrapped": 0.2945,
+  "yaw_creep_deg_per_100s": 103.433,
+  "k_with_heading_hold": 1.0176,
+  "open_loop_yaw_drift_deg_per_20s": 36.63,
+  "heading_hold_drift_deg_per_20s": 0.39,
+  "failures": [],
+  "acceptance": "PASS"
+}

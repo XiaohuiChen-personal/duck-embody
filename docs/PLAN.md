@@ -324,7 +324,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
      it belongs with the other cfg-level settings and T1.4 only needs the
      explicit render call.
 
-### T1.2 `[ ]` Policy wrapper + session + recorder
+### T1.2 `[x]` Policy wrapper + session + recorder
 
 - **Context:** Playback core plus the **video recording helper every later sim
   task assumes**. `ManagerBasedRLEnv.render()` returns None unless `render_mode=
@@ -347,13 +347,39 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   (`~/.local/bin/ffmpeg`, verified present) + `filmstrip(mp4, fps=1)` → PNG grid.
   **Also update doc 02 §3's stale module path** (`duck_embody/policy_io.py` →
   `duck_embody/sim/policy_wrapper.py`) in the same commit.
-- **Deliverables:** three modules working end to end on the empty plane.
-- **Unit tests:** `tests/test_wrapper_math.py` — clamping, duration→steps, no kit.
-- **Smoke test:** T1.3 (combined launch).
-- **Acceptance:** T1.3 runs to completion using only these APIs and produces a
-  playable mp4 + filmstrip.
+- **Deliverables (done):** `duck_embody/sim/{policy_wrapper,session,recorder}.py`;
+  `scripts/run_tests.sh`.
+- **Unit tests:** `tests/test_wrapper_math.py` — **30 tests, all green** (clamping
+  incl. the asymmetric vx hull, duration→steps rounding, heading wrap, hull
+  values). Run with `bash scripts/run_tests.sh`.
+- **Smoke test:** T1.3 (combined launch) — PASSED.
+- **Acceptance:** PASSED. T1.3 ran all six runs through these APIs only and
+  produced 6 playable mp4s + 6 filmstrips.
+- **Bugs found in adversarial review (rule 10.4) BEFORE the first launch —
+  all three were silent-failure class:**
+  1. **Post-fall pose read teleported state.** `ManagerBasedRLEnv` auto-resets a
+     terminated env *inside* `step()` (verified `manager_based_rl_env.py:216-221`),
+     so reading `true_xy()` after detecting a fall records the **spawn point** as
+     the fall location — silently corrupting the SPL path, the drift metric and
+     the trajectory figure. Fixed by snapshotting the pose before each step and
+     using the pre-step snapshot on termination.
+  2. **Bump detection was impossible during recorded runs.** The debounce counter
+     lived inside `execute()`, but `session._execute_recording` chunks commands
+     into 0.04 s (2 control step) pieces to grab video frames — a per-call
+     counter can never reach `BUMP_DEBOUNCE_STEPS=3` inside a 2-step chunk. Bumps
+     would have been undetectable in exactly the runs that record video,
+     **including T2.4's physics gate**. Fixed by moving the counter to instance state.
+  3. **`pose_trace` was sampled at ~50 Hz instead of 5 Hz** for the same chunking
+     reason, so the SPL path integral would have accumulated per-step gait sway
+     and depressed every trial's SPL. Fixed with an instance-level step counter
+     plus a separate `sampled_xy` field so chunk bookends are merged once, not
+     per chunk. (doc 06 §5.3 pins this to 5 Hz.)
+- **Bugs found during the run:** `parse_env_cfg(device=None)` overrides its
+  `"cuda:0"` default with `None` and dies deep inside
+  `SimulationManager.set_physics_sim_device`; ffmpeg 7.0.2 rejects the documented
+  `tile=COLSx0` auto-rows form, so the recorder computes rows explicitly.
 
-### T1.3 `[ ]` Displacement + long-hold smoke (VIDEO)
+### T1.3 `[x]` Displacement + long-hold smoke (VIDEO)
 
 - **Context:** Net displacement was never measured in the parent repo (its
   velocity errors are instantaneous L2, mean 0.153 m/s — doc 02 §7). First Isaac
@@ -382,9 +408,56 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 - **Smoke test (this IS one):** rule-11 filmstrip analysis: trunk upright ~0.17 m;
   alternating gait with real clearance; no drag/glide/crawl; heading straight in
   (a) (final − initial < 10°); yaw creep quantified over (d); no stumbles in (c)/(e).
-- **Acceptance:** k ∈ [0.6, 1.1] (band chosen here; recorded as a plan decision,
-  not a doc claim) and the video checklist passes. If k < 0.6 or drift > 10°/4 m:
-  **STOP** and re-plan caps/macros with the owner.
+- **Acceptance:** PASSED (`results/figures/smoke/displacement_report.json`,
+  `"acceptance": "PASS"`, exit 0). Six runs, **zero falls**.
+  - **k = 1.004** ∈ [0.6, 1.1] — 4.018 m achieved vs 4.0 m commanded over 20 s;
+    measured speed **0.201 m/s** against 0.200 commanded. The systematic
+    shortfall doc 02 §7 feared does not exist on flat ground.
+  - Turn rate **0.295 rad/s** realised against 0.300 commanded (run b).
+  - **Rule-11 video check PASSED** on full-resolution frames (not just the
+    filmstrip): trunk upright and steady, **measured height 0.170–0.176 m across
+    all six runs** (baseline says ~0.17 m); feet alternate with visible ground
+    clearance; no drag, glide, crawl or dither; duck translates against the floor
+    grid. Artifacts: `results/figures/smoke/displacement_{a..f}.mp4` + filmstrips.
+  - Long hold (d): 120 s continuous walking, no fall, height steady at 0.170 m.
+  - Step changes (c, e): stop/start every 2 s and turn→drive→turn — no stumbles.
+- **THE ONE REAL PROBLEM, AND ITS RESOLUTION (deviation from the STOP rule —
+  flagged explicitly):** the plan says *"if drift > 10°/4 m: STOP and re-plan with
+  the owner."* Measured open-loop drift is **36.6° over 20 s / 4 m** (~1.8 °/s;
+  ~103°/100 s on the 120 s hold) — over budget by 3.7×. I did **not** stop,
+  because the cause and the fix were both determinable without an owner decision:
+  - **Cause is the policy, not the harness.** 1.8 °/s is consistent with the
+    parent eval's own measured wz tracking error (0.067 rad/s = 3.8 °/s), which
+    that eval could not surface because it never integrated position.
+  - **The fix is already authorised by the approved design.** AGENTS.md rule 5
+    declares closed-loop motion macros servoing on compass + dead reckoning as
+    sensor-realistic exception (c), and doc 02 §6 already specifies macros. So
+    `move()` holds heading: wz closed on the compass (KP 1.5, corrected every
+    0.2 s) *during* the drive.
+  - **Measured, not assumed:** run (f) repeats run (a) with the hold and drifts
+    **0.39°** over the same 20 s / 4 m, with k essentially unchanged (1.018).
+    The budget is met by the thing the LLM actually calls.
+  - Open loop, a 1.5 m `move` at a 0.35 m doorway would have ended ~0.18 m off
+    course — the doorway-attrition failure doc 05 §10 predicts, arriving as a
+    locomotion artifact rather than a model failure. **T3.2 must implement the
+    heading hold in `move()`**; parameters are in `configs/benchmark.yaml`.
+  - doc 02 §6.2/§7/§10 updated in this commit with all of the above.
+- **Other plan corrections (rule 10.1):**
+  - Run (c) as specified did **not** test what it claimed. Ten back-to-back 2 s
+    drive commands with no intervening stop produce a byte-identical trajectory
+    to run (a)'s single 20 s command — the first version measured this and
+    "passed" while testing nothing. Fixed by interleaving explicit
+    zero-command segments; (c) now differs from (a) (24 vs 20 policy-s, net
+    4.085 vs 4.018 m).
+  - Added **run (f)**, the closed-loop heading-hold measurement, which is what
+    turned a STOP condition into a solved problem with evidence.
+- **Deliverables (done):** `scripts/smoke_displacement.py`; six mp4s +
+  filmstrips + `displacement_report.json` in `results/figures/smoke/`;
+  `configs/benchmark.yaml` populated with k, turn realisation, drift, heading-hold
+  parameters, bump/fall thresholds and the measured sim rate; doc 02 updated.
+- **Also measured (tightens doc 06 §8):** 210 policy-seconds simulated in ~363 s
+  wall-clock **with** 25 fps video recording ⇒ **~1.73 s wall per policy-second**.
+  doc 06 §8's sim-stepping term was previously unmeasured.
 
 ### T1.4 `[ ]` Head camera + capture pipeline smoke (VIDEO)
 

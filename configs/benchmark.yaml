@@ -1,1 +1,93 @@
-# Benchmark config (N, seeds, episode caps, frozen camera config) — written before batch launch.
+# Duck Embody — benchmark configuration.
+#
+# FROZEN BEFORE THE BATCH (design doc 06 §2). Every value here is part of the
+# fairness contract: changing any of it after the freeze invalidates all prior
+# trials. `duck_embody/runner.py` hashes this file into results/freeze.json.
+#
+# Values marked MEASURED come from a smoke test and cite it; values marked
+# DESIGN come from a design doc. Nothing here is a guess (AGENTS.md rule 3).
+
+# --- Trial matrix -----------------------------------------------------------
+seeds: [101, 102, 103, 104]          # DESIGN doc 06 §2; identical for every model
+models: [fable5, opus5, gpt56sol]    # DESIGN AGENTS.md §2 (locked 2026-07-26)
+
+# --- Caps (per stage) -------------------------------------------------------
+caps:
+  turns: 40                          # DESIGN doc 06 §3.2
+  policy_seconds: 240                # DESIGN doc 06 §3.2
+  # A fall ends the whole TRIAL, not just the stage (doc 01 §8).
+
+# --- Locomotion -------------------------------------------------------------
+locomotion:
+  control_hz: 50                     # sim dt 0.005 x decimation 4
+  # Training command hull. Read from policy/params/env.yaml (T0.1).
+  hull:
+    vx: [-0.148, 0.222]
+    vy: [-0.111, 0.111]
+    wz: [-0.5, 0.5]
+
+  # MEASURED (T1.3, results/figures/smoke/displacement_report.json, seed 42):
+  # net displacement / (0.2 m/s x 20 s) on the empty plane.
+  # This is the number the parent repo never measured — its velocity metric is
+  # an instantaneous L2 error, which cannot see a systematic shortfall.
+  k_velocity_realisation: 1.004      # 4.018 m achieved vs 4.0 m commanded
+  measured_speed_mps: 0.201
+  # k POLICY (pinned by PLAN T1.3; AGENTS.md rule 5 wins over doc 02 §6.2):
+  # the dead-reckoning integrator uses COMMANDED velocity with NO k, so drift
+  # stays honest and measurable. k is consumed ONLY by (i) time-cap/wall-clock
+  # forecasting and (ii) the move() servo target (dist / k) and timeout margin.
+
+  # MEASURED (T1.3 run b): commanded wz 0.3 rad/s -> 0.295 realised.
+  turn_rate_realisation: 0.982
+
+  # MEASURED (T1.3 runs a/d): the bare policy does NOT walk straight. Commanded
+  # (0.2, 0, 0) yaws ~1.8 deg/s — 36.6 deg over 20 s / 4 m, and ~103 deg per
+  # 100 s on the 120 s hold. This is consistent with the parent eval's own
+  # wz tracking error (0.067 rad/s = 3.8 deg/s), i.e. a real property of the
+  # policy rather than a harness bug.
+  open_loop_yaw_drift_deg_per_s: 1.83
+
+  # MEASURED (T1.3 run f): closing wz on the compass during a drive removes it —
+  # 0.39 deg of drift over the same 20 s / 4 m, with k essentially unchanged
+  # (1.018). THIS IS WHY move() HOLDS HEADING; see PLAN T1.3.
+  heading_hold:
+    enabled: true
+    kp: 1.5                          # heading error (rad) -> wz, clipped to hull
+    chunk_s: 0.2                     # correction interval
+    residual_drift_deg_per_20s: 0.39
+
+  # Bump detection (doc 02 §6.2). Debounced so a graze while squeezing through
+  # a 0.35 m doorway is not read as a collision. Retuned in T2.4 if needed.
+  bump:
+    force_n: 1.0
+    debounce_steps: 3
+
+  # Fall termination (doc 02 §5). Nominal trunk height measured 0.170-0.176 m
+  # across all T1.3 runs, so 0.09 m is unambiguous.
+  fall:
+    tilt_limit_deg: 60
+    min_height_m: 0.09
+
+# --- Scoring ----------------------------------------------------------------
+scoring:
+  # True base XY sampling rate for the SPL path integral (doc 06 §5.3).
+  pose_trace_hz: 5
+  find_kitchen_success_radius_m: 0.35
+  return_home_success_radius_m: 0.5
+  bootstrap_resamples: 10000
+  bootstrap_seed: 20260726
+
+# --- Runtime forecast -------------------------------------------------------
+# MEASURED (T1.3): 210 policy-seconds simulated in ~363 s wall-clock WITH 25 fps
+# video recording => ~1.73 s wall per policy-second. Tightens doc 06 §8, whose
+# sim-stepping term was previously unmeasured. Per-turn API latency is still
+# unmeasured and lands here at T3.5.
+runtime:
+  wall_s_per_policy_s_with_recording: 1.73
+  measured_at: T1.3
+
+# --- Camera (frozen; filled by T1.4) ---------------------------------------
+camera:
+  resolution: [512, 512]
+  hfov_deg: 90
+  # mount rung, height and warmup-N are written by T1.4 from measurement.

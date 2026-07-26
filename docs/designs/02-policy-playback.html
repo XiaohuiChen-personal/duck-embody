@@ -308,8 +308,9 @@ stiffness 0.5 at velocity_env_cfg.py:100</span> — we just point it at the LLM'
     dist    = min(distance_m, 1.5)                      # cap per call
     goal_s  = dist / 0.2                                # commanded vx = 0.2 m/s
     for chunk in range(int(50 * goal_s * 1.5 / CHUNK)): # 1.5x time margin
-        set_command(0.2, 0, 0); step(CHUNK)
-        integrate_dead_reckoning(vx=0.2, dt=0.2)        # x += k*0.2*0.2*cos(h), etc.
+        wz = clip(KP_HEADING * heading_error(), -0.5, +0.5)   # HOLD heading (T1.3)
+        set_command(0.2, 0, wz); step(CHUNK)
+        integrate_dead_reckoning(vx=0.2, dt=0.2)        # NO k — commanded velocity only
         if bumped():                                     # trunk contact force sustained
             set_command(0, 0, 0); step(CHUNK)
             return stopped(reason="bump", moved=dr_distance())
@@ -318,8 +319,27 @@ stiffness 0.5 at velocity_env_cfg.py:100</span> — we just point it at the LLM'
             return ok(moved=dr_distance())
     return timeout(moved=dr_distance())
 </code></pre>
-<p><code>k</code> is the velocity-realization factor (commanded → achieved m/s) measured by
-<code>smoke_displacement.py</code> before freeze (section 7); until measured it is 1.0. Bump detection reads
+<div class="note"><strong>MEASURED (T1.3, 2026-07-26) — three corrections to this section.</strong>
+<ul>
+<li><strong><code>k</code> = 1.004</strong> (4.018 m achieved vs 4.0 m commanded over 20 s;
+measured speed 0.201 m/s). The feared systematic shortfall does not exist on flat ground.</li>
+<li><strong>The integrator uses commanded velocity with NO <code>k</code>.</strong> The pseudocode
+comment above previously read <code>x += k*0.2*0.2*cos(h)</code>; that is now corrected.
+AGENTS.md rule 5 wins: dead reckoning must drift <em>honestly</em>, because noticing and
+correcting that drift is the capability under test. <code>k</code> is consumed only by
+time-cap/wall-clock forecasting and by the <code>move()</code> servo target
+(<code>dist / k</code>) and its timeout margin.</li>
+<li><strong><code>move()</code> must HOLD HEADING.</strong> Commanded straight, the bare policy
+yaws about <strong>1.8 °/s</strong> — 36.6° over 20 s / 4 m, ~103° per 100 s on the 120 s hold.
+(Consistent with the parent eval's own wz error of 0.067 rad/s = 3.8 °/s, so this is a property
+of the policy, not a harness bug.) Open loop, a 1.5 m <code>move</code> aimed at a 0.35 m doorway
+would end ~0.18 m off course. Closing wz on the compass during the drive
+(<code>KP_HEADING</code> 1.5, corrected every 0.2 s) reduces drift to <strong>0.39°</strong> over
+the same 20 s / 4 m with <code>k</code> unchanged at 1.018. This is squarely inside AGENTS.md
+rule 5's declared exception (c), closed-loop motion macros servoing on compass + dead reckoning.
+<span class="src">source: results/figures/smoke/displacement_report.json (runs a, d, f)</span></li>
+</ul></div>
+<p>Bump detection reads
 the existing trunk contact sensor (the same signal the removed <code>base_contact</code> termination used),
 debounced over a few chunks so a single 1 N grazing spike doesn't halt a legitimate squeeze through a
 0.35 m doorway.</p>
@@ -442,9 +462,14 @@ snippet); <code>RslRlVecEnvWrapper.device</code> set at rsl_rl/vecenv_wrapper.py
 <h2 id="s10">10. Open questions</h2>
 
 <ul>
-<li><strong>Velocity realization factor.</strong> Is commanded 0.2 m/s ≈ achieved 0.2 m/s in net
-displacement? Unknown until <code>smoke_displacement.py</code> runs (section 7). All dead-reckoning and
-time-cap arithmetic in this doc assumes k≈1 provisionally.</li>
+<li><strong>Velocity realization factor. RESOLVED (T1.3, 2026-07-26):</strong> k = <strong>1.004</strong>
+(0.201 m/s achieved against 0.200 commanded). The provisional "assumes k≈1" in this doc was
+correct. Note this does <em>not</em> license using k in the integrator — see the §6.2 note.</li>
+<li><strong>Long constant-command holds. RESOLVED (T1.3 run d):</strong> 120 s of continuous
+commanded walking, no fall, trunk height steady at 0.170 m. The instability that showed up was
+yaw creep, not gait collapse — handled by the heading hold (§6.2).</li>
+<li><strong>Step command changes. RESOLVED (T1.3 runs c, e):</strong> stop/start every 2 s and
+turn→drive→turn transitions produced no stumbles and no falls.</li>
 <li><strong>KP_TURN value.</strong> 1.5 is a starting guess (upstream uses 0.5 for its own heading
 controller); the smoke test must confirm convergence within tolerance without oscillation, then freeze it.</li>
 <li><strong>Bump debounce threshold.</strong> Force level and persistence (N steps &gt; 1 N?) that separates
