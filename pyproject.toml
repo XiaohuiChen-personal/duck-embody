@@ -41,4 +41,6 @@ testpaths = ["tests"]
 parent_repo = "https://github.com/XiaohuiChen-personal/Open_Duck_Mini_Jetson"
 parent_repo_path = "~/Projects/Open_Duck_Mini_Jetson"
 parent_repo_branch = "v2"
-parent_repo_commit = "PENDING_T0_1"
+parent_repo_commit = "34f70fda182120369f954a4b1ccfa1edf58190ea"
+# Recorded 2026-07-26 (T0.1). embody_env_cfg.py asserts this at import and warns
+# on mismatch. The vendored policy in policy/ was produced at this commit.

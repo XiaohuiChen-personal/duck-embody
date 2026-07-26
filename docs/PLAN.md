@@ -111,7 +111,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
     python at all (extension-bundled, resolved separately), and the kit-launch
     check above passes. Downgrading is not an option — `anthropic` requires 0.18.
 
-### T0.1 `[ ]` Vendor the policy artifacts
+### T0.1 `[x]` Vendor the policy artifacts
 
 - **Context:** The v4_robust checkpoint lives outside any repo in
   `~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/`. The harness
@@ -133,7 +133,44 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   `mlp.0.weight.shape == (512,59)`; **`yaml.unsafe_load`** on env.yaml (Isaac Lab
   dumps `python/tuple` tags — `safe_load` raises ConstructorError, verified);
   assert `observations.policy['base_lin_vel'] is None`.
-- **Acceptance:** sha256 match source files; asserts pass (paste output).
+- **Acceptance:** PASSED (`scripts/smoke_policy_artifacts.py`, exit 0).
+  - **sha256 identical to source** for all 5 files: `model_2999.pt`
+    `b1ebf3a5…`, `params/agent.yaml` `f1cacdab…`, `params/env.yaml` `42264718…`,
+    `exported/policy.onnx` `d084384d…`, `exported/policy.onnx.data` `6dcf1025…`
+    (compared against the source dir before copying; digests in
+    `policy/checksums.txt`).
+  - **Checkpoint** top-level keys `['actor_state_dict','critic_state_dict',
+    'optimizer_state_dict','iter','infos']`; `iter == 2999`;
+    `actor_state_dict['obs_normalizer._mean'].shape == (1, 59)`;
+    `mlp.0.weight == (512, 59)`; `mlp.6.weight == (16, 128)`.
+  - **`env.yaml` via `yaml.unsafe_load`** (confirmed necessary): policy obs terms
+    are exactly `[base_ang_vel, projected_gravity, velocity_commands, joint_pos,
+    joint_vel, actions, gait_phase]` and `observations.policy['base_lin_vel'] is
+    None`, while the critic group *does* carry it. `dt == 0.005`,
+    `decimation == 4`. Training hull read straight from the file:
+    **vx (−0.148, 0.222), vy (±0.111), wz (±0.5)** — matches doc 05 §4 exactly.
+  - **`agent.yaml`**: `actor.obs_normalization` and `critic.obs_normalization`
+    both `true`; `obs_groups == {actor:[policy], critic:[critic]}`;
+    `class_name == OnPolicyRunner`; actor `hidden_dims [512,256,128]`.
+    Doc 02 §2's line citations (`:6–10`, `:30`, `:42`) verified correct.
+- **Plan corrections applied (rule 10.1):**
+  1. The plan's smoke assertion said `actor_state_dict['obs_normalizer._mean']`
+     — correct — but the artifact nests it under the top-level
+     **`actor_state_dict`** key, and `agent.yaml` uses the rsl-rl-lib **5.x**
+     schema (top-level `actor:`/`critic:`/`obs_groups:`, with a now-empty legacy
+     `policy: {}`). This is the very rename that makes
+     `handle_deprecated_rsl_rl_cfg` mandatory in T1.2 — recorded here so T1.2
+     does not rediscover it.
+  2. **ONNX provenance nuance:** `exported/policy.onnx*` have mtime
+     **2026-07-26 02:23**, nineteen days after the 2026-07-07 checkpoint — they
+     were re-exported, not produced by the training run. Recorded in
+     `policy/README.md`; reinforces "provenance-only, not used".
+- **Deliverables (done):** `policy/` populated (5 files + `checksums.txt`);
+  `policy/README.md` rewritten with source, checksums, training config, the
+  59-dim obs contract, the gait_phase trap, the eval record **and its stated
+  limits**, and the inference path; parent commit
+  `34f70fda182120369f954a4b1ccfa1edf58190ea` recorded in `pyproject.toml`
+  `[tool.duck-embody]` **and** AGENTS.md §4; `scripts/smoke_policy_artifacts.py`.
 
 ### T0.2 `[ ]` Fetch + inspect scene assets
 
