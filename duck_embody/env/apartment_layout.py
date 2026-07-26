@@ -140,8 +140,17 @@ LAYOUT = {
         {"name": "coffee_table", "room": "living_room", "asset": "appleseed_coffeetable",
          "pos": (0.88, 1.60), "yaw_deg": 0, "footprint": (0.300, 0.527),
          "collision": "native"},
+        # MOVED 0.95 -> 0.72 by the T2.4 physics pass. At y=0.95 the armchair's
+        # body-inflated footprint reached y=1.2225, leaving only ~7 cm of free
+        # centre-line inside the living-room/kitchen doorway (corridor
+        # y 1.105-1.295). A* still found a route, so `test_every_room_reachable`
+        # passed and the defect was invisible — but the ORACLE path then ran
+        # through a 7 cm slot, and every model that sensibly detoured via the
+        # hallway would have been scored against a threading the robot cannot
+        # reliably achieve. That is a scoring-fairness bug, not a driving one.
+        # At y=0.72 the corridor clears by 0.113 m and the chair is off the rug.
         {"name": "armchair", "room": "living_room", "asset": "armchair",
-         "pos": (1.40, 0.95), "yaw_deg": 0, "footprint": (0.447, 0.385),
+         "pos": (1.40, 0.72), "yaw_deg": 0, "footprint": (0.447, 0.385),
          "collision": "native"},
         # A rug is not an obstacle: 0.002 m tall, so NO collider. A bbox proxy
         # would put an invisible 2 mm lip across the living-room floor.

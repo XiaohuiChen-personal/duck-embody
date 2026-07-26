@@ -820,7 +820,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   table + `extract_room_mention`; 80 survey frames + top-down + judge results;
   doc 03 §7/§8 and doc 04 §5.2 updated; `configs/benchmark.yaml` scene block.
 
-### T2.4 `[ ]` Scripted physics pass (VIDEO GATE)
+### T2.4 `[x]` Scripted physics pass (VIDEO GATE)
 
 - **Context:** Verifies collision and the redesigned bump/fall semantics before any
   LLM spends money.
@@ -836,6 +836,78 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   termination/teleport; doorway transits clean; if the wall run topples the duck,
   the fall is detected and the episode ends.
 - **Acceptance (GATE):** all checks pass; zero spurious terminations.
+
+**GATE PASSED.** `scripts/smoke_physics_pass.py` → 8/8 doorway transits (4 doorways
+× both directions), all 4 collider classes stop the robot with `bumped=true` and
+**zero terminations**, max-speed wall run stopped at 0.60 m and its topple detected.
+Evidence: `results/figures/smoke/physics_pass_report.json`, `physics_pass.mp4`,
+per-event contact strips `contact_*.png`. Tests 142 green.
+
+**The counter question T2.2 handed over is answered.** T2.2 flagged that Isaac could
+not apply the contact-offset override to the Sektion counters (instanceable,
+`purpose=guide` collision prims) and required T2.4 to bump-test them rather than
+assume. It collides: robot stopped at 0.52 m of a commanded 0.9 m, `bumped=true`,
+episode survived, and `contact_counter_bump.png` shows it upright against the
+cabinet with no penetration.
+
+**Plan corrections (things this task found that the plan did not anticipate):**
+
+1. **Bump detection was watching the wrong bodies — a SILENT failure.** doc 02 §6.2
+   specified *trunk* contact, inherited from the deleted `base_contact` termination.
+   Measured (`scripts/debug_bump_bodies.py`): the duck's head leads at its own
+   height, so the trunk registers the sofa (499 N) but **never a wall or the fridge
+   proxy** — `head_assembly` takes those (115 N / 40 N). Trunk-only detection was
+   blind to walls, the most common obstacle in the apartment, and the failure mode
+   was invisible: the robot drove into a wall, was told `bumped=false`, kept
+   pushing, toppled, and ended the trial with no collision ever reported. Now the
+   peak over every non-foot body (feet excluded — they read 80–200 N against the
+   floor). Threshold and debounce unchanged and now justified rather than assumed:
+   real contacts are 28–499 N, two orders clear, and all 8 doorway transits report
+   `bumped=false`. **doc 02 updated this commit.**
+
+2. **A scoring-fairness trap in the layout that BOTH existing tests missed.** The
+   armchair sat 0.40 m from the living-room/kitchen doorway centre, so it passed
+   "nothing sits in a doorway" (0.40 > 0.30), and A* still found a route, so "every
+   room is reachable" passed too. But its inflated footprint left ~**7 cm** of free
+   centre-line in a 0.19 m robot corridor — meaning the SPL *oracle* routed through
+   a gap the robot cannot reliably walk, and any model that sensibly detoured via
+   the hallway would be scored against it. Moved to y=0.72 (clears by 0.113 m).
+   `tests/test_layout.py` gained `test_doorway_approach_corridors_are_clear`,
+   mutation-checked against the old pose. Reachability tests ask "is there a path?";
+   this asks "is the path the oracle scores against one the robot can walk?"
+   **Scene changed ⇒ T2.3 recognition gate RE-RUN: 4/4 rooms, 3/3 repeats.**
+   **doc 03 updated this commit.**
+
+3. **The first two videos were unauditable — rule 11 nearly passed on a green log.**
+   The T1.3/T1.4 chase camera (1.2, 1.2, 0.6) is a 1.7 m diagonal *below* wall
+   height; indoors, with 1.5–1.8 m rooms and the ceiling T2.3 added, it spent the
+   run inside a wall slab and produced 373 frames of featureless white. Every
+   assertion in the pass was green at the time. Fixed in two steps: hide the ceiling
+   for the grab (`Recorder(hide_ceiling=True)`, restored in a `finally`; the head
+   camera the models see still gets its roof, and the two never render at the same
+   instant), and look down from above the walls. The apartment cfg now overrides the
+   viewer to (0.6, 0.6, 1.4); the empty-plane cfg keeps its own, so T1.3/T1.4
+   evidence stands.
+
+4. **`std` is not a proxy for "useful frame" — twice now.** Picking the camera by
+   frame standard deviation chose a close-up of the stove with no duck in it
+   (std 75.4), the same trap as the T1.4 lens-inside-the-head (uniform gray passes
+   naive checks). Both sweeps had to be settled by *looking at the images*. Also:
+   the first offset sweep measured nothing, because `update_view_location()`
+   composes its offset with a tracking origin that only refreshes on a sim step —
+   without a step the camera aims where the duck used to be.
+
+5. **The post-fall teleport bug reappeared in the new macros.** `move()` and
+   `turn_to_heading()` re-read live state after their loop, which on a fall reports
+   the **auto-reset** pose — a duck that walked 1.1 m into a wall and toppled
+   reported 0.02 m of travel. `execute()` already guarded against exactly this. Both
+   now carry the last pose observed while the episode was live.
+
+6. **Motion macros landed here, one task early.** Driving a 0.35 m doorway needs
+   heading-held straight-line motion (T1.3: 1.8 °/s open-loop yaw creep), so
+   `move()`/`turn_to_heading()` had to exist before T2.4 could run. They live in the
+   playback layer because doc 02 §6 owns the macros — so the physics pass and T3.2's
+   tools drive the *same* code rather than two implementations that can diverge.
 
 ---
 

@@ -292,6 +292,23 @@ every spawn keeps &ge;0.4 m clearance from walls and furniture AABBs — added a
 found the original west-end plant ~0.17 m from spawn 103 and the original armchair pose ~0.23 m
 from spawn 101; both items were relocated, §3.1).</p>
 
+<div class="warning"><p><strong>ADDED IN T2.4 &mdash; doorway centre-line corridors, and the armchair moved
+again (0.95 &rarr; 0.72).</strong> The invariants above have a blind spot that a scoring bug fell
+straight through. The armchair sat 0.40 m to one side of the living-room/kitchen doorway, so it passed
+"nothing sits <em>in</em> a doorway" (0.40 &gt; the 0.30 m clearance test), and A* still found a route,
+so "every room is reachable from every spawn" passed too. But its body-inflated footprint reached
+y = 1.2225, leaving roughly <strong>7 cm</strong> of free centre-line inside a doorway whose robot
+corridor is y 1.105&ndash;1.295.</p>
+<p>That is not a driving problem, it is a <em>fairness</em> problem: the SPL oracle would have routed
+through that 7 cm slot, and every model that sensibly detoured via the hallway would be scored against
+a threading the robot cannot reliably walk. Reachability tests answer "is there a path?"; the new
+<code>test_doorway_approach_corridors_are_clear</code> answers the question that actually matters &mdash;
+"is the path the oracle scores against one the robot can walk?" &mdash; by requiring the full
+&plusmn;0.5 m centre-line through every doorway to be free. At y = 0.72 the corridor clears by 0.113 m
+and the chair is off the rug. The moved scene was re-rendered and the T2.3 recognition gate re-run:
+still 4/4 rooms in all 3 repeats.
+<span class="src">evidence: tests/test_layout.py (mutation-checked against the old pose), results/figures/survey/judge_result.json</span></p></div>
+
 <h2 id="assets">5. Asset sourcing</h2>
 <p>All furniture comes from NVIDIA's public Omniverse content bucket, reachable anonymously over
 HTTPS. The Isaac-version-pinned tree root is

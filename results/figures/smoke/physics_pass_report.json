@@ -1,0 +1,208 @@
+{
+  "transits": [
+    {
+      "name": "door_hallway_to_living_room",
+      "doorway": "hallway<->living_room",
+      "start": [
+        0.9,
+        2.25
+      ],
+      "heading": 90.0,
+      "room_before": "living_room",
+      "room_after": "hallway",
+      "crossed": true,
+      "true_displacement_m": 1.071,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_living_room_to_hallway",
+      "doorway": "hallway<->living_room",
+      "start": [
+        0.9,
+        3.15
+      ],
+      "heading": 270.0,
+      "room_before": "hallway",
+      "room_after": "living_room",
+      "crossed": true,
+      "true_displacement_m": 1.023,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_hallway_to_kitchen",
+      "doorway": "hallway<->kitchen",
+      "start": [
+        2.55,
+        2.25
+      ],
+      "heading": 90.0,
+      "room_before": "kitchen",
+      "room_after": "hallway",
+      "crossed": true,
+      "true_displacement_m": 1.072,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_kitchen_to_hallway",
+      "doorway": "hallway<->kitchen",
+      "start": [
+        2.55,
+        3.15
+      ],
+      "heading": 270.0,
+      "room_before": "hallway",
+      "room_after": "kitchen",
+      "crossed": true,
+      "true_displacement_m": 1.076,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_hallway_to_bedroom",
+      "doorway": "hallway<->bedroom",
+      "start": [
+        4.05,
+        2.25
+      ],
+      "heading": 90.0,
+      "room_before": "bedroom",
+      "room_after": "hallway",
+      "crossed": true,
+      "true_displacement_m": 1.073,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_bedroom_to_hallway",
+      "doorway": "hallway<->bedroom",
+      "start": [
+        4.05,
+        3.15
+      ],
+      "heading": 270.0,
+      "room_before": "hallway",
+      "room_after": "bedroom",
+      "crossed": true,
+      "true_displacement_m": 1.074,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_living_room_to_kitchen",
+      "doorway": "living_room<->kitchen",
+      "start": [
+        1.35,
+        1.2
+      ],
+      "heading": 0.0,
+      "room_before": "living_room",
+      "room_after": "kitchen",
+      "crossed": true,
+      "true_displacement_m": 1.067,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    },
+    {
+      "name": "door_kitchen_to_living_room",
+      "doorway": "living_room<->kitchen",
+      "start": [
+        2.25,
+        1.2
+      ],
+      "heading": 180.0,
+      "room_before": "kitchen",
+      "room_after": "living_room",
+      "crossed": true,
+      "true_displacement_m": 1.065,
+      "dead_reckoned_m": 1.004,
+      "bumped": false,
+      "fell": false
+    }
+  ],
+  "bumps": [
+    {
+      "name": "wall_bump",
+      "target": "wall A (kitchen north wall, off-doorway)",
+      "note": "CuboidCfg native collider",
+      "commanded_m": 1.3,
+      "true_displacement_m": 1.031,
+      "bumped": true,
+      "fell": false,
+      "stop_reason": "bump",
+      "terminated": false,
+      "frame_start": 208,
+      "frame_end": 234
+    },
+    {
+      "name": "sofa_bump",
+      "target": "sofa",
+      "note": "SimReady native collider via PhysicsVariant",
+      "commanded_m": 0.9,
+      "true_displacement_m": 0.286,
+      "bumped": true,
+      "fell": false,
+      "stop_reason": "bump",
+      "terminated": false,
+      "frame_start": 235,
+      "frame_end": 243
+    },
+    {
+      "name": "fridge_proxy_bump",
+      "target": "fridge",
+      "note": "invisible bbox proxy (visual-only asset)",
+      "commanded_m": 0.9,
+      "true_displacement_m": 0.275,
+      "bumped": true,
+      "fell": false,
+      "stop_reason": "bump",
+      "terminated": false,
+      "frame_start": 244,
+      "frame_end": 251
+    },
+    {
+      "name": "counter_bump",
+      "target": "sektion counter",
+      "note": "T2.2 flagged: contact-offset override could NOT be applied (instanceable, purpose=guide collision prims)",
+      "commanded_m": 0.9,
+      "true_displacement_m": 0.524,
+      "bumped": true,
+      "fell": false,
+      "stop_reason": "bump",
+      "terminated": false,
+      "frame_start": 252,
+      "frame_end": 266
+    }
+  ],
+  "max_speed_wall_run": {
+    "true_displacement_m": 0.6,
+    "bumped": true,
+    "fell": true,
+    "terminated": true,
+    "final_height_m": null,
+    "frame_start": 267,
+    "frame_end": 372
+  },
+  "contact_strips": {
+    "wall_bump": "results/figures/smoke/contact_wall_bump.png",
+    "sofa_bump": "results/figures/smoke/contact_sofa_bump.png",
+    "fridge_proxy_bump": "results/figures/smoke/contact_fridge_proxy_bump.png",
+    "counter_bump": "results/figures/smoke/contact_counter_bump.png",
+    "max_speed_wall_run": "results/figures/smoke/contact_max_speed_wall_run.png"
+  },
+  "n_transits": 8,
+  "n_crossed": 8,
+  "failures": [],
+  "acceptance": "PASS",
+  "video": "results/figures/smoke/physics_pass.mp4",
+  "filmstrip": "results/figures/smoke/physics_pass_filmstrip.png"
+}

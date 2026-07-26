@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import math
+from contextlib import contextmanager
 from pathlib import Path
 
 from duck_embody.env.apartment_layout import LAYOUT, room_at
@@ -77,6 +78,41 @@ CEILING_PRIM_PATH = "/World/Apartment/ceilings/ceiling"
 #: scene's dome light is black, so the ceiling and the lights arrive together.
 ROOM_LIGHT_INTENSITY = 12000.0
 ROOM_LIGHT_RADIUS_M = 0.12
+
+
+@contextmanager
+def ceiling_hidden(stage, renders: int = 3, verbose: bool = True):
+    """Hide the ceiling for the duration of the block, then restore it.
+
+    Two different jobs need to see *into* sealed rooms — the T2.3 top-down survey
+    render and the T2.4 physics-pass audit video — and both need the ceiling back
+    afterwards, because the head-camera renders the models actually see are what
+    the ceiling exists for. Toggling beats choosing between them.
+
+    Restoration runs in a ``finally``: an exception mid-render must not leave the
+    stage roofless, or every subsequent capture in the session silently reverts
+    to the "outdoor terrace" look the T2.3 gate rejected.
+    """
+    from pxr import UsdGeom
+
+    prim = stage.GetPrimAtPath(CEILING_PRIM_PATH)
+    if not (prim and prim.IsValid()):
+        if verbose:
+            print(f"  WARNING: no ceiling prim at {CEILING_PRIM_PATH}; nothing hidden")
+        yield False
+        return
+
+    imageable = UsdGeom.Imageable(prim)
+    imageable.MakeInvisible()
+    if verbose:
+        print("  ceiling hidden")
+    try:
+        yield True
+    finally:
+        imageable.MakeVisible()
+        if verbose:
+            print("  ceiling restored")
+        _ = renders  # callers re-render as needed; kept for call-site clarity
 
 
 def load_manifest(path: Path | None = None) -> dict:

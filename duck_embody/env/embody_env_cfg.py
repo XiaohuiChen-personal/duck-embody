@@ -260,6 +260,33 @@ class DuckEmbodyApartmentEnvCfg(DuckEmbodyEnvCfg):
     and the scene has to be built in ``__post_init__`` regardless.
     """
 
+    #: A doll's-house chase view, overriding the base class's in-room one.
+    #:
+    #: The base offset (1.2, 1.2, 0.6) is a 1.7 m diagonal at below-wall height.
+    #: On the empty plane that is a good third-person shot, and T1.3/T1.4 are
+    #: recorded with it. Indoors it is unusable: the rooms are 1.5-1.8 m across,
+    #: so the camera spends most of a run INSIDE a wall slab, and the first T2.4
+    #: video was 373 frames of featureless white. A sweep over in-room offsets
+    #: (scripts/debug_viewer_offset.py) found no survivor — the best-scoring one
+    #: was a close-up of the stove with no duck in frame.
+    #:
+    #: So look down from above the walls instead — close AND steep. 1.4 m up and
+    #: 0.85 m back clears the 0.7 m walls while keeping the duck large enough to
+    #: judge contact, which is the whole job: an audit frame has to show whether
+    #: the duck is TOUCHING the obstacle or INSIDE it. A first attempt at
+    #: (1.1, 1.1, 2.0) cleared the walls but rendered the duck ~30 px wide, and
+    #: behind the kitchen counter it disappeared entirely.
+    #: Requires Recorder(hide_ceiling=True); see recorder.py.
+    viewer: ViewerCfg = ViewerCfg(
+        eye=(0.6, 0.6, 1.4),
+        lookat=(0.0, 0.0, 0.15),
+        origin_type="asset_body",
+        asset_name="robot",
+        body_name=TRUNK_BODY,
+        env_index=0,
+        resolution=(1280, 720),
+    )
+
     def __post_init__(self):
         super().__post_init__()
         # Imported lazily: scene_builder pulls in isaaclab spawner modules, and

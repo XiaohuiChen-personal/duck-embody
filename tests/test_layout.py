@@ -340,6 +340,8 @@ class TestFurniture:
                 assert ox <= EPS or oy <= EPS, f"{a['name']} overlaps {b['name']}"
 
     def test_no_furniture_blocks_a_doorway(self):
+        """Nothing sits IN a doorway. Necessary but far from sufficient — see
+        `test_doorway_approach_corridors_are_clear` below."""
         for door in LAYOUT["doorways"]:
             cx, cy = door["center"]
             for item in LAYOUT["furniture"]:
@@ -349,6 +351,50 @@ class TestFurniture:
                 w, d = item["footprint"]
                 blocks = abs(cx - ix) < w / 2 + BODY_RADIUS_M and abs(cy - iy) < d / 2 + BODY_RADIUS_M
                 assert not blocks, f"{item['name']} blocks doorway {door['between']}"
+
+    def test_doorway_approach_corridors_are_clear(self):
+        """Every doorway must be walkable STRAIGHT THROUGH, not merely reachable.
+
+        This is the test T2.4 had to be written for. The armchair used to sit
+        0.4 m to one side of the living-room/kitchen doorway: it passed the
+        "in the doorway" check above (0.40 > 0.30 clearance), and A* still found
+        a route, so `test_every_room_reachable` passed too. But its inflated
+        footprint ate all but ~7 cm of the doorway's centre-line, so the ORACLE
+        path threaded a gap the robot cannot reliably walk — and every model that
+        sensibly detoured would have been scored against it.
+
+        Reachability tests answer "is there a path?". This answers "is the path
+        the oracle scores against one the robot can actually walk?".
+        """
+        g = grid()
+        REACH = 0.5  # how far to either side of the doorway must stay clear
+        for door in LAYOUT["doorways"]:
+            cx, cy = door["center"]
+            # Derive the normal from the wall the doorway is cut into, rather
+            # than hardcoding which doorways are horizontal. Match on
+            # COLLINEARITY, not containment: the wall list is already split at
+            # each doorway, so no segment spans the centre — the gap IS the door.
+            horiz_wall = any(
+                abs(w["start"][1] - w["end"][1]) < 1e-9 and abs(cy - w["start"][1]) < 1e-9
+                for w in LAYOUT["walls"]
+            )
+            vert_wall = any(
+                abs(w["start"][0] - w["end"][0]) < 1e-9 and abs(cx - w["start"][0]) < 1e-9
+                for w in LAYOUT["walls"]
+            )
+            assert horiz_wall or vert_wall, f"doorway {door['between']} sits on no wall"
+            dx, dy = (0.0, 1.0) if horiz_wall else (1.0, 0.0)
+
+            blocked = [
+                round(t, 3)
+                for t in [(-REACH + 0.05 * i) for i in range(int(2 * REACH / 0.05) + 1)]
+                if not g.is_free(cx + dx * t, cy + dy * t)
+            ]
+            assert not blocked, (
+                f"doorway {door['between']} centre-line is blocked at offsets "
+                f"{blocked} m — the oracle path would thread a gap the robot "
+                f"cannot walk"
+            )
 
     def test_the_rug_is_not_an_obstacle(self):
         """It is 0.002 m tall. A collider there would be an invisible lip that

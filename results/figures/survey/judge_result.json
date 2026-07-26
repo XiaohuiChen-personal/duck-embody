@@ -27,8 +27,8 @@
         "kitchen": {
           "majority_guess": "kitchen",
           "votes": {
-            "kitchen": 4,
-            "living_room": 1
+            "kitchen": 3,
+            "living_room": 2
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -37,8 +37,8 @@
         "living_room": {
           "majority_guess": "living_room",
           "votes": {
-            "living_room": 4,
-            "bedroom": 1
+            "living_room": 3,
+            "bedroom": 2
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -77,7 +77,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "Bedroom"
+          "reply": "**Bedroom**\n\nThe presence of a chaise lounge/daybed with a pillow and throw blanket, along with the simple, sparse room layout, suggests this is a bedroom."
         },
         {
           "room": "bedroom",
@@ -88,7 +88,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "**Bedroom**\n\nThe images show what appears to be a dark bed/mattress with what might be pillows, plain walls, and a simple ceiling light fixture - characteristic features of a bedroom."
+          "reply": "Based on the images showing a bed with dark bedding and what appears to be a pillow, this is a **bedroom**."
         },
         {
           "room": "bedroom",
@@ -110,7 +110,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "hallway"
+          "reply": "**Hallway**"
         },
         {
           "room": "hallway",
@@ -132,7 +132,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe 180\u00b0 and 270\u00b0 views clearly show a long corridor/passage with doorways leading to other spaces (note the bed visible through the far doorway at 270\u00b0, and the extended hallway with buckets at 180\u00b0). The 0\u00b0 and 90\u00b0 views show pl"
+          "reply": "Based on the four compass views showing a corridor with a bed/dark object visible at the 270\u00b0 view, and hallway extending at 180\u00b0, this appears to be a **hallway** connecting to a bedroom area.\n\n**hallway**"
         },
         {
           "room": "hallway",
@@ -143,7 +143,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe images show a long corridor with a plain floor, ceiling light fixture, and doorways leading to other rooms, consistent with a hallway rather than a kitchen, bedroom, or living room."
+          "reply": "Hallway"
         },
         {
           "room": "hallway",
@@ -165,7 +165,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "kitchen"
+          "reply": "Kitchen"
         },
         {
           "room": "kitchen",
@@ -176,7 +176,7 @@
           ],
           "guess": "living_room",
           "correct": false,
-          "reply": "Living room"
+          "reply": "**Living room**\n\nThe space features a red accent chair, a low console/media unit, and what appears to be a wall-mounted item (possibly a TV or picture) - typical furnishings for a living room setting rather than a kitchen, bedroom, or hallway."
         },
         {
           "room": "kitchen",
@@ -187,7 +187,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "Kitchen"
+          "reply": "**Kitchen**\n\nThe 270\u00b0 view clearly shows a microwave mounted on the wall and what appears to be a range/stove with an oven below it, along with counter-like elements \u2014 these are classic kitchen appliances and fixtures."
         },
         {
           "room": "kitchen",
@@ -207,9 +207,9 @@
             2.6,
             2.3
           ],
-          "guess": "kitchen",
-          "correct": true,
-          "reply": "Based on the 270\u00b0 view showing a microwave, cabinets, counter/island area, and stool seating, this appears to be a **kitchen**."
+          "guess": "living_room",
+          "correct": false,
+          "reply": "Based on the elements visible in the 270\u00b0 view\u2014including a red bar stool, a black cabinet/console, what appears to be a small wall-mounted device, and drawer units\u2014this appears to be a **living room**."
         },
         {
           "room": "living_room",
@@ -220,7 +220,7 @@
           ],
           "guess": "living_room",
           "correct": true,
-          "reply": "Living room"
+          "reply": "living room"
         },
         {
           "room": "living_room",
@@ -231,7 +231,7 @@
           ],
           "guess": "bedroom",
           "correct": false,
-          "reply": "Based on the red bed visible in the 180\u00b0 view, this is a **bedroom**."
+          "reply": "Based on the red bed visible in the 180\u00b0 and 270\u00b0 views, this is a **bedroom**."
         },
         {
           "room": "living_room",
@@ -248,12 +248,12 @@
           "room": "living_room",
           "pose_index": 3,
           "xy": [
-            1.4,
-            0.5
+            1.375,
+            0.425
           ],
-          "guess": "living_room",
-          "correct": true,
-          "reply": "living room"
+          "guess": "bedroom",
+          "correct": false,
+          "reply": "**Bedroom**\n\nThe 90\u00b0 view clearly shows a bed with red bedding taking up most of the foreground, along with what appears to be a hallway/closet area and a small red stool/chair visible in the background."
         },
         {
           "room": "living_room",
@@ -294,8 +294,8 @@
         "kitchen": {
           "majority_guess": "kitchen",
           "votes": {
-            "kitchen": 4,
-            "living_room": 1
+            "kitchen": 3,
+            "living_room": 2
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -304,7 +304,8 @@
         "living_room": {
           "majority_guess": "living_room",
           "votes": {
-            "living_room": 5
+            "living_room": 3,
+            "bedroom": 2
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -321,7 +322,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "bedroom"
+          "reply": "Bedroom"
         },
         {
           "room": "bedroom",
@@ -343,7 +344,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "Bedroom"
+          "reply": "**Bedroom**\n\nThe presence of a chaise lounge/bed-like furniture with a pillow and throw blanket suggests this is a bedroom space."
         },
         {
           "room": "bedroom",
@@ -354,7 +355,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "**Bedroom**\n\nBased on the four views, this appears to be a bedroom \u2014 there's a dark bed/mattress with what looks like a pillow or blanket visible in the 90\u00b0 and 180\u00b0 views, along with plain walls and a ceiling light fixture typical of a sleeping area."
+          "reply": "Based on the images showing a bed with dark bedding and what appears to be a pillow/cushion, this looks like a **bedroom**."
         },
         {
           "room": "bedroom",
@@ -376,7 +377,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe images show a narrow corridor with plain walls, a light fixture on the ceiling, and openings leading to other rooms - this is characteristic of a hallway rather than a functional living space."
+          "reply": "Hallway"
         },
         {
           "room": "hallway",
@@ -398,7 +399,7 @@
           ],
           "guess": "bedroom",
           "correct": false,
-          "reply": "**Bedroom**\n\nThe final image (270\u00b0) shows what appears to be a bed with pillows against the far wall, which is the defining feature of a bedroom."
+          "reply": "Based on the four compass views showing a bed visible at 270\u00b0, this appears to be a **bedroom**."
         },
         {
           "room": "hallway",
@@ -409,7 +410,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe four compass views show a long corridor with plain walls, a light fixture centered on the ceiling, and floor extending into the distance \u2014 consistent with a hallway rather than a furnished living space like a bedroom, kitchen, or living room. The red bucket and small plant appear to be incidental objects placed in the passage."
+          "reply": "Based on the four compass views showing a long corridor with plain walls, a ceiling light fixture, and doorways/openings visible, this is a **hallway**."
         },
         {
           "room": "hallway",
@@ -420,7 +421,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "Based on the four compass views showing a long corridor with a light fixture on the ceiling, plain walls, and doorways leading to other spaces, this is a **hallway**."
+          "reply": "hallway"
         },
         {
           "room": "kitchen",
@@ -431,7 +432,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "kitchen"
+          "reply": "Kitchen"
         },
         {
           "room": "kitchen",
@@ -442,7 +443,7 @@
           ],
           "guess": "living_room",
           "correct": false,
-          "reply": "Living room"
+          "reply": "**Living room**\n\nThe image at 270\u00b0 shows a room with a red chair, a low console/media unit, and what appears to be a wall-mounted item (possibly a TV or speaker), which are characteristic furnishings of a living room space."
         },
         {
           "room": "kitchen",
@@ -473,9 +474,9 @@
             2.6,
             2.3
           ],
-          "guess": "kitchen",
-          "correct": true,
-          "reply": "Based on the four compass views showing a room with a red bar stool, black cabinets/appliances mounted on the wall, a microwave, and an open layout with a countertop area (visible in the 270\u00b0 view), this appears to be a **kitchen**."
+          "guess": "living_room",
+          "correct": false,
+          "reply": "**Living room**\n\nThe 270\u00b0 view reveals furnishings characteristic of a living room: a red bar stool/chair, a low cabinet/console (possibly holding a TV or electronics), a small wall-mounted unit that could be a shelf or small screen, and additional storage furniture along the walls. The open floor space and seating arrangement suggest this is a living or family room area, distinct from a kitchen (no appliances like stove/sink visible), bedroom (no bed), or hallway (too spacious with furniture arrangement)."
         },
         {
           "room": "living_room",
@@ -486,7 +487,7 @@
           ],
           "guess": "living_room",
           "correct": true,
-          "reply": "**Living room** \u2014 the presence of the red sofa, table, and open layout suggest this is a living room space."
+          "reply": "Living room"
         },
         {
           "room": "living_room",
@@ -495,9 +496,9 @@
             1.35,
             1.85
           ],
-          "guess": "living_room",
-          "correct": true,
-          "reply": "**Living room**\n\nThe presence of a red sofa, an armchair, and what appears to be a TV/media setup (visible in the 270\u00b0 view) indicates this is a living room. While there's a bed visible in the 180\u00b0 view, the overall furniture arrangement with seating and entertainment components suggests this is primarily a living room space."
+          "guess": "bedroom",
+          "correct": false,
+          "reply": "Based on the red bed visible in the 180\u00b0 and 270\u00b0 views, this is a **bedroom**."
         },
         {
           "room": "living_room",
@@ -514,12 +515,12 @@
           "room": "living_room",
           "pose_index": 3,
           "xy": [
-            1.4,
-            0.5
+            1.375,
+            0.425
           ],
-          "guess": "living_room",
-          "correct": true,
-          "reply": "living room"
+          "guess": "bedroom",
+          "correct": false,
+          "reply": "**Bedroom**\n\nThe 90\u00b0 view clearly shows a bed with red bedding as the dominant feature, along with what appears to be a small stool/chair, confirming this is a bedroom."
         },
         {
           "room": "living_room",
@@ -541,7 +542,8 @@
         "bedroom": {
           "majority_guess": "bedroom",
           "votes": {
-            "bedroom": 5
+            "bedroom": 4,
+            "hallway": 1
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -570,7 +572,8 @@
         "living_room": {
           "majority_guess": "living_room",
           "votes": {
-            "living_room": 5
+            "living_room": 3,
+            "bedroom": 2
           },
           "n_poses": 5,
           "has_strict_majority": true,
@@ -587,7 +590,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "Bedroom"
+          "reply": "**Bedroom**\n\nThe presence of a bed with pillows visible in the 0\u00b0 and 90\u00b0 views confirms this is a bedroom."
         },
         {
           "room": "bedroom",
@@ -609,7 +612,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "Bedroom"
+          "reply": "**Bedroom**\n\nThe presence of a chaise lounge/daybed with a pillow and throw blanket, along with the enclosed room structure, indicates this is a bedroom space."
         },
         {
           "room": "bedroom",
@@ -618,9 +621,9 @@
             4.62,
             0.45
           ],
-          "guess": "bedroom",
-          "correct": true,
-          "reply": "**Bedroom** \u2013 the dark bed with a pillow/blanket visible in the 90\u00b0 and 180\u00b0 views indicates this is a bedroom."
+          "guess": "hallway",
+          "correct": false,
+          "reply": "Based on the images showing what appears to be a bed (dark surface with a tan/gold pillow or blanket) in a corridor-like space with plain walls, this appears to be a **bedroom**."
         },
         {
           "room": "bedroom",
@@ -631,7 +634,7 @@
           ],
           "guess": "bedroom",
           "correct": true,
-          "reply": "**Bedroom**\n\nThe presence of a bed/mattress with pillows (visible in the 0\u00b0 and 270\u00b0 views) indicates this is a bedroom."
+          "reply": "Bedroom"
         },
         {
           "room": "hallway",
@@ -642,7 +645,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe images show a corridor with plain walls, a wooden floor, and doorways leading to other rooms - characteristic features of a hallway rather than a specific living space like a kitchen, bedroom, or living room."
+          "reply": "Hallway"
         },
         {
           "room": "hallway",
@@ -664,7 +667,7 @@
           ],
           "guess": "bedroom",
           "correct": false,
-          "reply": "Bedroom"
+          "reply": "Based on the four compass views showing a bed visible at the 270\u00b0 view, this appears to be a **bedroom**."
         },
         {
           "room": "hallway",
@@ -675,7 +678,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "**Hallway**\n\nThe images show a long corridor with a floor, ceiling, and side walls converging in perspective\u2014characteristic of a hallway rather than a distinct room like a kitchen, bedroom, or living room."
+          "reply": "**Hallway**"
         },
         {
           "room": "hallway",
@@ -686,7 +689,7 @@
           ],
           "guess": "hallway",
           "correct": true,
-          "reply": "Based on these four compass views, this appears to be a **hallway** - the corridor with walls extending into the distance, the ceiling light fixture, and the transitional space with a small red object (possibly a bucket or marker) are characteristic of a hallway rather than a distinct functional room."
+          "reply": "hallway"
         },
         {
           "room": "kitchen",
@@ -708,7 +711,7 @@
           ],
           "guess": "living_room",
           "correct": false,
-          "reply": "Living room"
+          "reply": "**Living room**\n\nThe image at 270\u00b0 shows a red chair, what appears to be a media console/entertainment unit, and an open, spacious layout typical of a living room setting."
         },
         {
           "room": "kitchen",
@@ -719,7 +722,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "Kitchen"
+          "reply": "**Kitchen**\n\nThe 270\u00b0 view clearly shows a microwave mounted on the wall and what appears to be a black stove/range with an oven below\u2014these are distinctive kitchen appliances that confirm this room's function."
         },
         {
           "room": "kitchen",
@@ -730,7 +733,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "Kitchen"
+          "reply": "Based on the images showing an oven/range appliance, this appears to be a **kitchen**."
         },
         {
           "room": "kitchen",
@@ -741,7 +744,7 @@
           ],
           "guess": "kitchen",
           "correct": true,
-          "reply": "Based on the images showing a red bar stool, dark cabinets/appliances, and an open floor plan with counter space, this appears to be a **kitchen**."
+          "reply": "Based on the 270\u00b0 view showing a red bar stool, cabinets, and what appears to be a microwave, this room appears to be a **kitchen**."
         },
         {
           "room": "living_room",
@@ -752,7 +755,7 @@
           ],
           "guess": "living_room",
           "correct": true,
-          "reply": "**Living room** - The presence of red sofas/couches, a coffee table, and open floor space arranged for seating indicates this is a living room."
+          "reply": "living room"
         },
         {
           "room": "living_room",
@@ -761,9 +764,9 @@
             1.35,
             1.85
           ],
-          "guess": "living_room",
-          "correct": true,
-          "reply": "**Living room**\n\nThe space contains a red sofa/couch, an armchair, and what appears to be a TV setup against the wall, along with a small robot figure - all characteristic furnishings of a living room rather than a bedroom, kitchen, or hallway."
+          "guess": "bedroom",
+          "correct": false,
+          "reply": "Based on the red bed visible in the 180\u00b0 and 270\u00b0 views, this is a **bedroom**."
         },
         {
           "room": "living_room",
@@ -780,12 +783,12 @@
           "room": "living_room",
           "pose_index": 3,
           "xy": [
-            1.4,
-            0.5
+            1.375,
+            0.425
           ],
-          "guess": "living_room",
-          "correct": true,
-          "reply": "living room"
+          "guess": "bedroom",
+          "correct": false,
+          "reply": "**Bedroom**\n\nThis is supported by the large red bed/mattress visible in the 0\u00b0, 90\u00b0, and 180\u00b0 views, along with what appears to be a small stool or side table near the bed in the 90\u00b0 view."
         },
         {
           "room": "living_room",

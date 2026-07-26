@@ -54,7 +54,29 @@ class Recorder:
         strip = rec.filmstrip(mp4)
     """
 
-    def __init__(self, out_prefix: Path | str, fps: int = 25, every_n: int = 2):
+    def __init__(
+        self,
+        out_prefix: Path | str,
+        fps: int = 25,
+        every_n: int = 2,
+        hide_ceiling: bool = False,
+    ):
+        #: Hide the apartment ceiling for the duration of each viewport grab.
+        #:
+        #: The audit view and the model's view want opposite things. The chase
+        #: camera sits 2 m up so it can see over the 0.7 m walls (anything lower
+        #: is buried in a wall slab or jammed against furniture — measured in
+        #: scripts/debug_viewer_offset.py), which puts it ABOVE the ceiling the
+        #: T2.3 gate added; with the roof on, every audit frame is a photo of the
+        #: roof. The head camera the models actually see needs that same ceiling,
+        #: or the judge reads each room as an outdoor terrace.
+        #:
+        #: They never render at the same instant — viewport grabs happen on chunk
+        #: boundaries, head captures only on an explicit look/look_around — so
+        #: the roof comes off for the grab and goes straight back on. Restoration
+        #: is in a `finally`, because a roofless stage would silently degrade
+        #: every subsequent observation rather than fail.
+        self.hide_ceiling = hide_ceiling
         self.out_prefix = Path(out_prefix)
         self.out_prefix.parent.mkdir(parents=True, exist_ok=True)
         self.frames_dir = self.out_prefix.parent / f"{self.out_prefix.name}_frames"
@@ -96,8 +118,15 @@ class Recorder:
         self._calls += 1
         if (self._calls - 1) % self.every_n:
             return
-        env.sim.render()
-        frame = env.render(recompute=True)
+        if self.hide_ceiling:
+            from duck_embody.env.scene_builder import ceiling_hidden
+
+            with ceiling_hidden(env.sim.stage, verbose=False):
+                env.sim.render()
+                frame = env.render(recompute=True)
+        else:
+            env.sim.render()
+            frame = env.render(recompute=True)
         if frame is None:
             # Loud once, not per step: a silent None here is exactly how a
             # rule-11 smoke test ends up with an empty video and a green tick.

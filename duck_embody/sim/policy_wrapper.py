@@ -45,12 +45,46 @@ CONTROL_DT = 1.0 / CONTROL_HZ
 #: once per turn would miss within-turn curvature and inflate SPL (doc 06 §5.3).
 POSE_TRACE_EVERY = 10
 
-#: Contact force (N) on the trunk that counts as a bump, and how many
+#: Contact force (N) on any NON-FOOT body that counts as a bump, and how many
 #: consecutive control steps must exceed it. Debouncing matters: a single
 #: grazing spike while squeezing through a 0.35 m doorway must not read as a
-#: collision (doc 02 §6.2). Tuned in T2.4 against the real apartment.
+#: collision (doc 02 §6.2).
+#:
+#: TUNED IN T2.4 against the real apartment, as this constant always promised.
+#: The bodies are the change that mattered — see PolicyPlayback.__init__; the
+#: 1.0 N threshold survived measurement. Real contacts land at 28-499 N, two
+#: orders of magnitude above it, while free walking leaves every non-foot body
+#: under 1 N (3 runs x 60+ steps, scripts/debug_bump_bodies.py). There is no
+#: near-threshold regime to tune into: the gap is the whole point.
 BUMP_FORCE_N = 1.0
 BUMP_DEBOUNCE_STEPS = 3
+
+# --- Motion macros (doc 02 §6) ---------------------------------------------
+# These live in the playback layer, not the tool layer: doc 02 owns the macros
+# and `tools.py` only wires tool schemas to them. Putting them here means the
+# T2.4 physics pass and the LLM drive the *same* code.
+
+#: Commanded forward speed for `move` (doc 02 §6.2).
+MOVE_SPEED_MPS = 0.2
+#: Per-call distance cap, so one tool call cannot cross the apartment blind.
+MOVE_MAX_DISTANCE_M = 1.5
+#: Servo/correction interval. 0.2 s = 10 control steps.
+MACRO_CHUNK_S = 0.2
+#: Extra time allowed before a macro gives up, as a multiple of the ideal.
+MACRO_TIME_MARGIN = 1.6
+
+#: P gain on heading error (radians) -> wz. Saturates the +/-0.5 rad/s hull at
+#: ~19 deg of error. Mirrors Isaac Lab's own heading controller structure.
+KP_HEADING = 1.5
+TURN_TOLERANCE_DEG = 5.0
+TURN_TIMEOUT_S = 8.0
+
+#: MEASURED velocity realisation factor (T1.3): net displacement / commanded.
+#: Used ONLY here — for the `move` servo target and its timeout margin — and by
+#: wall-clock forecasting. The dead-reckoning integrator the model sees uses
+#: commanded velocity with NO k, so its drift stays honest and measurable
+#: (AGENTS.md rule 5 over doc 02 §6.2's pseudocode; pinned by PLAN T1.3).
+K_VELOCITY_REALISATION = 1.004
 
 
 def clamp_command(
@@ -122,6 +156,10 @@ class ExecResult:
     clamp_notes: list[str] = field(default_factory=list)
     stopped_early: bool = False
     stop_reason: str = ""
+    #: Distance the DEAD-RECKONING integrator believes was covered. This is what
+    #: the model is told; `true_displacement_m` above is scoring-only and never
+    #: shown. Set by `move`; the gap between them is the drift being measured.
+    dead_reckoned_distance_m: float = 0.0
 
 
 class PolicyPlayback:
@@ -178,14 +216,34 @@ class PolicyPlayback:
         self._defuse_command_term()
 
         self._contact_sensor = self.base_env.scene.sensors["contact_forces"]
-        trunk_ids, trunk_names = self._contact_sensor.find_bodies("trunk_assembly")
-        if not trunk_ids:
+        # Bump = contact on any body that is NOT a foot. The feet are excluded
+        # because they carry the robot: they read 80-200 N continuously against
+        # the floor, so including them would report a permanent bump.
+        #
+        # NOT trunk-only, which is what doc 02 §6.2 originally specified and
+        # what T2.4 MEASURED to be wrong. scripts/debug_bump_bodies.py logged
+        # per-body forces while driving at three obstacle classes:
+        #   sofa (0.42 m seat) -> trunk_assembly, 499 N, step 75
+        #   fridge proxy       -> head_assembly,   40 N, step 62   <- trunk never
+        #   wall A  (0.7 m)    -> head_assembly,  115 N, step 249  <- trunk never
+        # The duck's head leads at its own height, so a trunk-only test is blind
+        # to walls — the most common obstacle in the apartment. The failure mode
+        # that produced was silent: the model drove into a wall, was told
+        # `bumped=false`, kept pushing, and eventually toppled, ending the trial
+        # with no collision ever reported.
+        all_ids = list(range(len(self._contact_sensor.body_names)))
+        foot_ids, foot_names = self._contact_sensor.find_bodies(".*foot.*")
+        self._bump_body_ids = [i for i in all_ids if i not in set(foot_ids)]
+        self._bump_body_names = [
+            self._contact_sensor.body_names[i] for i in self._bump_body_ids
+        ]
+        self._foot_body_names = foot_names
+        if not self._bump_body_ids:
             raise RuntimeError(
-                "No 'trunk_assembly' body in the contact sensor; bump detection "
-                f"would silently never fire. Sensor bodies: {self._contact_sensor.body_names}"
+                "Every contact-sensor body matched the foot pattern; bump "
+                f"detection would silently never fire. Bodies: "
+                f"{self._contact_sensor.body_names}"
             )
-        self._trunk_body_ids = trunk_ids
-        self._trunk_body_names = trunk_names
 
         self._robot = self.base_env.scene["robot"]
 
@@ -239,9 +297,19 @@ class PolicyPlayback:
         yaw = math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
         return wrap_deg(math.degrees(yaw))
 
-    def trunk_contact_force(self) -> float:
-        forces = self._contact_sensor.data.net_forces_w[0, self._trunk_body_ids]
+    def bump_contact_force(self) -> float:
+        """Peak contact force (N) over every non-foot body. See __init__."""
+        forces = self._contact_sensor.data.net_forces_w[0, self._bump_body_ids]
         return float(forces.norm(dim=-1).max())
+
+    def contact_report(self) -> dict[str, float]:
+        """Per-body force for the non-foot bodies above threshold. Debug only."""
+        forces = self._contact_sensor.data.net_forces_w[0, self._bump_body_ids]
+        return {
+            name: round(float(f), 2)
+            for name, f in zip(self._bump_body_names, forces.norm(dim=-1).tolist())
+            if f > BUMP_FORCE_N
+        }
 
     # -- execution ----------------------------------------------------------
 
@@ -331,7 +399,7 @@ class PolicyPlayback:
             last_live_xy = self.true_xy()
             last_live_heading = self.compass_deg()
 
-            if self.trunk_contact_force() > BUMP_FORCE_N:
+            if self.bump_contact_force() > BUMP_FORCE_N:
                 self._bump_run += 1
                 if self._bump_run >= BUMP_DEBOUNCE_STEPS:
                     bumped = True
@@ -381,3 +449,160 @@ class PolicyPlayback:
     def settle(self, duration_s: float = 0.4) -> None:
         """Step with a zero command so the gait comes to rest before a capture."""
         self.execute(0.0, 0.0, 0.0, duration_s)
+
+    # -- motion macros (doc 02 §6) ------------------------------------------
+
+    def _merge(self, total: ExecResult | None, part: ExecResult) -> ExecResult:
+        if total is None:
+            return part
+        total.steps += part.steps
+        total.policy_seconds += part.policy_seconds
+        total.bumped = total.bumped or part.bumped
+        total.fell = part.fell
+        total.sampled_xy.extend(part.sampled_xy)
+        total.true_pose = part.true_pose
+        total.stopped_early = part.stopped_early
+        total.stop_reason = part.stop_reason or total.stop_reason
+        total.clamp_notes.extend(part.clamp_notes)
+        return total
+
+    def turn_to_heading(
+        self,
+        heading_deg: float,
+        tol_deg: float = TURN_TOLERANCE_DEG,
+        timeout_s: float = TURN_TIMEOUT_S,
+        on_chunk=None,
+    ) -> ExecResult:
+        """Rotate in place to an absolute compass heading, closed-loop.
+
+        P-control on the compass, clamped to the training hull, with a timeout
+        instead of spinning forever. Reports the residual error so the model can
+        decide whether to retry (doc 05 §4.2).
+        """
+        target = wrap_deg(heading_deg)
+        start_xy = self.true_xy()
+        merged: ExecResult | None = None
+        n_chunks = max(1, int(timeout_s / MACRO_CHUNK_S))
+
+        # Same post-fall rule as move(): never re-read live state after a
+        # termination, because the env has already teleported.
+        last_pose = (start_xy[0], start_xy[1], self.compass_deg())
+        fell = False
+
+        for _ in range(n_chunks):
+            err = shortest_angle_diff_deg(target, self.compass_deg())
+            if abs(err) <= tol_deg:
+                break
+            wz = max(-WZ_RANGE[1], min(WZ_RANGE[1], KP_HEADING * math.radians(err)))
+            part = self.execute(0.0, 0.0, wz, MACRO_CHUNK_S)
+            merged = self._merge(merged, part)
+            last_pose = part.true_pose
+            if on_chunk is not None:
+                on_chunk()
+            if part.fell:
+                fell = True
+                break
+
+        if not fell:
+            # Settle so the next capture shows a still robot rather than a turn
+            # in progress, and so no command is left armed across the LLM think.
+            settle = self.execute(0.0, 0.0, 0.0, MACRO_CHUNK_S)
+            merged = self._merge(merged, settle)
+            last_pose = settle.true_pose
+            if on_chunk is not None:
+                on_chunk()
+
+        residual = shortest_angle_diff_deg(last_pose[2], target)
+        merged.stop_reason = (
+            "fell" if fell else ("reached" if abs(residual) <= tol_deg else "timeout")
+        )
+        merged.true_pose = last_pose
+        merged.pose_trace = [start_xy, *merged.sampled_xy, (last_pose[0], last_pose[1])]
+        merged.true_displacement_m = math.dist(start_xy, (last_pose[0], last_pose[1]))
+        return merged
+
+    def move(
+        self,
+        distance_m: float,
+        hold_heading: bool = True,
+        stop_on_bump: bool = True,
+        on_chunk=None,
+    ) -> ExecResult:
+        """Walk forward, servoing on dead-reckoned distance AND heading.
+
+        **Heading hold is not optional decoration.** T1.3 measured the bare
+        policy yawing ~1.8 deg/s when commanded straight — 36.6 deg over 4 m.
+        Open loop, a 1.5 m move aimed at a 0.35 m doorway ends ~0.18 m off
+        course, which would show up as "the model cannot navigate" when it is
+        really the gait. Closing wz on the compass during the drive cuts that to
+        0.39 deg over the same distance. AGENTS.md rule 5 declares closed-loop
+        macros servoing on compass + dead reckoning a sensor-realistic exception,
+        so this is in scope by design, not a workaround.
+
+        Auto-stops on collision (this is the tool that does; `send_velocity`
+        deliberately does not — doc 05 §4.2).
+        """
+        distance = max(0.0, min(distance_m, MOVE_MAX_DISTANCE_M))
+        # k is consumed HERE (and only here + forecasting): the servo target is
+        # the commanded distance the achieved distance corresponds to.
+        target_dist = distance / K_VELOCITY_REALISATION
+        ideal_s = target_dist / MOVE_SPEED_MPS if MOVE_SPEED_MPS else 0.0
+        n_chunks = max(1, int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)))
+
+        held_heading = self.compass_deg()
+        start_xy = self.true_xy()
+        travelled = 0.0
+        merged: ExecResult | None = None
+        reason = "timeout"
+        # The last pose observed while the episode was LIVE. Re-reading
+        # self.true_xy() after the loop would report the TELEPORTED pose on a
+        # fall, because Isaac auto-resets a terminated env inside step() — the
+        # same trap execute() already guards against, reintroduced here. It made
+        # a duck that walked 1.1 m into a wall and toppled report 0.02 m.
+        last_pose = (start_xy[0], start_xy[1], held_heading)
+
+        for _ in range(n_chunks):
+            wz = 0.0
+            if hold_heading:
+                err = shortest_angle_diff_deg(held_heading, self.compass_deg())
+                wz = max(-WZ_RANGE[1], min(WZ_RANGE[1], KP_HEADING * math.radians(err)))
+
+            part = self.execute(
+                MOVE_SPEED_MPS, 0.0, wz, MACRO_CHUNK_S, stop_on_bump=stop_on_bump
+            )
+            merged = self._merge(merged, part)
+            if on_chunk is not None:
+                on_chunk()
+
+            # Dead reckoning integrates the COMMANDED velocity — the same
+            # honest, drifting estimate the model is shown.
+            travelled += MOVE_SPEED_MPS * part.policy_seconds
+            last_pose = part.true_pose
+
+            if part.fell:
+                reason = "fell"
+                break
+            if part.bumped and stop_on_bump:
+                reason = "bump"
+                break
+            if travelled >= target_dist:
+                reason = "reached"
+                break
+
+        if reason != "fell":
+            stop = self.execute(0.0, 0.0, 0.0, MACRO_CHUNK_S)
+            merged = self._merge(merged, stop)
+            last_pose = stop.true_pose
+            if on_chunk is not None:
+                on_chunk()
+
+        end_xy = (last_pose[0], last_pose[1])
+        merged.stop_reason = reason
+        merged.stopped_early = reason in ("bump", "fell")
+        merged.true_pose = last_pose
+        merged.pose_trace = [start_xy, *merged.sampled_xy, end_xy]
+        merged.true_displacement_m = math.dist(start_xy, end_xy)
+        #: What the model is told it covered (dead-reckoned), vs the true
+        #: displacement above, which is scoring-only.
+        merged.dead_reckoned_distance_m = travelled * K_VELOCITY_REALISATION
+        return merged

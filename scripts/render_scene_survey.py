@@ -88,36 +88,32 @@ def main() -> int:
     # choosing between the two.
     print("\n== top-down (ceiling hidden for this shot) ==")
     import torch
-    from pxr import UsdGeom
 
-    from duck_embody.env.scene_builder import CEILING_PRIM_PATH
+    from duck_embody.env.scene_builder import ceiling_hidden
 
     stage = session.env.unwrapped.sim.stage
-    ceiling_prim = stage.GetPrimAtPath(CEILING_PRIM_PATH)
-    if ceiling_prim and ceiling_prim.IsValid():
-        UsdGeom.Imageable(ceiling_prim).MakeInvisible()
-        print("  ceiling hidden")
-    else:
-        print(f"  WARNING: no ceiling prim at {CEILING_PRIM_PATH}")
-
-    w, h = LAYOUT["extents"]
-    eye = torch.tensor([[w / 2, h / 2, 6.0]], device=cam.sensor.device, dtype=torch.float32)
-    # Look straight down. The target is offset a hair in +y so the up-vector is
-    # well defined (a perfectly vertical view has a degenerate roll).
-    tgt = torch.tensor([[w / 2, h / 2 + 1e-3, 0.0]], device=cam.sensor.device, dtype=torch.float32)
-    cam.sensor.set_world_poses_from_view(eye, tgt)
-    for _ in range(4):
-        cam._render_once()
-    arr = cam.sensor.data.output["rgb"][0].detach().cpu().numpy()[..., :3]
-    Image.fromarray(arr).save(OUT_DIR / "topdown.png")
-    print(f"  wrote topdown.png  (mean {arr.mean():.1f}, std {arr.std():.1f})")
-    report["topdown"] = {"mean": round(float(arr.mean()), 2), "std": round(float(arr.std()), 2)}
-
-    if ceiling_prim and ceiling_prim.IsValid():
-        UsdGeom.Imageable(ceiling_prim).MakeVisible()
-        for _ in range(3):
+    with ceiling_hidden(stage):
+        w, h = LAYOUT["extents"]
+        eye = torch.tensor(
+            [[w / 2, h / 2, 6.0]], device=cam.sensor.device, dtype=torch.float32
+        )
+        # Look straight down. The target is offset a hair in +y so the up-vector
+        # is well defined (a perfectly vertical view has a degenerate roll).
+        tgt = torch.tensor(
+            [[w / 2, h / 2 + 1e-3, 0.0]], device=cam.sensor.device, dtype=torch.float32
+        )
+        cam.sensor.set_world_poses_from_view(eye, tgt)
+        for _ in range(4):
             cam._render_once()
-        print("  ceiling restored for the sweep")
+        arr = cam.sensor.data.output["rgb"][0].detach().cpu().numpy()[..., :3]
+        Image.fromarray(arr).save(OUT_DIR / "topdown.png")
+        print(f"  wrote topdown.png  (mean {arr.mean():.1f}, std {arr.std():.1f})")
+        report["topdown"] = {
+            "mean": round(float(arr.mean()), 2),
+            "std": round(float(arr.std()), 2),
+        }
+    for _ in range(3):
+        cam._render_once()
 
     # -- duck-height sweep --------------------------------------------------
     print("\n== duck-height sweep (0.36 m, frozen camera config) ==")

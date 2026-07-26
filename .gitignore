@@ -21,3 +21,7 @@ results/logs/
 # The mp4s and filmstrips they produce ARE committed; the raw frames are bulky
 # and fully regenerable.
 results/**/*_frames/
+
+# T2.4 camera-offset sweep output: 27 MB of regenerable debug frames.
+# The script (scripts/debug_viewer_offset.py) is tracked; its output is not.
+results/figures/smoke/viewer_offsets/

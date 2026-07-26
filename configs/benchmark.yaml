@@ -57,10 +57,23 @@ locomotion:
     residual_drift_deg_per_20s: 0.39
 
   # Bump detection (doc 02 §6.2). Debounced so a graze while squeezing through
-  # a 0.35 m doorway is not read as a collision. Retuned in T2.4 if needed.
+  # a 0.35 m doorway is not read as a collision.
+  #
+  # TUNED IN T2.4. What changed was the BODIES, not the numbers. The spec said
+  # trunk contact; measurement (results/figures/smoke/bump_bodies_report.json)
+  # showed the duck's head leads at its own height, so the trunk registers the
+  # sofa (499 N) but NEVER a wall or the fridge proxy — head_assembly takes those
+  # (115 N / 40 N). Trunk-only detection was therefore blind to walls, the most
+  # common obstacle here, and failed silently: drive into a wall, get told
+  # bumped=false, keep pushing, topple, trial over, no collision ever reported.
+  bodies: all_except_feet      # feet excluded: they read 80-200 N against the floor
+  force_n: 1.0                 # unchanged; real contacts are 28-499 N, 2 orders clear
   bump:
     force_n: 1.0
     debounce_steps: 3
+    # False-positive half, asserted rather than assumed: all 8 doorway transits
+    # (4 doorways x both directions) report bumped=false.
+    doorway_transits_clean: 8
 
   # Fall termination (doc 02 §5). Nominal trunk height measured 0.170-0.176 m
   # across all T1.3 runs, so 0.09 m is unambiguous.
@@ -89,6 +102,23 @@ scene:
   survey_poses_per_room: 5
   survey_bearings_deg: [0, 90, 180, 270]
   gate_repeats_required: 3
+
+  # MOVED BY T2.4: armchair 0.95 -> 0.72. Its inflated footprint left ~7 cm of
+  # free centre-line in the living-room/kitchen doorway, so the SPL ORACLE would
+  # have routed through a gap the robot cannot reliably walk while any model that
+  # sensibly detoured got scored against it. A fairness bug, not a driving one —
+  # and invisible to both existing tests (it was 0.40 m from the doorway centre,
+  # and A* still found a route). tests/test_layout.py now asserts the full
+  # +/-0.5 m centre-line through every doorway is clear.
+  # Scene re-rendered and the recognition gate RE-RUN: 4/4 rooms, 3/3 repeats.
+  armchair_pos: [1.40, 0.72]
+
+  # Rule-11 audit camera (apartment only; the empty-plane cfg keeps its own).
+  # 1.4 m up / 0.85 m back, looking down: high enough to clear the 0.7 m walls,
+  # close enough that contact is judgeable. Requires the ceiling to be hidden for
+  # the grab (Recorder(hide_ceiling=True)) — it is above the roofline.
+  audit_viewer_eye: [0.6, 0.6, 1.4]
+  audit_viewer_lookat: [0.0, 0.0, 0.15]
 
 # --- Scoring ----------------------------------------------------------------
 scoring:
