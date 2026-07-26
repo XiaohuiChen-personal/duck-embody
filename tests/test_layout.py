@@ -330,8 +330,12 @@ class TestFurniture:
             for b in items[i + 1 :]:
                 ox = (a["footprint"][0] + b["footprint"][0]) / 2 - abs(a["pos"][0] - b["pos"][0])
                 oy = (a["footprint"][1] + b["footprint"][1]) / 2 - abs(a["pos"][1] - b["pos"][1])
-                # The rug is decor and is expected to sit under other items.
+                # Decor that shares a footprint with something else is fine when
+                # it is on a different level: the rug lies UNDER the coffee
+                # table, the microwave sits ON the counter.
                 if "blue_rug" in (a["name"], b["name"]):
+                    continue
+                if a.get("z", 0.0) != b.get("z", 0.0):
                     continue
                 assert ox <= EPS or oy <= EPS, f"{a['name']} overlaps {b['name']}"
 

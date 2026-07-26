@@ -1,0 +1,741 @@
+{
+  "poses": {
+    "living_room": [
+      {
+        "index": 0,
+        "xy": [
+          0.9,
+          0.6
+        ],
+        "resolved_room": "living_room"
+      },
+      {
+        "index": 1,
+        "xy": [
+          1.35,
+          1.85
+        ],
+        "resolved_room": "living_room"
+      },
+      {
+        "index": 2,
+        "xy": [
+          0.62,
+          2.35
+        ],
+        "resolved_room": "living_room"
+      }
+    ],
+    "kitchen": [
+      {
+        "index": 0,
+        "xy": [
+          2.55,
+          0.78
+        ],
+        "resolved_room": "kitchen"
+      },
+      {
+        "index": 1,
+        "xy": [
+          2.25,
+          1.95
+        ],
+        "resolved_room": "kitchen"
+      },
+      {
+        "index": 2,
+        "xy": [
+          2.95,
+          1.35
+        ],
+        "resolved_room": "kitchen"
+      }
+    ],
+    "bedroom": [
+      {
+        "index": 0,
+        "xy": [
+          3.7,
+          0.6
+        ],
+        "resolved_room": "bedroom"
+      },
+      {
+        "index": 1,
+        "xy": [
+          4.4,
+          1.9
+        ],
+        "resolved_room": "bedroom"
+      },
+      {
+        "index": 2,
+        "xy": [
+          3.68,
+          2.4
+        ],
+        "resolved_room": "bedroom"
+      }
+    ],
+    "hallway": [
+      {
+        "index": 0,
+        "xy": [
+          0.7,
+          3.15
+        ],
+        "resolved_room": "hallway"
+      },
+      {
+        "index": 1,
+        "xy": [
+          2.4,
+          3.15
+        ],
+        "resolved_room": "hallway"
+      },
+      {
+        "index": 2,
+        "xy": [
+          4.0,
+          3.15
+        ],
+        "resolved_room": "hallway"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "file": "living_room_p0_b000.png",
+      "room": "living_room",
+      "pose_index": 0,
+      "xy": [
+        0.9,
+        0.6
+      ],
+      "bearing_deg": 0,
+      "mean": 151.81,
+      "std": 63.18,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p0_b090.png",
+      "room": "living_room",
+      "pose_index": 0,
+      "xy": [
+        0.9,
+        0.6
+      ],
+      "bearing_deg": 90,
+      "mean": 157.92,
+      "std": 60.87,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p0_b180.png",
+      "room": "living_room",
+      "pose_index": 0,
+      "xy": [
+        0.9,
+        0.6
+      ],
+      "bearing_deg": 180,
+      "mean": 157.16,
+      "std": 60.57,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p0_b270.png",
+      "room": "living_room",
+      "pose_index": 0,
+      "xy": [
+        0.9,
+        0.6
+      ],
+      "bearing_deg": 270,
+      "mean": 174.16,
+      "std": 54.5,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p1_b000.png",
+      "room": "living_room",
+      "pose_index": 1,
+      "xy": [
+        1.35,
+        1.85
+      ],
+      "bearing_deg": 0,
+      "mean": 185.96,
+      "std": 59.18,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p1_b090.png",
+      "room": "living_room",
+      "pose_index": 1,
+      "xy": [
+        1.35,
+        1.85
+      ],
+      "bearing_deg": 90,
+      "mean": 176.64,
+      "std": 41.92,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p1_b180.png",
+      "room": "living_room",
+      "pose_index": 1,
+      "xy": [
+        1.35,
+        1.85
+      ],
+      "bearing_deg": 180,
+      "mean": 162.53,
+      "std": 66.69,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p1_b270.png",
+      "room": "living_room",
+      "pose_index": 1,
+      "xy": [
+        1.35,
+        1.85
+      ],
+      "bearing_deg": 270,
+      "mean": 150.55,
+      "std": 55.67,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p2_b000.png",
+      "room": "living_room",
+      "pose_index": 2,
+      "xy": [
+        0.62,
+        2.35
+      ],
+      "bearing_deg": 0,
+      "mean": 156.49,
+      "std": 50.09,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p2_b090.png",
+      "room": "living_room",
+      "pose_index": 2,
+      "xy": [
+        0.62,
+        2.35
+      ],
+      "bearing_deg": 90,
+      "mean": 162.95,
+      "std": 31.83,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p2_b180.png",
+      "room": "living_room",
+      "pose_index": 2,
+      "xy": [
+        0.62,
+        2.35
+      ],
+      "bearing_deg": 180,
+      "mean": 152.51,
+      "std": 54.45,
+      "is_gray": false
+    },
+    {
+      "file": "living_room_p2_b270.png",
+      "room": "living_room",
+      "pose_index": 2,
+      "xy": [
+        0.62,
+        2.35
+      ],
+      "bearing_deg": 270,
+      "mean": 127.02,
+      "std": 57.65,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p0_b000.png",
+      "room": "kitchen",
+      "pose_index": 0,
+      "xy": [
+        2.55,
+        0.78
+      ],
+      "bearing_deg": 0,
+      "mean": 184.44,
+      "std": 61.26,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p0_b090.png",
+      "room": "kitchen",
+      "pose_index": 0,
+      "xy": [
+        2.55,
+        0.78
+      ],
+      "bearing_deg": 90,
+      "mean": 184.29,
+      "std": 55.64,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p0_b180.png",
+      "room": "kitchen",
+      "pose_index": 0,
+      "xy": [
+        2.55,
+        0.78
+      ],
+      "bearing_deg": 180,
+      "mean": 176.28,
+      "std": 56.45,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p0_b270.png",
+      "room": "kitchen",
+      "pose_index": 0,
+      "xy": [
+        2.55,
+        0.78
+      ],
+      "bearing_deg": 270,
+      "mean": 156.41,
+      "std": 74.84,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p1_b000.png",
+      "room": "kitchen",
+      "pose_index": 1,
+      "xy": [
+        2.25,
+        1.95
+      ],
+      "bearing_deg": 0,
+      "mean": 154.61,
+      "std": 81.01,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p1_b090.png",
+      "room": "kitchen",
+      "pose_index": 1,
+      "xy": [
+        2.25,
+        1.95
+      ],
+      "bearing_deg": 90,
+      "mean": 169.83,
+      "std": 35.66,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p1_b180.png",
+      "room": "kitchen",
+      "pose_index": 1,
+      "xy": [
+        2.25,
+        1.95
+      ],
+      "bearing_deg": 180,
+      "mean": 170.01,
+      "std": 31.03,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p1_b270.png",
+      "room": "kitchen",
+      "pose_index": 1,
+      "xy": [
+        2.25,
+        1.95
+      ],
+      "bearing_deg": 270,
+      "mean": 151.01,
+      "std": 62.85,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p2_b000.png",
+      "room": "kitchen",
+      "pose_index": 2,
+      "xy": [
+        2.95,
+        1.35
+      ],
+      "bearing_deg": 0,
+      "mean": 194.74,
+      "std": 59.87,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p2_b090.png",
+      "room": "kitchen",
+      "pose_index": 2,
+      "xy": [
+        2.95,
+        1.35
+      ],
+      "bearing_deg": 90,
+      "mean": 169.91,
+      "std": 68.63,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p2_b180.png",
+      "room": "kitchen",
+      "pose_index": 2,
+      "xy": [
+        2.95,
+        1.35
+      ],
+      "bearing_deg": 180,
+      "mean": 193.24,
+      "std": 46.49,
+      "is_gray": false
+    },
+    {
+      "file": "kitchen_p2_b270.png",
+      "room": "kitchen",
+      "pose_index": 2,
+      "xy": [
+        2.95,
+        1.35
+      ],
+      "bearing_deg": 270,
+      "mean": 174.84,
+      "std": 66.21,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p0_b000.png",
+      "room": "bedroom",
+      "pose_index": 0,
+      "xy": [
+        3.7,
+        0.6
+      ],
+      "bearing_deg": 0,
+      "mean": 146.38,
+      "std": 62.01,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p0_b090.png",
+      "room": "bedroom",
+      "pose_index": 0,
+      "xy": [
+        3.7,
+        0.6
+      ],
+      "bearing_deg": 90,
+      "mean": 162.58,
+      "std": 44.94,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p0_b180.png",
+      "room": "bedroom",
+      "pose_index": 0,
+      "xy": [
+        3.7,
+        0.6
+      ],
+      "bearing_deg": 180,
+      "mean": 163.72,
+      "std": 35.24,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p0_b270.png",
+      "room": "bedroom",
+      "pose_index": 0,
+      "xy": [
+        3.7,
+        0.6
+      ],
+      "bearing_deg": 270,
+      "mean": 158.16,
+      "std": 52.27,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p1_b000.png",
+      "room": "bedroom",
+      "pose_index": 1,
+      "xy": [
+        4.4,
+        1.9
+      ],
+      "bearing_deg": 0,
+      "mean": 189.88,
+      "std": 59.3,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p1_b090.png",
+      "room": "bedroom",
+      "pose_index": 1,
+      "xy": [
+        4.4,
+        1.9
+      ],
+      "bearing_deg": 90,
+      "mean": 177.19,
+      "std": 41.77,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p1_b180.png",
+      "room": "bedroom",
+      "pose_index": 1,
+      "xy": [
+        4.4,
+        1.9
+      ],
+      "bearing_deg": 180,
+      "mean": 172.06,
+      "std": 45.14,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p1_b270.png",
+      "room": "bedroom",
+      "pose_index": 1,
+      "xy": [
+        4.4,
+        1.9
+      ],
+      "bearing_deg": 270,
+      "mean": 158.94,
+      "std": 54.97,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p2_b000.png",
+      "room": "bedroom",
+      "pose_index": 2,
+      "xy": [
+        3.68,
+        2.4
+      ],
+      "bearing_deg": 0,
+      "mean": 160.39,
+      "std": 52.14,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p2_b090.png",
+      "room": "bedroom",
+      "pose_index": 2,
+      "xy": [
+        3.68,
+        2.4
+      ],
+      "bearing_deg": 90,
+      "mean": 157.43,
+      "std": 30.16,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p2_b180.png",
+      "room": "bedroom",
+      "pose_index": 2,
+      "xy": [
+        3.68,
+        2.4
+      ],
+      "bearing_deg": 180,
+      "mean": 140.14,
+      "std": 43.94,
+      "is_gray": false
+    },
+    {
+      "file": "bedroom_p2_b270.png",
+      "room": "bedroom",
+      "pose_index": 2,
+      "xy": [
+        3.68,
+        2.4
+      ],
+      "bearing_deg": 270,
+      "mean": 139.15,
+      "std": 44.84,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p0_b000.png",
+      "room": "hallway",
+      "pose_index": 0,
+      "xy": [
+        0.7,
+        3.15
+      ],
+      "bearing_deg": 0,
+      "mean": 149.82,
+      "std": 49.12,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p0_b090.png",
+      "room": "hallway",
+      "pose_index": 0,
+      "xy": [
+        0.7,
+        3.15
+      ],
+      "bearing_deg": 90,
+      "mean": 158.66,
+      "std": 36.8,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p0_b180.png",
+      "room": "hallway",
+      "pose_index": 0,
+      "xy": [
+        0.7,
+        3.15
+      ],
+      "bearing_deg": 180,
+      "mean": 158.19,
+      "std": 49.87,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p0_b270.png",
+      "room": "hallway",
+      "pose_index": 0,
+      "xy": [
+        0.7,
+        3.15
+      ],
+      "bearing_deg": 270,
+      "mean": 168.56,
+      "std": 54.62,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p1_b000.png",
+      "room": "hallway",
+      "pose_index": 1,
+      "xy": [
+        2.4,
+        3.15
+      ],
+      "bearing_deg": 0,
+      "mean": 149.65,
+      "std": 49.74,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p1_b090.png",
+      "room": "hallway",
+      "pose_index": 1,
+      "xy": [
+        2.4,
+        3.15
+      ],
+      "bearing_deg": 90,
+      "mean": 159.41,
+      "std": 35.96,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p1_b180.png",
+      "room": "hallway",
+      "pose_index": 1,
+      "xy": [
+        2.4,
+        3.15
+      ],
+      "bearing_deg": 180,
+      "mean": 184.07,
+      "std": 42.97,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p1_b270.png",
+      "room": "hallway",
+      "pose_index": 1,
+      "xy": [
+        2.4,
+        3.15
+      ],
+      "bearing_deg": 270,
+      "mean": 171.98,
+      "std": 60.29,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p2_b000.png",
+      "room": "hallway",
+      "pose_index": 2,
+      "xy": [
+        4.0,
+        3.15
+      ],
+      "bearing_deg": 0,
+      "mean": 154.97,
+      "std": 55.02,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p2_b090.png",
+      "room": "hallway",
+      "pose_index": 2,
+      "xy": [
+        4.0,
+        3.15
+      ],
+      "bearing_deg": 90,
+      "mean": 159.24,
+      "std": 36.22,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p2_b180.png",
+      "room": "hallway",
+      "pose_index": 2,
+      "xy": [
+        4.0,
+        3.15
+      ],
+      "bearing_deg": 180,
+      "mean": 183.64,
+      "std": 44.39,
+      "is_gray": false
+    },
+    {
+      "file": "hallway_p2_b270.png",
+      "room": "hallway",
+      "pose_index": 2,
+      "xy": [
+        4.0,
+        3.15
+      ],
+      "bearing_deg": 270,
+      "mean": 170.44,
+      "std": 54.22,
+      "is_gray": false
+    }
+  ],
+  "measured_warmup_renders_furnished": 1,
+  "topdown": {
+    "mean": 70.92,
+    "std": 66.14
+  },
+  "n_frames": 48,
+  "n_gray": 0
+}

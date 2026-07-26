@@ -697,7 +697,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   with corner-cutting disallowed); `tests/test_layout.py` (44 tests);
   `scripts/plot_layout.py`; `results/figures/layout_plan.png`.
 
-### T2.2 `[ ]` Scene builder
+### T2.2 `[x]` Scene builder
 
 - **Context:** LAYOUT → Isaac Lab scene entries: wall cuboids with native
   colliders, furniture at fixed poses (scale 0.4, semantic tags), invisible bbox
@@ -712,16 +712,40 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   isaaclab layer producing `CuboidCfg`/`AssetBaseCfg`; integrate into
   `DuckEmbodyEnvCfg(apartment=LAYOUT)`; per-room wall colors + floor materials for
   VLM legibility (doc 03 §6).
-- **Deliverables:** builder wired into the env cfg.
-- **Unit tests:** `tests/test_scene_spec.py` — **a wall carrying D doorway gaps
-  yields D+1 segments** (doc 03 §4's wall A carries THREE doorways → four segments;
+- **Deliverables (done):** `duck_embody/env/scene_builder.py` — a **pure**
+  `layout_to_spec()` (dicts in, dicts out, no Isaac import) plus a thin
+  `add_apartment_to_scene()` adapter; wired into `DuckEmbodyApartmentEnvCfg`.
+- **Unit tests:** `tests/test_scene_spec.py` — **39 tests green**. D+1 segments
+  per wall (doc 03 §4's wall A carries THREE doorways → four segments; the plan's
   "2 segments each" is arithmetically wrong); total segment count matches
-  `LAYOUT['doorways']`; no segment spans a doorway interval; every ArchVis asset
-  gets a proxy collider spec; scale uniform 0.4; semantic tags present.
-- **Smoke test:** T2.3 (construction errors surface at its launch).
-- **Acceptance:** spec tests green; T2.3 builds the scene without errors.
+  `LAYOUT['doorways']`; no segment spans a doorway; every visual-only asset gets
+  a proxy; semantic tags present; **plus** the corrections below.
+- **Acceptance:** PASSED — T2.3's launch built the apartment **first try, no
+  construction errors** (46 scene prims: 4 floors, 26 wall slabs, 1 ceiling,
+  4 lights, furniture + proxies).
+- **PLAN CORRECTION (rule 10.1): "scale uniform 0.4" is wrong.** T0.2 measured
+  ArchVis as **centimetre-authored** (`metersPerUnit = 0.01`), and Isaac Lab does
+  not convert layer units — a blanket 0.4 spawns the 1.87 m fridge at **187 m**.
+  Scale is **per asset** (`metersPerUnit × 0.4`: 0.4 for SimReady/Isaac Props,
+  0.004 for ArchVis), read from the manifest. Tested both ways.
+- **Other decisions:**
+  - **Walls are built as two half-thickness slabs**, one per face, so each face
+    can carry the colour of the room that sees it — a cuboid has no two-sided
+    material, and at duck height wall colour is a strong room cue. Both slabs
+    collide; at 200 Hz the robot advances ~1 mm per step against a 15 mm slab,
+    so nothing tunnels.
+  - **Floor tiles are visual only.** A collider there would put a 3 mm step at
+    every room boundary; the terrain plane is the physics.
+  - **Declaring a visual-only asset `native` now raises**, rather than rendering
+    perfectly and stopping nothing (doc 03 §7's silent trap).
+- **Known issue handed to T2.4:** Isaac logs
+  `Could not perform 'modify_collision_properties' on any prims under
+  .../counter_{1,2,3}` — the Sektion cabinet is instanceable and its collision
+  prims are `purpose=guide`, so the contact-offset override does not reach them.
+  Its 21 collision prims still exist, so it should still collide; **T2.4 must
+  bump-test the counter explicitly** rather than assume it.
 
-### T2.3 `[ ]` Scene survey renders + out-of-benchmark VLM gate (GATE)
+### T2.3 `[x]` Scene survey renders + out-of-benchmark VLM gate (GATE)
 
 - **Context:** The make-or-break scene check: duck-height recognizability is
   unproven for every sourcing option (doc 03 §7). **The judge must NOT be a
@@ -744,9 +768,57 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 - **Unit tests:** none.
 - **Smoke test:** stills-only carve-out (see header): the still set + per-frame
   checklist substitutes for an mp4; the same scene gets video coverage in T2.4.
-- **Acceptance (GATE):** **all four rooms named correctly** (doc 03 §8.2 / doc 04
-  §8 criterion — do not silently relax; any relaxation updates both docs in the
-  same commit with rationale); top-down matches the plan. **Layout freezes here.**
+- **Acceptance (GATE): PASSED — 4/4 rooms in every one of 3 judge runs.**
+  Per-room majorities: bedroom 5/5, 5/5, 5/5 · hallway 5/5, 4/5, 4/5 · kitchen
+  4/5, 4/5, 4/5 · living_room 4/5, 5/5, 5/5. Top-down matches the plan.
+  **Layout freezes here.** Evidence: `results/figures/survey/` (80 frames,
+  `judge_result.json`, `judge_result_run*.json`, `topdown.png`), earlier
+  iterations archived under `survey/iter1_walls0.5/`.
+- **THE GATE DID ITS JOB — it failed three times first, and the judge's own words
+  diagnosed each failure.** Every fix was to the SCENE, never to a per-model
+  camera (doc 04 §8), and both design docs are updated in this commit.
+  1. **0.5 m walls → judged "outdoor courtyard".** The judge named the hallway
+     from the living-room sofa and the bedroom bed visible *over* the walls.
+     doc 03 §7 had named this exact contingency; walls raised to **0.7 m**. Fixed
+     the bedroom (2/3 → 3/3), not the hallway.
+  2. **No ceiling → judged "outdoor terrace/rooftop".** Not in the original
+     design. Open sky above a wall does not look like a home, and the question is
+     literally "what room *of a home* is this?". Added a **ceiling + one light
+     per room** — inseparable, because sealing the rooms is also what makes them
+     dark. The ceiling is visual-only and is **hidden for the top-down shot**, so
+     doc 03 §3.1's "low enough for top-down debug renders" still holds.
+  3. **Kitchen judged "living room"** — "a mostly empty white room with a chair
+     and a cabinet". All its kitchen-ness sat in one low run along the south
+     wall, invisible from the middle and north. Added an **east cabinet run + a
+     microwave on the counter** (the microwave needed an optional `z`, and is
+     visual-only: it rests on a solid cabinet).
+  4. **Hallway was the least stable room** → added **two planters** along its
+     length.
+- **A SCORING BUG IN THE GATE ITSELF, found by re-running it.** The first 4/4 was
+  **not a pass**: the kitchen was a 1/1/1 tie and `Counter.most_common` breaks
+  ties by insertion order, so the gate reported PASS on an unrecognisable room.
+  **A tie is now explicitly not a majority.** With that fixed the honest score
+  was 3/4.
+- **INSTRUMENT CORRECTION: 5 poses per room, not 3, and the gate must pass 3
+  runs.** No locked model supports deterministic decoding (T3.3), so one pass is
+  a *sample*, not a verdict — measured: with 3 poses the hallway scored 3/3, 2/3
+  and a 1/1/1 tie across three runs **on identical frames**. Raising the sample
+  count and requiring repeated passes is a *stricter* bar, not a relaxation; the
+  acceptance criterion is unchanged at all four rooms.
+- **Plan-ordering correction:** this task scores against "the frozen synonym
+  table authored in T3.1", but T2.3 runs first. The table is authored now in
+  `duck_embody/agent/prompts.py` (T3.1's home) as T2.3's dependency; T3.1 fills
+  in the system prompt and QA rubric around it. Not duplicated.
+- **Judge-answer handling:** as T3.3 predicted, Sonnet 5 does not answer in one
+  word even when asked. The gate extracts the room term from anywhere in the
+  reply using the same frozen synonym table, rather than comparing whole strings.
+- **Re-measured for doc 04 §5.2:** warmup against the **furnished** scene is
+  still **N=1**; 80 survey frames produced **zero** gray frames. Frozen value
+  stays 5 (milliseconds vs. a poisoned opening room guess).
+- **Deliverables (done):** `scripts/render_scene_survey.py` (kit) +
+  `scripts/judge_scene_survey.py` (offline, `--repeats`); `prompts.py` synonym
+  table + `extract_room_mention`; 80 survey frames + top-down + judge results;
+  doc 03 §7/§8 and doc 04 §5.2 updated; `configs/benchmark.yaml` scene block.
 
 ### T2.4 `[ ]` Scripted physics pass (VIDEO GATE)
 

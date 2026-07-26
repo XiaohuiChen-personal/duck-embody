@@ -206,18 +206,30 @@ class AnthropicProvider:
         Used by T2.3's scene-recognition gate, where the judge is deliberately
         NOT one of the three contestants (doc 04 §8) and there is no tool use.
         """
+        return self.ask_about_images(prompt, [jpeg_b64], max_tokens=max_tokens)
+
+    def ask_about_images(
+        self, prompt: str, jpegs_b64: list[str], labels: list[str] | None = None,
+        max_tokens: int = 64,
+    ) -> str:
+        """Ask one question about several images at once.
+
+        T2.3's gate shows the judge a whole four-bearing sweep in one call,
+        because that is what ``look_around()`` gives a contestant — judging
+        single frames would set a bar the benchmark never actually asks a model
+        to clear.
+        """
+        content: list[dict] = []
+        for i, b64 in enumerate(jpegs_b64):
+            if labels and i < len(labels):
+                content.append({"type": "text", "text": labels[i]})
+            content.append(self._image_block(ImageBlock(data_b64=b64)))
+        content.append({"type": "text", "text": prompt})
+
         response = self.client.messages.create(
             model=self.model_id,
             max_tokens=max_tokens,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        self._image_block(ImageBlock(data_b64=jpeg_b64)),
-                        {"type": "text", "text": prompt},
-                    ],
-                }
-            ],
+            messages=[{"role": "user", "content": content}],
         )
         if response.stop_reason == "refusal":
             return ""

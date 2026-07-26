@@ -68,6 +68,28 @@ locomotion:
     tilt_limit_deg: 60
     min_height_m: 0.09
 
+# --- Scene (frozen by the T2.3 gate) ----------------------------------------
+scene:
+  # RAISED 0.5 -> 0.7 during the T2.3 gate. doc 03 §7 named this exact
+  # contingency; the gate produced exactly that evidence (the judge read the
+  # hallway as an "outdoor courtyard", naming it from the sofa and bed visible
+  # OVER the 0.5 m walls).
+  wall_height_m: 0.7
+  # ADDED by the gate. Without a ceiling the judge called every room an
+  # "outdoor terrace/rooftop" — and the question is literally "what room OF A
+  # HOME is this?". Sealing the rooms also makes them dark, so per-room lights
+  # arrive with it.
+  ceiling: true
+  room_lights: true
+  # The gate itself: 4 rooms x 5 poses x 4 bearings, judged per pose from the
+  # whole sweep (what look_around gives a contestant), majority over poses,
+  # repeated 3x with EVERY run required to pass. 5 poses rather than 3 because
+  # the judge cannot be pinned to a temperature and 3 samples produced a
+  # majority that flipped between runs on identical frames.
+  survey_poses_per_room: 5
+  survey_bearings_deg: [0, 90, 180, 270]
+  gate_repeats_required: 3
+
 # --- Scoring ----------------------------------------------------------------
 scoring:
   # True base XY sampling rate for the SPL path integral (doc 06 §5.3).
@@ -122,8 +144,14 @@ camera:
   # apartment and freezes the value there; 5 is the conservative default until
   # then (5 renders cost milliseconds; one gray first observation poisons a
   # trial's opening room guess).
+  # RE-MEASURED against the FURNISHED apartment (T2.3) — the scene doc 04 §5.2
+  # actually cared about, with SimReady/ArchVis materials to stream. Still 1:
+  # frame 1 after a reset was fully shaded, and 80 survey frames produced ZERO
+  # gray frames. Kept at 5 anyway: 5 renders cost milliseconds, and one gray
+  # first observation poisons a trial's opening room guess.
   warmup_renders: 5
   warmup_measured_empty_plane: 1
-  warmup_pending_remeasure_in: T2.3
+  warmup_measured_furnished: 1
+  warmup_gray_frames_in_80_survey_frames: 0
 
   look_around_bearings_deg: [0, 90, 180, 270]

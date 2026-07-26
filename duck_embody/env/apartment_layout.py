@@ -48,7 +48,12 @@ LAYOUT = {
     "units": "m",
     "world_scale": 0.4,
     "extents": (4.8, 3.6),
-    "wall_height": 0.5,
+    # RAISED 0.5 -> 0.7 by T2.3 iteration 1. doc 03 §7 named this exact
+    # contingency ("if the VLM mislabels rooms due to over-wall leakage, raise
+    # walls to 0.7 m"), and the gate produced exactly that evidence: at 0.5 m
+    # the judge read the hallway as an "outdoor courtyard" and named it from
+    # the living-room sofa and the bed visible OVER the walls.
+    "wall_height": 0.7,
     "wall_thickness": 0.03,
     "body_radius": BODY_RADIUS_M,
     "grid_cell": GRID_CELL_M,
@@ -168,6 +173,26 @@ LAYOUT = {
         {"name": "bar_stool", "room": "kitchen", "asset": "bar_stool",
          "pos": (2.15, 1.65), "yaw_deg": 0, "footprint": (0.167, 0.195),
          "collision": "native"},
+        # --- kitchen, T2.3 iteration 3 ------------------------------------
+        # The gate failed the kitchen twice: the judge saw "a mostly empty white
+        # room with a chair and a cabinet" and called it a living room. All the
+        # kitchen-ness sat in one low run along the south wall, so from the
+        # middle or north of the room there was nothing to see. These add
+        # kitchen signal where the earlier poses were looking.
+        #
+        # A second cabinet run along the east wall.
+        {"name": "counter_4", "room": "kitchen", "asset": "sektion_cabinet",
+         "pos": (3.13, 1.15), "yaw_deg": 90, "footprint": (0.306, 0.267),
+         "collision": "native"},
+        {"name": "counter_5", "room": "kitchen", "asset": "sektion_cabinet",
+         "pos": (3.13, 1.45), "yaw_deg": 90, "footprint": (0.306, 0.267),
+         "collision": "native"},
+        # A microwave ON the counter (z = counter height). Visual only: it sits
+        # on a solid cabinet, so it needs no collider of its own and must not
+        # get one — a proxy would float an invisible box above the counter.
+        {"name": "microwave", "room": "kitchen", "asset": "microwave",
+         "pos": (2.72, 0.20), "z": 0.314, "yaw_deg": 0, "footprint": (0.298, 0.218),
+         "collision": "none"},
         # --- bedroom -------------------------------------------------------
         {"name": "bed", "room": "bedroom", "asset": "daybed",
          "pos": (4.20, 0.95), "yaw_deg": 90, "footprint": (0.605, 0.988),
@@ -183,6 +208,23 @@ LAYOUT = {
         {"name": "plant", "room": "hallway", "asset": "plant_01",
          "pos": (4.62, 3.40), "yaw_deg": 0, "footprint": (0.275, 0.273),
          "collision": "bbox_proxy"},
+        # T2.3 iteration 4. The hallway was the least stable room in the gate —
+        # across three judge runs on identical frames it scored 3/3, 2/3 and a
+        # 1/1/1 tie, because a corridor with one plant at the far end has little
+        # of its own to show and the judge kept naming whichever room it could
+        # see through a doorway. Two planters give it furniture of its own along
+        # its length. They sit against the north side, leaving ~0.66 m of free
+        # corridor — well clear for a 0.16 m body.
+        #
+        # NOTE they are NOT at the west end: doc 03's design review already moved
+        # a plant away from there for sitting ~0.17 m from spawn 103, and that
+        # spawn is still there.
+        {"name": "planter_w", "room": "hallway", "asset": "gardenplanter_medium",
+         "pos": (1.20, 3.45), "yaw_deg": 0, "footprint": (0.142, 0.142),
+         "collision": "native"},
+        {"name": "planter_e", "room": "hallway", "asset": "gardenplanter_medium",
+         "pos": (3.30, 3.45), "yaw_deg": 0, "footprint": (0.142, 0.142),
+         "collision": "native"},
     ],
     # -----------------------------------------------------------------------
     # Target. SEMANTICS PINNED: this disc IS "the kitchen-counter target

@@ -518,8 +518,9 @@ footprint, and the survey render (§8.2) catches anything that slips through vis
 <tr><td><strong>Camera sees over walls</strong></td>
 <td>Walls are 0.5&nbsp;m; the camera sits at 0.36&nbsp;m with a wide FOV, so upper frame regions
 can glimpse adjacent rooms at distance, possibly confusing room identification.</td>
-<td>Assessed in the survey render; if the VLM mislabels rooms due to over-wall leakage, raise
-walls to 0.7&nbsp;m (layout constant, one-line change). Open question §11.</td></tr>
+<td><strong>HAPPENED, and the contingency was taken (T2.3).</strong> The judge named the hallway
+from furniture visible over the 0.5&nbsp;m walls. Walls raised to 0.7&nbsp;m — necessary but not
+sufficient; a ceiling was also required (see the gate-result box below §8).</td></tr>
 </table>
 
 <h2 id="validation-loop">8. Validation loop design</h2>
@@ -546,6 +547,45 @@ every doorway in both directions, deliberately bump the sofa (SimReady native co
 penetration beyond contact offset), the harness reports bumps, doorways pass without snagging,
 and nothing terminates the episode except a genuine fall. This is the gate that catches both
 walk-through furniture and invisible-force-field offsets before any scored trial.</p>
+
+<div class="warning"><strong>GATE RESULT (T2.3, 2026-07-26) — the scene needed two
+structural changes to pass, both driven by judge evidence.</strong>
+
+<p><strong>1. Walls raised 0.5 m &rarr; 0.7 m.</strong> §7's "camera sees over walls" row
+named this exact contingency, and the gate produced exactly that evidence. At 0.5 m the
+out-of-benchmark judge described the hallway as an <em>"outdoor courtyard/pathway with red
+lounge furniture"</em> and as <em>"a mattress with a pillow lying on the ground"</em> — it was
+naming the hallway from the living-room sofa and the bedroom bed visible <em>over</em> the
+walls. Raising to 0.7 m fixed the bedroom (2/3 &rarr; 3/3) but not the hallway.</p>
+
+<p><strong>2. A ceiling was added, with per-room lights.</strong> Not in the original design.
+Even at 0.7 m the judge kept calling rooms <em>"an outdoor terrace/rooftop courtyard"</em> —
+open sky above a wall does not look like a home, and the question the gate asks is literally
+"what room <em>of a home</em> is this?". Sealing the rooms also makes them dark, so a sphere
+light per room arrives with the ceiling; the two are inseparable. The ceiling is <strong>visual
+only</strong> (the duck cannot fly) and is <strong>hidden for the top-down render</strong>, so
+§3.1's "low enough for top-down debug renders" still holds — the survey script toggles its
+visibility rather than forcing a choice between the two.</p>
+
+<p><strong>3. Kitchen and hallway got more of their own furniture.</strong> The kitchen failed
+twice ("a mostly empty white room with a chair and a cabinet" &rarr; <em>living room</em>)
+because all its kitchen-ness sat in one low run along the south wall, invisible from the middle
+and north of the room: added a second cabinet run along the east wall and a microwave on the
+counter. The hallway was the least stable room of all, so it gained two planters along its
+length.</p>
+
+<p><strong>Instrument change: 5 poses per room, not 3, and the gate must pass 3 runs.</strong>
+No locked model supports deterministic decoding (doc 05 §7.1), so one pass of the gate is a
+sample rather than a verdict — measured: with 3 poses the hallway scored 3/3, 2/3 and a 1/1/1
+tie across three runs <em>on identical frames</em>. A scoring bug was fixed at the same time:
+<code>Counter.most_common</code> breaks ties by insertion order, so a 1/1/1 split silently
+"passed" whichever guess arrived first, and the gate reported 4/4 on an unrecognisable room. A
+tie is now explicitly not a majority.</p>
+
+<p><strong>Final result: 4/4 rooms in every one of 3 runs</strong> — bedroom 5/5, hallway 5/5
+&amp; 4/5 &amp; 4/5, kitchen 4/5 in all three, living_room 4/5 &amp; 5/5 &amp; 5/5.
+<span class="src">evidence: results/figures/survey/judge_result.json, judge_result_run*.json,
+and the 80 committed survey frames</span></p></div>
 
 <h2 id="fallback">9. Fallback ladder</h2>
 <p>If the primitive-walls-plus-props apartment fails its acceptance checks (rooms not

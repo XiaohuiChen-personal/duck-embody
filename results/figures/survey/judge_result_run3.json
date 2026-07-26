@@ -1,0 +1,182 @@
+{
+  "judge_model": "claude-sonnet-5",
+  "question": "What room of a home is this? Answer with a single word: kitchen, bedroom, hallway, or living room.",
+  "per_pose": [
+    {
+      "room": "bedroom",
+      "pose_index": 0,
+      "xy": [
+        3.7,
+        0.6
+      ],
+      "guess": "bedroom",
+      "correct": true,
+      "reply": "Bedroom"
+    },
+    {
+      "room": "bedroom",
+      "pose_index": 1,
+      "xy": [
+        4.4,
+        1.9
+      ],
+      "guess": "bedroom",
+      "correct": true,
+      "reply": "Bedroom"
+    },
+    {
+      "room": "bedroom",
+      "pose_index": 2,
+      "xy": [
+        3.68,
+        2.4
+      ],
+      "guess": "bedroom",
+      "correct": true,
+      "reply": "**Bedroom**\n\nThe image at 270\u00b0 shows a bed/daybed with pillows against the wall, which is the defining feature that identifies this as a bedroom."
+    },
+    {
+      "room": "hallway",
+      "pose_index": 0,
+      "xy": [
+        0.7,
+        3.15
+      ],
+      "guess": "living_room",
+      "correct": false,
+      "reply": "Living room"
+    },
+    {
+      "room": "hallway",
+      "pose_index": 1,
+      "xy": [
+        2.4,
+        3.15
+      ],
+      "guess": "kitchen",
+      "correct": false,
+      "reply": "**Kitchen**\n\nThe 270\u00b0 view reveals a dark appliance (resembling a refrigerator) along with what appears to be countertop surfaces, indicating this space connects to or is a kitchen area."
+    },
+    {
+      "room": "hallway",
+      "pose_index": 2,
+      "xy": [
+        4.0,
+        3.15
+      ],
+      "guess": "hallway",
+      "correct": true,
+      "reply": "**Hallway**\n\nThe 90\u00b0 and 180\u00b0 views clearly show a narrow corridor with parallel walls receding into the"
+    },
+    {
+      "room": "kitchen",
+      "pose_index": 0,
+      "xy": [
+        2.55,
+        0.78
+      ],
+      "guess": "kitchen",
+      "correct": true,
+      "reply": "Kitchen"
+    },
+    {
+      "room": "kitchen",
+      "pose_index": 1,
+      "xy": [
+        2.25,
+        1.95
+      ],
+      "guess": "living_room",
+      "correct": false,
+      "reply": "Living room"
+    },
+    {
+      "room": "kitchen",
+      "pose_index": 2,
+      "xy": [
+        2.875,
+        1.325
+      ],
+      "guess": "kitchen",
+      "correct": true,
+      "reply": "Kitchen"
+    },
+    {
+      "room": "living_room",
+      "pose_index": 0,
+      "xy": [
+        0.9,
+        0.6
+      ],
+      "guess": "living_room",
+      "correct": true,
+      "reply": "living room"
+    },
+    {
+      "room": "living_room",
+      "pose_index": 1,
+      "xy": [
+        1.35,
+        1.85
+      ],
+      "guess": "living_room",
+      "correct": true,
+      "reply": "Living room"
+    },
+    {
+      "room": "living_room",
+      "pose_index": 2,
+      "xy": [
+        0.62,
+        2.35
+      ],
+      "guess": "living_room",
+      "correct": true,
+      "reply": "living room"
+    }
+  ],
+  "per_room": {
+    "bedroom": {
+      "majority_guess": "bedroom",
+      "votes": {
+        "bedroom": 3
+      },
+      "n_poses": 3,
+      "has_strict_majority": true,
+      "passed": true
+    },
+    "hallway": {
+      "majority_guess": "living_room",
+      "votes": {
+        "living_room": 1,
+        "kitchen": 1,
+        "hallway": 1
+      },
+      "n_poses": 3,
+      "has_strict_majority": false,
+      "passed": false
+    },
+    "kitchen": {
+      "majority_guess": "kitchen",
+      "votes": {
+        "kitchen": 2,
+        "living_room": 1
+      },
+      "n_poses": 3,
+      "has_strict_majority": true,
+      "passed": true
+    },
+    "living_room": {
+      "majority_guess": "living_room",
+      "votes": {
+        "living_room": 3
+      },
+      "n_poses": 3,
+      "has_strict_majority": true,
+      "passed": true
+    }
+  },
+  "rooms_correct": 3,
+  "rooms_total": 4,
+  "gate": "FAIL"
+}
