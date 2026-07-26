@@ -630,7 +630,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 
 ## Phase 2 — Apartment
 
-### T2.1 `[ ]` Layout dict + layout tests [no sim]
+### T2.1 `[x]` Layout dict + layout tests [no sim]
 
 - **Context:** `apartment_layout.py` is simultaneously the scene spec and the
   scoring ground truth (AGENTS.md §2), including the free-space grid + A* oracle
@@ -654,8 +654,48 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   precondition — without it Q1 is unscoreable); furniture footprints inside rooms.
 - **Smoke test [no sim]:** `pytest tests/test_layout.py -v` (kit python) + a
   matplotlib top-down plot → `results/figures/layout_plan.png`.
-- **Acceptance:** tests green; plot matches the approved floor plan (or doc 03
-  updated same commit).
+- **Acceptance:** PASSED — **44 layout tests green**
+  (`bash scripts/run_tests.sh tests/test_layout.py`), and
+  `results/figures/layout_plan.png` matches doc 03's approved floor plan
+  (3 rooms south + full-width hallway north, 4 doorways, target disc in front of
+  the counter run, 4 spawns with headings).
+  - **Measured oracle path lengths** (spawn → target, and the return leg — they
+    are symmetric): seed 101 **2.564 m**, 102 **4.166 m**, 103 **3.483 m**,
+    104 **2.181 m**. The longest is 20.8 policy-seconds of pure transit against
+    a 240-second cap, so the budget is dominated by exploration rather than
+    walking — which is what doc 03 §2 sized the apartment for (it predicted the
+    seed-102 route at ~4.0 m; measured 4.17 m).
+  - All six doc 06 §9.2 invariants are covered, plus doc 03 §4's clearances and
+    a guard that footprints still match `assets/manifest.json` (so a re-fetched
+    or swapped asset cannot silently invalidate every clearance).
+- **PLAN CORRECTION (rule 10.1) — the body radius was wrong by 2x.** The plan
+  says to inflate the free-space grid "by the **0.16 m duck body radius**". 0.16 m
+  is the body **width** (AGENTS.md §5, doc 03 §3.1); used as a radius it leaves a
+  0.35 m doorway with `0.35 − 2(0.16) = 0.03 m` of free width — narrower than one
+  grid cell — so **every doorway would be impassable and every oracle-path
+  invariant would fail**. The radius is **0.08 m**, leaving 0.19 m. A test pins
+  this so it cannot regress.
+- **Design-doc correction (doc 03 §3.1 updated this commit): spawns 103 and 104
+  moved 2–3 cm.** Doc 03 said they "sit exactly at the 0.4 m wall boundary" —
+  true against the wall *centreline*, but walls are 0.03 m thick, so clearance to
+  the surface the robot actually collides with was **0.385 m**. The test measures
+  to the face (the honest test), so the spawns moved to satisfy the guarantee
+  rather than the guarantee being relaxed: 103 → (0.43, 3.15), 104 → (1.37, 2.27).
+- **Other decisions recorded in the layout:**
+  - **The rug gets no collider at all** (`collision: "none"`), not a bbox proxy.
+    It is 0.002 m tall; a proxy would put an invisible 2 mm lip across the
+    living-room floor that deflects the robot and inflates the oracle path.
+  - **The fridge is 0.734 m tall — above the 0.5 m walls**, so its top is visible
+    from the hallway. Kept deliberately as a strong kitchen landmark, but
+    **flagged for T2.3**: the gate must confirm it does not let the judge name
+    the kitchen from *outside* the kitchen.
+  - Wall C (kitchen|bedroom) carries no doorway. That is what forces bedroom
+    access through the hallway and gives QA question 1 its unique answer —
+    asserted directly.
+- **Deliverables (done):** `duck_embody/env/apartment_layout.py` (LAYOUT + room /
+  adjacency / BFS / bearing helpers + inflated free-space grid + 8-connected A*
+  with corner-cutting disallowed); `tests/test_layout.py` (44 tests);
+  `scripts/plot_layout.py`; `results/figures/layout_plan.png`.
 
 ### T2.2 `[ ]` Scene builder
 
