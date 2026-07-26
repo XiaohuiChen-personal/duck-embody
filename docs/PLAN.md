@@ -1044,7 +1044,7 @@ cabinet with no penetration.
   while §3's table and `apartment_layout.py` carry `(0.43, 3.15)` / `(1.37, 2.27)`.
   Seed 101 — the one §5.2's example depends on — agrees everywhere.
 
-### T3.2 `[ ]` Tools + macro execution
+### T3.2 `[x]` Tools + macro execution [no sim]
 
 - **Context:** The 12-tool surface (doc 05 §4 is canonical — `send_velocity` has
   NO auto-stop; `move` does) dispatching to sim macros and memory mutations.
@@ -1072,14 +1072,155 @@ cabinet with no penetration.
   test must compare the strings, not just the names — §4's numeric bounds (the
   `send_velocity` hull, `turn_to_heading`'s [0, 360)) reach the model through
   *no other* model-facing text, and doc 05 §6 now records that deviation;
-  (b) feed `PositionIntegrator.integrate()` the **`ExecResult.policy_seconds`
-  actually run**, never the requested duration, or a bump-shortened command
-  integrates in full and the estimate drifts for our reasons rather than the
-  robot's; (c) `tools.py` is inside the no-k source guard from the day it is
-  written (`tests/test_memory.py::NO_K_MODULES`) — the servo target's `dist/k`
-  belongs in `policy_wrapper`, not here.
+  (b) feed `PositionIntegrator.integrate()` the **duration actually run**, never
+  the requested duration, or a bump-shortened command integrates in full and the
+  estimate drifts for our reasons rather than the robot's; (c) `tools.py` is
+  inside the no-k source guard from the day it is written
+  (`tests/test_memory.py::NO_K_MODULES`) — the servo target's `dist/k` belongs
+  in `policy_wrapper`, not here.
+
+  > **(b) CORRECTED BY T3.2's plan review (AGENTS.md rule 10.1).** It previously
+  > said to feed `integrate()` **`ExecResult.policy_seconds`**. That is right for
+  > `send_velocity` (a bare `execute()`) and **wrong for `move`**:
+  > `PolicyPlayback.move()` appends a trailing 0.2 s *zero-command* settle chunk
+  > and merges it into `policy_seconds`, while `travelled`
+  > (→ `dead_reckoned_distance_m`) accumulates driving chunks only. Integrating
+  > 0.2 m/s over the merged figure fabricates **0.04 m per `move` call** — up to
+  > 1.6 m over a 40-turn stage, injected straight into doc 06 §5.8's drift
+  > metric, i.e. the exact failure (b) was written to prevent, inverted. The
+  > correct feed for `move` is `dead_reckoned_distance_m / MOVE_SPEED_MPS`
+  > (exact: every chunk is a whole number of 50 Hz steps, so `duration_to_steps`
+  > round-trips it) along the heading the macro holds. Merged `policy_seconds`
+  > still charges the 240 s cap — the two are different numbers by design.
+  > `turn_to_heading` commands vx = vy = 0 and feeds the integrator nothing.
+  > Recorded in doc 05 §4.2 and doc 02 §6.3 in the same commit.
 - **Smoke test:** covered by T3.5.
 - **Acceptance:** unit tests green; T3.5 exercises every tool at least once.
+- **DONE 2026-07-26; re-verified after the adversarial review pass below.**
+  `bash scripts/run_tests.sh tests/ -q` → **878 passed, 3 skipped in 0.64 s**
+  (338 before this task; `tests/test_tools.py` adds 539 passing + the 3 skips,
+  which are the zero-argument tools in the missing-argument sweep, and the review
+  pass added 1 test to `tests/test_providers.py`: 878 = 338 + 539 + 1).
+  *The figures first recorded here — 824 passed / "adds 486" — were each exactly
+  one low against the tree they described (measured: 825 / 487). Corrected per
+  rule 3; a completion record that does not reproduce is the shape of the
+  stale-`.pyc` problem AGENTS.md §5 exists to prevent, so a later agent would
+  have had to spend time proving it benign.*
+  `tests/test_memory.py::NO_K_MODULES` went from skipped to **enforced** for
+  `duck_embody/agent/tools.py`. Deliverables: `duck_embody/agent/tools.py`
+  (12 canonical schemas, `dispatch`, `ToolContext`, `ToolOutcome`,
+  `stage_end_result`, `not_executed`, `unknown_tool`), `tests/test_tools.py`.
+  The verbatim-description test **extracts doc 05 §4's JSON block from the HTML
+  and `json.loads` it**, the way `tests/test_memory.py` extracts §5.2's golden
+  memory block — a copy re-typed into the test file drifts in lockstep with the
+  code and still passes, which is the one thing PLAN clause (a) cannot afford.
+- **Mutation-checked before landing** (rule 10.4): eight deliberate defects
+  reintroduced one at a time, each confirmed to turn the suite red — PLAN (b) as
+  originally written (3 failures), a trimmed §4 description (1), `send_velocity`
+  given `move`'s auto-stop (2), the duration clamp deleted (5), a scoring-only
+  field added to a payload (1), motion-argument validation removed (18), a tool
+  renamed in `tools.py` alone (9), surplus arguments silently dropped (12).
+- **Decisions this task had to make because no doc settled them** — every one
+  written back into the docs in this commit (rule 5), all in doc 05 §4.1/§4.2/§5.1/§8
+  unless noted:
+  1. `move(distance_m <= 0)` → `invalid_args` (the wrapper would clamp to 0.0 and
+     still run a chunk: a silent no-op that burns a turn). Hint routes to
+     `send_velocity` for reversing.
+  2. `turn_to_heading` outside `[0, 360)` → wrapped **with the wrap echoed**
+     (`wrap_deg` would do it silently).
+  3. `duration_s ∈ [0.2, 3.0]` → new `tools.DURATION_RANGE_S` + a
+     `configs/benchmark.yaml` mirror with an agreement test (caps precedent). It
+     existed in **no code at all** before this task.
+  4. `send_velocity`'s `distance_moved_m` = `hypot(vx, vy) × policy_seconds`
+     (`dead_reckoned_distance_m` is set by `move` only and is 0.0 elsewhere).
+  5. Motion-argument type checks reuse `memory.text_error`/`memory.number_arg`,
+     now **public** (they were `_text_error`/`_number`). One implementation, or
+     two layers eventually disagree about whether `"270"` is a number.
+     `clamp_command("0.2", 0, 0)` raises; `clamp_command(nan, …)` silently
+     returns `nan`.
+  6. Arity + **surplus** arguments rejected in `tools.py` (the memory tools die
+     on the `**` splat before their own validation runs — the free-retry path).
+  7. `not_executed` added to doc 05 §8's error table as the third kind; §3.1
+     always required the shape.
+  8. `HeadCamera` is **injected** into `ToolContext`; `camera.py` grows
+     module-level `encode_jpeg`/`encode_b64` because `look_around` returns raw
+     arrays and `capture_jpeg` would have silently encoded a fifth,
+     forward-facing frame (doc 04 §5.3, which also loses its obsolete "restore
+     the original pose" step).
+  9. `PositionIntegrator.integrate_arc()` added for `send_velocity` — the one
+     tool that translates and rotates at once; doc 02 §6.3's one-heading
+     integration misplaces `(0.222, 0, 0.5, 3.0)` by ~0.45 m, more than the
+     0.35 m success radius.
+  10. `get_observation`'s status before any motion = `{bumped: false, fell:
+      <live>, distance_moved_m: 0.0}`; `fell` alone is read live, being sticky.
+- **ADVERSARIAL REVIEW PASS (three reviewers; 19 findings, all dispositioned).**
+  Seven were real defects, fixed here with their docs updated in the same commit
+  (rule 5); the rest were test-quality gaps closed by strengthening the suite. The
+  fixes worth carrying forward:
+  1. **`dispatch` destroyed the only copy of the per-turn ground-truth
+     trajectory.** `tools.py` is the only code that ever sees an `ExecResult`, and
+     `ToolOutcome` had no scoring-side channel — so doc 06 §4's
+     `turns[].execution.pose_trace` was unproducible for T3.4 and T4.1's scorer
+     (specified to RAISE on a missing `pose_trace`) would have failed the HARD
+     GATE, or SPL — a headline metric — would have been silently inflated.
+     Discovered after T4.3 launches, that is 12 paid trials rerun. Now
+     `ToolOutcome.execution`, never reachable from `to_block()` (asserted).
+     Recorded in doc 05 §4.2.
+  2. **The bump counter counted `turn_to_heading`**, a third source doc 06 §5.6
+     does not enumerate — and `PolicyPlayback._bump_run` is not reset between
+     calls, so bump-then-turn-away (the canonical recovery) scored ONE collision
+     as three. Restricted to §5.6's two sources; the flag is still reported to the
+     model. doc 06 §5.6 and doc 04 §6.2 updated.
+  3. **Nothing gated the tool surface on `fell`.** Isaac auto-resets a terminated
+     env inside `env.step()`, so `compass_deg()` after a fall returns the SPAWN
+     heading — written permanently into the breadcrumb trail that is re-injected
+     every turn — and further motion would have walked a respawned duck while
+     `pose_trace` and the drift metric accumulated across the teleport. The
+     compass is now latched at the fall (never `true_pose[2]`, which is
+     scoring-only) and the motion tools return a `stage_ended` result. doc 05
+     §4.1/§4.2/§8 updated; the one residual (a frame rendered from spawn by a
+     `get_observation` listed after the falling command) is assigned to T3.4 in
+     doc 05 §4.1 rather than left implicit.
+  4. **`requested_distance_m` / `requested_heading_deg` reported the *clamped*
+     value** — `move(5.0)` answered `requested_distance_m: 1.5`. Now the raw
+     argument, per `mark_exit`'s echo precedent; doc 05 §4.2 updated.
+  5. **`to_block` serialised with `allow_nan=True`**, so a physics NaN would have
+     reached the model as invalid JSON instead of taking doc 05 §8's infra path
+     the module docstring claimed it took. Now `allow_nan=False`.
+  6. **`move` serves distance in 0.04 m increments and rounds up** (`move(1.5)`
+     covers 1.52 m, past the schema's own domain; `move(0.05)` covers 0.08 m).
+     Documented in doc 05 §4.2 and pinned by test rather than "fixed" — the fix
+     would change a doc 02 §6.2 macro that T2.4's physics pass validated.
+  7. **`ToolContext.reset_for_stage()`** added, because doc 05 §4.1 told T3.4 to
+     "reset [the context] with the stage" without distinguishing the stage-scoped
+     fields from trial-scoped `bumps` — the natural reading halves a published
+     metric silently. doc 05 §4.1 updated.
+  8. **Recorded, not fixed:** `ToolOutcome.is_error` reaches Anthropic models as a
+     protocol flag and GPT 5.6 sol only as text, because `function_call_output`
+     has no error field. API-imposed, so it is declared in doc 05 §7.3 with a test
+     pinning that the channel both models *do* share stays byte-identical.
+- **Re-mutation-checked after the review pass (rule 10.4):** 23 deliberate
+  defects, applied one at a time and reverted, each confirmed to turn the suite
+  red — including all 13 the reviewers demonstrated surviving the original suite
+  (integrate the requested duration rather than the seconds run; `to_block`
+  dropping every image; `to_block` hard-coding `is_error=False`; a leaked
+  `recent_track`/`debug_pose`/prose-`guidance` field; a bare debug key on
+  `send_velocity` and on `turn_to_heading`; `look_around` routed through
+  `capture_b64`; `held_heading` re-read after the macro; the position-estimate
+  note inverted; the compass coarsened to 10°; `sort_keys=True`; `declare_done`
+  answering `ok: false`) plus 7 aimed at the fixes above. The four gaps that let
+  them through: `FakePlayback.execute` could never truncate, nothing inspected a
+  `ToolResultBlock` beyond `.text`, no per-tool payload key set was pinned, and
+  `FakePlayback.move` never changed the compass.
+- **Left for T3.4/T3.5, not silently assumed:** the motion cap and turn cap are
+  accumulated here (`ToolContext.counters`, `ToolContext.bumps`) but **enforced**
+  by the loop; doc 05 §12's open question — whether to cap motion tools at one
+  per turn — is still open and T3.5's smoke is what should answer it. **T3.4 must
+  also (a) call `ToolContext.reset_for_stage()` at the stage boundary rather than
+  rebuilding the context, (b) log every motion `ToolOutcome.execution` into doc 06
+  §4's `turns[].execution` / `true_pose`, and (c) end the stage on
+  `status.fell` — `tools.py` refuses further motion after a fall, but only the
+  loop can stop rendering frames from the respawn point.**
 
 ### T3.4 `[ ]` Episode loop + QA elicitation
 
@@ -1095,7 +1236,13 @@ cabinet with no penetration.
   orphaned) + `scripts/run_trial.py` (`--model --seed --task`). Context policy:
   system + first turn + last K=10 + memory block every turn. Stage machine
   find_kitchen → return_home in-episode; caps 40 turns / 240 policy-s per stage;
-  `declare_done` transcript shape (a) per doc 05 §3.3. **At that transition also
+  `declare_done` transcript shape per doc 05 §3.3 item (4) + §3.1's
+  `declare_done` branch (the earlier "shape (a)" citation was dangling — §3.3
+  enumerates (1)–(4) and no design doc has an (a)/(b) list of transcript
+  alternatives; corrected by T3.2's plan review, AGENTS.md rule 10.1). The two
+  shapes that branch needs — `tools.stage_end_result(stage)` and
+  `tools.not_executed(name)` — are **owned by T3.2** and already exist; the loop
+  only branches and appends. **At that transition also
   set `state.memory.stage = STAGE_RETURN_HOME`** (one line, added by T3.1's
   review pass): `Correction.turn` is stage-local, so without it the correction
   series cannot be split per stage after the batch, which is what doc 06 §5.8

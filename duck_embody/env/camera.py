@@ -98,6 +98,34 @@ CAMERA_PRIM_PATH = "{ENV_REGEX_NS}/head_cam"
 WARMUP_RENDERS = 5
 
 
+def encode_jpeg(rgb, quality: int = JPEG_QUALITY) -> bytes:
+    """Encode an HxWx3 uint8 array as JPEG at the frozen quality.
+
+    Module-level, not a method, because :meth:`HeadCamera.look_around` hands
+    back four *raw arrays* and ``capture_jpeg``/``capture_b64`` cannot encode
+    them: both re-``capture_rgb()`` at the robot's own heading, so routing a
+    panorama frame through them would silently encode a FIFTH, forward-facing
+    frame and label it "view at compass 90 deg" (T3.2). ``agent/tools.py`` calls
+    this directly, which is also why it takes the array rather than reaching
+    back into the sensor.
+    """
+    from PIL import Image
+
+    img = Image.fromarray(rgb)
+    if img.size != RESOLUTION:
+        # Every model in the batch must see the same frozen resolution
+        # (AGENTS.md rule 4), regardless of what the annotator handed back.
+        img = img.resize(RESOLUTION)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=quality)
+    return buf.getvalue()
+
+
+def encode_b64(rgb, quality: int = JPEG_QUALITY) -> str:
+    """:func:`encode_jpeg`, base64-encoded for the wire (both adapters)."""
+    return base64.b64encode(encode_jpeg(rgb, quality)).decode("ascii")
+
+
 def head_camera_cfg():
     """Build the frozen ``CameraCfg``. Imported lazily — needs a running kit app."""
     import isaaclab.sim as sim_utils
@@ -195,17 +223,10 @@ class HeadCamera:
         return arr[..., :3]
 
     def capture_jpeg(self, quality: int = JPEG_QUALITY) -> bytes:
-        from PIL import Image
-
-        img = Image.fromarray(self.capture_rgb())
-        if img.size != RESOLUTION:
-            img = img.resize(RESOLUTION)
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=quality)
-        return buf.getvalue()
+        return encode_jpeg(self.capture_rgb(), quality)
 
     def capture_b64(self, quality: int = JPEG_QUALITY) -> str:
-        return base64.b64encode(self.capture_jpeg(quality)).decode("ascii")
+        return encode_b64(self.capture_rgb(), quality)
 
     # -- diagnostics --------------------------------------------------------
 

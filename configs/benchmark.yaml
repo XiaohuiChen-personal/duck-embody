@@ -37,6 +37,14 @@ locomotion:
   # stays honest and measurable. k is consumed ONLY by (i) time-cap/wall-clock
   # forecasting and (ii) the move() servo target (dist / k) and timeout margin.
 
+  # DESIGN doc 05 §4 (the send_velocity schema description the model reads) and
+  # doc 02 §6.3 (`d = clip(duration_s, 0.2, 3.0)`). Until T3.2 this bound lived
+  # in NO code: `execute()` accepts any duration. It is now
+  # `tools.DURATION_RANGE_S`, and tests/test_tools.py asserts the two agree —
+  # the same treatment the caps get, for the same reason (a bound the model is
+  # told about but the harness does not enforce is worse than no bound).
+  send_velocity_duration_s: [0.2, 3.0]
+
   # MEASURED (T1.3 run b): commanded wz 0.3 rad/s -> 0.295 realised.
   turn_rate_realisation: 0.982
 

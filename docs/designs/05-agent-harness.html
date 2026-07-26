@@ -270,6 +270,56 @@ is the enforcer.</p>
 <tr><td><code>look_around()</code></td><td>Renders 4 frames at absolute headings 0/90/180/270° by rotating the virtual camera mount while paused; the robot body does not move, so no fall risk and no policy-seconds.</td><td>4 labeled images + the same state block as <code>get_observation</code></td><td>None expected; higher token cost (4 images) — the model pays for it in context</td></tr>
 </table>
 
+<div class="decision"><strong>PINNED BY T3.2 (AGENTS.md rule 5): the status block before any motion has run.</strong>
+The row above says the <code>status</code> fields describe the <em>last</em> motion command, and said nothing
+about the first observation of a stage, when there is no last command. They are
+<code>{bumped: false, fell: &lt;live&gt;, distance_moved_m: 0.0}</code>. Omitting the keys instead would change the
+payload's <em>shape</em> between turn 1 and turn 2, which is a worse answer than a documented zero — doc
+<a href="04-camera-observation.html">04</a> §6 freezes the field set. <code>fell</code> is the one field read
+live rather than carried, because it is sticky and ends the trial: the final observation must report it however
+it is reached, including on a <code>get_observation</code> that ran no motion of its own.
+The carry-over state lives in <code>tools.ToolContext</code> (<code>last_bumped</code>,
+<code>last_distance_moved_m</code>), i.e. in the dispatcher's state, which T3.4's loop owns.</div>
+
+<div class="decision"><strong>PINNED BY T3.2's review pass: what "resets with the stage" means, exactly.</strong>
+The paragraph above previously ended "…which T3.4's loop owns and resets with the stage", which invites the
+loop to rebuild or zero the whole <code>ToolContext</code> at the <code>find_kitchen</code> →
+<code>return_home</code> boundary. That would also zero <code>ToolContext.bumps</code>, and doc
+<a href="06-benchmark-evaluation.html">06</a> §5.6 counts bumps <em>over the trial</em> — every stage-1
+collision would silently vanish from a published headline metric, with nothing failing. §3.3 resets only turns
+and policy-seconds. <code>ToolContext</code> therefore owns the reset itself:
+<code>reset_for_stage()</code> zeroes exactly <code>turn</code>, <code>last_bumped</code>,
+<code>last_distance_moved_m</code> and the two <code>Counters</code> fields, and deliberately leaves
+<code>bumps</code> (trial-scoped) and <code>compass_at_fall</code> (a fall ends the trial, so stage 2 never
+starts after one) alone. T3.4 calls that one method rather than reproducing a field list.</div>
+
+<div class="decision"><strong>PINNED BY T3.2's review pass: a fall has already teleported the robot, so the
+perception tools are the ONLY ones still answered.</strong> Isaac Lab auto-resets a terminated env
+<em>inside</em> <code>env.step()</code> and returns the post-reset observation, so every live sensor read after
+a fall describes the <em>spawn</em> point — <code>policy_wrapper.execute</code> guards its own
+<code>true_pose</code> against exactly this, and <code>tools.py</code> inherited none of that care. Two
+consequences, both fixed in T3.2's review commit: <code>compass_deg()</code> is <strong>latched at the
+fall</strong> rather than re-read (see §4.2), and the three motion tools refuse to run at all once
+<code>playback.fell</code> is set (§8's <code>stage_ended</code> row). The perception and memory tools stay
+answerable, because the pin above requires <code>get_observation</code> to report <code>fell</code> "however it
+is reached" and they step no physics. <strong>Residual, assigned to T3.4:</strong> a
+<code>get_observation</code> listed <em>after</em> the falling command in the same turn renders its frame from
+the respawn point. That is the only way to reach it, it is one frame at the end of a trial that is already
+lost, and the fix belongs in the loop — T3.4 must end the stage on <code>status.fell</code>.</div>
+
+<div class="decision"><strong>PINNED BY T3.2: who owns the camera, and how a <code>look_around</code> frame
+becomes base64.</strong> <code>SimSession</code> owns no camera (nothing outside <code>scripts/</code>
+constructs one), so <code>tools.ToolContext</code> takes an <strong>injected</strong> <code>HeadCamera</code>
+— which is also what makes the tool layer unit-testable without a kit process, as PLAN T3.2's "sim mocked"
+requirement demands. <code>HeadCamera.look_around()</code> returns raw numpy arrays and
+<code>capture_jpeg</code>/<code>capture_b64</code> could not encode them: both re-<code>capture_rgb()</code> at
+the robot's own heading, so routing a panorama frame through them would silently encode a <em>fifth</em>,
+forward-facing frame and label it "view at compass 90°". T3.2 therefore adds module-level
+<code>camera.encode_jpeg(rgb, quality)</code> / <code>encode_b64</code> (doc
+<a href="04-camera-observation.html">04</a> §5.3, updated in the same commit) and
+<code>capture_jpeg</code>/<code>capture_b64</code> now delegate to them, so there is exactly one encoder and
+one place enforcing the frozen 512×512.</div>
+
 <h3>4.2 Motion tools</h3>
 <table>
 <tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
@@ -281,6 +331,130 @@ is the enforcer.</p>
 clipped to the reference-motion grid hull); vy near-uselessness (~9 s/m) + turn-then-drive preference from
 AGENTS.md §5 (command envelope gotcha — the parent file does not contain that claim); policy v4_robust eval
 record in parent docs/jetson-mod/v4_comparison.md</span></p>
+
+<div class="decision"><strong>PINNED BY T3.2 (AGENTS.md rule 5): the four things the table above left open,
+plus the model-facing key names.</strong> Each was reachable from a tool call and settled by no doc.
+
+<ol>
+<li><strong><code>move(distance_m &le; 0)</code> &rarr; <code>invalid_args</code>.</strong> The schema's domain
+is <code>(0, 1.5]</code>, <em>open</em> at zero, but §4.2 stated a failure mode only for the upper bound, and
+<code>policy_wrapper.move</code> does <code>max(0.0, min(distance_m, 1.5))</code> — a zero or negative argument
+becomes a no-op that still runs a chunk, burns a turn and explains nothing. There is also no honest clamp
+available: raising 0 to some positive distance invents a command the model did not give, and clamping −1 to +1
+would drive the robot the <em>opposite</em> way from what a model that typed −1 meant. The hint routes it to
+<code>send_velocity</code> with a negative <code>vx</code>, which is what the escape hatch is for. The upper
+bound still <em>clamps</em>, per the table — and the clamp note is synthesised in <code>tools.py</code>, because
+the wrapper performs that clamp silently and adds nothing to <code>clamp_notes</code>.</li>
+
+<li><strong><code>turn_to_heading</code> outside <code>[0, 360)</code> &rarr; wrapped, with the wrap echoed.</strong>
+An angle modulo 360 has exactly one meaning, so wrapping is arithmetic rather than the intent-guessing §8
+forbids; but <code>wrap_deg</code> would do it <em>silently</em>, and a model that asked for 725° and was sent
+to 5° could never notice its own arithmetic slipped. The echo follows <code>mark_exit</code>'s 15° snap
+precedent (§5.1).</li>
+
+<li><strong><code>duration_s &isin; [0.2, 3.0]</code> clamps, and now exists in code.</strong> It was stated in
+§4's schema description and doc <a href="02-policy-playback.html">02</a> §6.3 and implemented <em>nowhere</em>
+— <code>execute()</code> accepts any duration, so a <code>duration_s: 60</code> would have spent a quarter of
+the 240 s stage budget in one blind command. It is <code>tools.DURATION_RANGE_S</code>, mirrored into
+<code>configs/benchmark.yaml</code> (<code>locomotion.send_velocity_duration_s</code>) with an agreement test,
+following the caps precedent. A sub-0.2 s request clamps <em>up</em>: that is what "clamped to [0.2, 3.0]"
+says, the echo makes it visible, and rejecting would spend the model's scarcest budget (a turn) on a command
+the hull can perfectly well run.</li>
+
+<li><strong><code>send_velocity</code>'s <code>distance_moved_m</code> = <code>hypot(vx, vy) &times;
+policy_seconds</code></strong> (commanded, clamped values). Doc <a href="04-camera-observation.html">04</a> §6.2
+defines the field as "dead-reckoned distance actually covered by the most recent motion command", but
+<code>ExecResult.dead_reckoned_distance_m</code> is set by <code>move</code> <em>only</em> and is 0.0 on every
+other result — reporting it raw would tell the model it had not moved. Speed × time is the arc length of the
+commanded motion, and it is the same rule <code>move</code> reports.</li>
+</ol>
+
+<p><strong>Model-facing key names</strong>, which §4's prose "Returns" columns named only in part. Frozen here
+so a later refactor cannot change what the model reads without a doc diff: every motion result carries doc 04
+§6's <code>compass_deg</code> / <code>position_estimate</code> / <code>status</code> block plus
+<code>policy_seconds</code>; <code>turn_to_heading</code> adds <code>requested_heading_deg</code>,
+<code>heading_error_deg</code> and <code>timed_out</code>; <code>move</code> adds
+<code>requested_distance_m</code>; <code>send_velocity</code> adds <code>executed
+{vx, vy, wz, duration_s}</code> (the clamped echo). Any clamp, wrap or snap appears in a single
+<code>notes</code> list — <em>absent</em> when nothing was changed, so the key stays a signal rather than
+decoration. <code>policy_seconds</code> is the macro's merged figure and is never
+<code>ExecResult.duration_s</code>, which <code>_merge()</code> leaves stale at 0.2 s on every macro
+result. The key set is now asserted per tool for all 12 in <code>tests/test_tools.py</code>, which is also the
+only net that catches a leak arriving under a <em>new</em> key name.</p></div>
+
+<div class="decision"><strong>PINNED BY T3.2's review pass: four more things reachable from a tool call and
+settled by no doc.</strong>
+<ol>
+<li><strong>The <code>requested_*</code> keys carry the model's RAW argument</strong>, not the clamped or
+wrapped one. They first shipped carrying the adjusted value, so <code>move(distance_m=5.0)</code> answered
+<code>requested_distance_m: 1.5</code> and <code>turn_to_heading(725)</code> answered
+<code>requested_heading_deg: 5.0</code> — a key named "requested" reporting something the model never
+requested, recoverable only by cross-referencing <code>notes</code>, the one key this section deliberately
+makes <em>absent</em> when nothing changed. The repo's own precedent is the other way: §5.1's
+<code>mark_exit</code> ack "echoes the raw value, so the snap is visible rather than silent". What actually ran
+stays readable in two places that are always present — the clamp/wrap note names <em>both</em> numbers whenever
+they differ, and <code>status.distance_moved_m</code> / <code>compass_deg</code> report the outcome on every
+call. <code>send_velocity</code> is unchanged: its <code>executed</code> block is defined above as the
+<em>clamped command echo</em>, and the seconds that actually elapsed are <code>policy_seconds</code>.</li>
+<li><strong><code>move</code> serves distance in 0.04 m increments and rounds UP.</strong>
+<code>policy_wrapper.move</code> servos in whole 0.2 s chunks worth <code>MOVE_SPEED_MPS ×
+MACRO_CHUNK_S</code> = 0.04 m each and breaks on <code>travelled ≥ distance / k</code>, so a move is never
+<em>short</em> of the request and may exceed it by up to 0.04 m: <code>move(1.5)</code> covers 1.52 m — past
+§4's own <code>(0, 1.5]</code> domain — and <code>move(0.05)</code> covers 0.08 m. Documented rather than
+"fixed": shortening the final chunk changes a doc <a href="02-policy-playback.html">02</a> §6.2 macro that
+T2.4's physics pass validated, and echoing it as a clamp note would fire on essentially every call, turning
+<code>notes</code> from a signal into decoration. The model is told the real figure in
+<code>status.distance_moved_m</code> after every single move, which is the number it needs for final
+positioning against doc <a href="06-benchmark-evaluation.html">06</a> §5.3's 0.35 m radius. Pinned by test so
+the granularity cannot change silently.</li>
+<li><strong>After a fall, <code>compass_deg</code> is the heading latched BEFORE the command</strong>, not a
+live read. See §4.1's teleport pin for why the live sensor is the spawn point.
+<code>ExecResult.true_pose[2]</code> is deliberately <em>not</em> used: it is scoring-only (doc 06 §4) and may
+not cross into a payload. The latched value is written into the breadcrumb too — the trail is permanent and
+re-injected every turn (§5.2), so a spawn heading recorded there is unrecoverable.</li>
+<li><strong>The scoring-side channel: <code>ToolOutcome.execution</code>.</strong> <code>dispatch</code> is the
+only code in the harness that ever sees an <code>ExecResult</code>, so dropping it is exactly as silent as
+leaking it and strictly more expensive: doc 06 §4 requires <code>turns[].execution.pose_trace</code> in every
+trial JSON, §5.3 pins the SPL path integral <em>p</em> to those 5 Hz sub-turn samples (and warns that
+chord-summing the once-per-turn <code>true_pose</code> entries instead "would under-measure any within-turn
+curved motion … shrinking <em>p</em> and inflating SPL"), and PLAN T4.1's scorer is specified to <em>raise</em>
+on a missing <code>pose_trace</code>. Every motion tool therefore returns a
+<code>ToolOutcome.execution</code> dict (<code>pose_trace</code>, <code>sampled_xy</code>,
+<code>true_pose</code>, <code>true_displacement_m</code>, <code>policy_seconds_used</code>,
+<code>distance_moved_m</code>, <code>bumped</code>, <code>fell</code>, <code>stop_reason</code>,
+<code>counted_as_bump</code>) for T3.4 to log; it is <code>None</code> for every tool that steps no physics. It
+is an attribute rather than a payload key precisely so <code>to_block()</code> — the only path to a provider —
+cannot carry it by accident, and a test asserts the two never meet. <strong>The key-name freeze above is
+model-facing only and does not cover it.</strong></li>
+</ol></div>
+
+<div class="warning"><strong>The dead-reckoning feed for <code>move</code> — PLAN T3.2 (b) was WRONG as
+written, and is corrected in T3.2's commit.</strong> (b) said to feed
+<code>PositionIntegrator.integrate()</code> the <code>ExecResult.policy_seconds</code> actually run. That is
+right for <code>send_velocity</code> and wrong for <code>move</code>: <code>PolicyPlayback.move()</code> appends
+a trailing 0.2 s <em>zero-command</em> settle chunk and merges it into <code>policy_seconds</code>, while
+<code>travelled</code> (→ <code>dead_reckoned_distance_m</code>) accumulates driving chunks only. Integrating
+0.2 m/s over the merged figure fabricates 0.2 × 0.2 = <strong>0.04 m of forward motion per <code>move</code>
+call</strong> — up to 1.6 m over a 40-turn stage, injected straight into doc
+<a href="06-benchmark-evaluation.html">06</a> §5.8's drift metric: precisely the failure (b) exists to prevent,
+inverted. The correct feed is <code>dead_reckoned_distance_m / MOVE_SPEED_MPS</code>, which recovers the driving
+seconds exactly (every chunk is a whole number of 50 Hz steps, so <code>duration_to_steps</code> round-trips
+it), integrated along the heading <code>move</code> holds. <strong>Merged <code>policy_seconds</code> is what
+charges the 240 s cap; <code>dead_reckoned_distance_m</code> is what feeds the integrator.</strong> They are
+different numbers by design and conflating them in either direction fails silently.
+<br><br>
+<code>turn_to_heading</code> has the same trailing chunk but commands vx = vy = 0, so it feeds the integrator
+nothing at all: a rotation in place displaces the estimate by exactly zero, and real slip during the turn is
+drift the integrator is <em>supposed</em> not to see (§5.1).
+<br><br>
+<strong><code>send_velocity</code> integrates the arc, not a chord.</strong> It is the only tool that can
+translate and rotate at once, and doc <a href="02-policy-playback.html">02</a> §6.3's pseudocode integrates such
+a command in one call at one heading. For <code>send_velocity(0.222, 0, 0.5, 3.0)</code> — 86° of sweep over
+0.67 m — that misplaces the estimate by ~0.45 m, against a 0.35 m <code>find_kitchen</code> success radius. That
+error is the harness's arithmetic, not the robot's slip, so T3.2 adds
+<code>PositionIntegrator.integrate_arc()</code>, which advances the heading by
+<code>degrees(wz) × CONTROL_DT</code> per control step from the <em>commanded</em> wz — no sensor read, and
+identical to <code>integrate()</code> step for step when wz = 0. Doc 02 §6.3 records the deviation.</div>
 
 <h3>4.3 Memory tools (write YOUR map)</h3>
 <table>
@@ -427,6 +601,33 @@ and a silent prefix would show the model a plan it never wrote. Rationale in §5
 None of this inspects <em>meaning</em>: a wildly wrong but finite anchor, a forward-referencing
 <code>leads_to:</code>, a duplicate room under a new name all still go through untouched (§1, §4.3).</li>
 </ul></div>
+
+<div class="decision"><strong>EXTENDED BY T3.2 (AGENTS.md rule 5): the same rules now cover the MOTION
+arguments, and the two checks that could never live here.</strong>
+
+<p><strong>(a) Scope.</strong> The rules above were written for the memory tools, so nothing covered
+<code>heading_deg</code>, <code>distance_m</code> or <code>vx/vy/wz/duration_s</code> — and §8's first row
+obliges <code>invalid_args</code> for those too. Concretely: <code>clamp_command("0.2", 0, 0)</code> raises
+<code>TypeError</code> (str &lt; float), which §8 would misclassify as infra and rerun the trial whole; and
+<code>clamp_command(nan, 0, 0)</code> silently returns <code>nan</code> — every <code>min</code>/<code>max</code>
+comparison against NaN is False — which then poisons the command buffer <em>and</em> the position estimate,
+unrecoverably and without a traceback. <code>memory._text_error</code> / <code>memory._number</code> are
+therefore now <strong>public</strong> as <code>memory.text_error</code> / <code>memory.number_arg</code> and
+<code>tools.py</code> calls them directly. One implementation, deliberately: two copies would eventually
+disagree about whether <code>"270"</code> is a number, and the model would see one tool parse what another
+rejected.</p>
+
+<p><strong>(b) Arity and surplus arguments live in <code>tools.py</code>, because they structurally cannot live
+here.</strong> The memory tools are ordinary Python methods, so a call missing a required key — or carrying an
+extra one — dies on the <code>**</code> splat with a <code>TypeError</code> <em>before</em> their own
+validation runs, again buying the free trial rerun. <code>tools.dispatch</code> checks the schema's
+<code>required</code>/<code>properties</code> before any handler is entered. <strong>Surplus keys are rejected,
+not dropped</strong>: silently ignoring the second argument of
+<code>turn_to_heading(heading_deg=90, distance_m=1.0)</code> is the harness guessing it was surplus rather than
+a conflation of two tools (§8: "the harness never guesses intent"), and the model would never learn that half of
+what it asked for was discarded. This is also why §4's schemas carry <em>no</em>
+<code>additionalProperties: false</code>: enforcement here returns <code>invalid_args</code> and the turn
+counts, whereas provider-side rejection would arrive as an API error and the turn would not.</p></div>
 
 <h3>5.2 The rendered memory block — MapGPT grammar, concrete example</h3>
 
@@ -704,6 +905,21 @@ output}</code>, where <code>output</code> is a <strong>string</strong>.</li>
 <p>The asymmetry <a href="04-camera-observation.html">Doc 04</a> §6.1 flagged survives the
 API change: a tool result still cannot carry an image, so frames follow in an adjacent
 user message, labelled and attributed to the originating <code>call_id</code>.</p>
+
+<div class="warning"><strong>Recorded by T3.2's review pass: the ONE place the tool surface is not
+byte-identical across contestants, and it is API-imposed.</strong> <code>tools.dispatch</code> sets
+<code>is_error=True</code> on every <code>invalid_args</code> / <code>unknown_tool</code> /
+<code>stage_ended</code> / rejected-memory-write result. The Messages API has a protocol-level
+<code>tool_result.is_error</code> and the Anthropic adapter sets it, so Fable&nbsp;5 and Opus&nbsp;5 receive
+both the flag and the <code>{error, detail, hint}</code> body. <code>function_call_output</code> has no
+equivalent field, so GPT&nbsp;5.6&nbsp;sol receives the body only. Nothing in the harness can close this — the
+Responses API simply has no error channel on a tool result — so AGENTS.md rule 4's "one tool set" holds in
+substance but not literally, and it is declared here rather than discovered in the results. The mitigation is
+that the channel both models <em>do</em> share stays identical: a test in
+<code>tests/test_providers.py</code> asserts the serialised JSON body is byte-for-byte the same out of both
+adapters, so the text path cannot drift as well. (Image labels are <em>not</em> asymmetric: both adapters
+render <code>ImageBlock.label</code>, so <code>look_around</code>'s four bearing captions reach all three
+models.)</div>
 <p><span class="src">source: https://platform.openai.com/docs/guides/function-calling (HTTP 200,
 2026-07-26)</span></p>
 
@@ -731,7 +947,25 @@ keys come from environment variables only <span class="src">source: AGENTS.md §
 <tr><td>Refusal / derailment</td><td>Anthropic <code>stop_reason: "refusal"</code>; or a turn with no tool call (prose only, empty, off-task)</td><td>The harness appends a fixed nudge ("No tool call received — you must act via tools; call get_observation if unsure") and continues. The episode runs to its caps and is <strong>scored as a failure if it never succeeds — never selectively retried</strong>. Retrying only the trials that derailed would be selection bias in the model's favor.</td></tr>
 <tr><td>API failure</td><td>HTTP 429 / 5xx / connection error / timeout</td><td>Retry with exponential backoff + jitter (bounded attempts). If exhausted, the trial is marked <strong>infra-failed</strong>: it is rerun <em>whole</em> (same seed, fresh episode), the rerun is logged in the results JSON as an infra rerun, and infra failures are reported separately from model failures — they say nothing about the model.</td></tr>
 <tr><td>Sim-side fault (render error, physics NaN)</td><td>Harness exception outside the model's control</td><td>Infra path, same as API failure: log, rerun whole, report separately.</td></tr>
+<tr><td>Call after <code>declare_done</code> <span class="src">added by T3.2</span></td><td>A tool call listed after <code>declare_done</code> in the same turn (§3.1)</td><td>Return <code>{error: "not_executed", detail, hint}</code>. Not a model failure to score — the stage simply ended first — but it must still be a <em>result</em>, because every <code>tool_use</code> block in the echoed assistant turn has to be answered (§7.2) and an unanswered one is an API error, i.e. an infra rerun of a trial the model actually finished. §3.1 always required the shape; only this table omitted the third error kind.</td></tr>
+<tr><td>Motion tool after a fall <span class="src">added by T3.2's review pass</span></td><td><code>playback.fell</code> is set when <code>turn_to_heading</code> / <code>move</code> / <code>send_velocity</code> is dispatched (§4.1's teleport pin)</td><td>Return <code>{error: "stage_ended", detail, hint}</code> without touching the sim. Like <code>not_executed</code> this is <em>not</em> a model failure to score — the trial simply ended first — but it must be a result for the same §7.2 reason. §4.2 said "falls end the trial" for all three motion tools and named no mechanism; until this row there was none, and a model that reasonably tried to recover would have kept commanding a robot Isaac had already teleported back to spawn, with <code>pose_trace</code> (doc <a href="06-benchmark-evaluation.html">06</a> §5.3) and the drift metric (§5.8) accumulating across the teleport. The guard lives in <code>dispatch</code> rather than the loop so it holds regardless of what T3.4 does.</td></tr>
 </table>
+
+<div class="note"><strong>Implemented by T3.2 in <code>duck_embody/agent/tools.py</code>.</strong> The first
+row's three cases are the three guards at the top of <code>dispatch()</code>, in that order:
+<code>ToolCall.parse_error</code> (the OpenAI adapter's; model-attributable despite looking like a wire fault,
+because the model emitted the malformed JSON), an unknown name, then the argument check. Everything a model can
+put in a tool call is validated <em>before</em> the sim is touched — see §5.1's T3.2 extension — so no exception
+can escape for a model-supplied argument and land on the last row's infra path. Faults with no model agency
+behind them are deliberately <strong>not</strong> caught: a render failure in <code>get_observation</code>
+propagates, because swallowing it would launder a broken GPU into a model failure, which is this same line
+crossed from the other side. <strong>Added by T3.2's review pass:</strong> "physics NaN" only reaches the infra
+path if something raises, and nothing did — <code>json.dumps</code> emits the bare tokens
+<code>NaN</code>/<code>Infinity</code> by default, which are not JSON, are rejected by neither provider, and
+would have been shown to the model for the rest of the episode. <code>ToolOutcome.to_block</code> now serialises
+with <code>allow_nan=False</code>, so a non-finite value the <em>harness</em> produced raises and lands where
+this table says it belongs. <code>memory.number_arg</code> already guards the other direction, the values that
+come from the model.</div>
 
 <div class="warning"><strong>The line between "model failure" and "infra failure" is drawn at agency.</strong>
 If the model <em>could have</em> acted differently (bad tool call, refusal, wandering to the turn cap), the

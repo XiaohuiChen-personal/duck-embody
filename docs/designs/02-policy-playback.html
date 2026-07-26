@@ -379,6 +379,26 @@ half is asserted directly &mdash; all 8 doorway transits in the T2.4 pass report
 the command — the sim pauses between LLM turns, and a nonzero command must never be left armed across a
 multi-minute LLM think.</p>
 
+<div class="warning"><strong>CORRECTED BY T3.2 (AGENTS.md rule 5): the last line integrates an ARC, not a
+chord — and the <code>[0.2, 3.0]</code> clip lives in <code>tools.py</code>.</strong>
+<code>integrate_dead_reckoning(vx, vy, wz, d)</code> above is one call at one heading, which is wrong for the
+only tool that can translate <em>and</em> rotate at once. <code>send_velocity(0.222, 0, 0.5, 3.0)</code> sweeps
+86° while travelling 0.67 m, so integrating the whole command along the <em>start</em> heading misplaces the
+estimate by ~0.45 m — larger than the 0.35 m <code>find_kitchen</code> success radius, and it is the harness's
+arithmetic rather than the robot's slip, which is exactly the distinction PLAN T3.2 (b) exists to protect.
+<code>memory.PositionIntegrator.integrate_arc()</code> instead advances the heading by
+<code>degrees(wz) &times; CONTROL_DT</code> per control step from the <strong>commanded</strong> wz — no sensor
+read, nothing measured, and identical to <code>integrate()</code> step for step when wz&nbsp;=&nbsp;0. The
+compass is re-read before the next command, so the measured commanded-vs-realised yaw gap (T1.3: 0.982) never
+accumulates across calls.
+<br><br>
+Two further notes on this pseudocode as implemented: the <code>clip(duration_s, 0.2, 3.0)</code> is
+<strong>not</strong> in <code>PolicyPlayback.execute()</code> — it is <code>tools.DURATION_RANGE_S</code>,
+applied before the call and echoed to the model like every other clamp (doc
+<a href="05-agent-harness.html">05</a> §4.2) — and the duration fed to the integrator is
+<code>ExecResult.policy_seconds</code>, never <code>d</code>, so a command cut short by a fall does not walk the
+estimate on without the robot.</div>
+
 <h2 id="s7">7. Known unknowns</h2>
 
 <p>Honesty section: things the parent repo's evidence does <em>not</em> cover, with our mitigation.</p>

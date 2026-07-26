@@ -311,6 +311,38 @@ class TestSemanticEquivalence:
         assert json.loads(a_text)["compass_deg"] == 87.4
         assert set(json.loads(o_text)) == {"compass_deg", "position_estimate", "status"}
 
+    def test_the_error_channel_asymmetry_is_confined_to_the_protocol_flag(
+        self, anthropic_adapter, openai_adapter
+    ):
+        """The ONE place AGENTS.md rule 4's "one tool set" is not byte-identical
+        across contestants — recorded here and in doc 05 §7.3 so it cannot be
+        mistaken for a harness choice.
+
+        `tools.dispatch` sets `is_error=True` on every `invalid_args` /
+        `unknown_tool` / rejected-memory-write result. Anthropic's Messages API
+        has a protocol-level `tool_result.is_error`; the Responses API's
+        `function_call_output` has no equivalent field, so GPT 5.6 sol receives
+        the same information through the JSON body alone. The asymmetry is
+        API-imposed, not a design decision, and the mitigation is that the body —
+        which BOTH models read — is byte-identical. That is what this pins: the
+        text channel cannot be allowed to drift as well.
+        """
+        body = '{"error": "invalid_args", "detail": "d", "hint": "h"}'
+        msg = UserMessage(blocks=[ToolResultBlock("x", "mark_exit", body, is_error=True)])
+
+        a_result = anthropic_adapter.to_native([msg])[0]["content"][0]
+        o_result = next(
+            m
+            for m in openai_adapter.to_native([msg])
+            if m.get("type") == "function_call_output"
+        )
+        # The shared channel: identical bytes.
+        a_text = next(c["text"] for c in a_result["content"] if c["type"] == "text")
+        assert a_text == o_result["output"] == body
+        # The unshared one: a flag on one side, nothing to carry it on the other.
+        assert a_result["is_error"] is True
+        assert "is_error" not in o_result
+
     def test_image_count_matches_across_providers_for_look_around(
         self, anthropic_adapter, openai_adapter
     ):

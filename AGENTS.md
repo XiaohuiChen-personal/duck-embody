@@ -210,6 +210,22 @@ Robot / policy (paths in parent repo or `~/IsaacLab`):
 - **Net displacement was never measured** in the parent repo (velocity errors are
   instantaneous L2). `scripts/smoke_displacement.py` measures real achieved speed
   BEFORE episode caps/scoring are frozen.
+- **`ExecResult.policy_seconds` is NOT the time the robot moved** (found in T3.2).
+  `move()` and `turn_to_heading()` append a trailing 0.2 s **zero-command** settle
+  chunk and merge it in, while `dead_reckoned_distance_m` counts driving chunks
+  only. Feeding the merged figure to the dead-reckoning integrator fabricates
+  0.04 m of forward motion per `move` call (≤1.6 m per 40-turn stage) straight
+  into doc 06 §5.8's drift metric. **Merged `policy_seconds` charges the
+  240 s cap; `dead_reckoned_distance_m` feeds the integrator** — different numbers
+  by design. Related: `_merge()` returns the *first* chunk's `ExecResult` mutated
+  in place and never updates `duration_s` or `commanded`, so both are **stale** on
+  every macro result (`duration_s == 0.2`, the first chunk's `wz`). Never read
+  them off a macro; never log them.
+- **`ExecResult` has FOUR scoring-only fields, not three**: `pose_trace`,
+  `true_pose`, `true_displacement_m` **and `sampled_xy`** (built from `true_xy()`
+  at 5 Hz — the raw ground-truth trajectory). Any `dataclasses.asdict(result)` on
+  a model-facing path leaks all four and silently invalidates the benchmark.
+  Build model payloads key by key (`duck_embody/agent/tools.py`).
 - **Head camera frame trap**: `head_assembly`'s local frame is rotated (MJCF quat
   `0.707,0,-0.707,0`) — robot-forward = local **−Z**; an identity mount films the sky.
   Head height ≈ 0.36–0.41 m. The robot USD is instanceable — parenting a camera prim

@@ -327,7 +327,22 @@ auto-stop semantics) plus <code>bumped = true</code> collision reports surfaced 
 has no auto-stop clause in the canonical schema; its collisions are counted from the
 status report, one per command). <code>falls</code> ∈ {0, 1} (a fall ends
 the trial). Bumps measure how blindly the model drives; collision detection is
-part of the harness, so bumps are cheap but counted.</div>
+part of the harness, so bumps are cheap but counted.
+<br><strong>PINNED BY T3.2's review pass:</strong> the two sources above are the
+<em>only</em> two — <code>turn_to_heading</code> is deliberately excluded, even though a
+rotation in place can scrape furniture and the model <em>is</em> told about it via
+<code>status.bumped</code> (<a href="04-camera-observation.html">doc 04</a> §6.2). Counting
+rotations would not be a stricter measurement, it would be behaviour-dependent inflation:
+<code>PolicyPlayback._bump_run</code> is instance state that is not reset between calls, so
+after a bump-stopped <code>move</code> the debounce counter already sits at its threshold and
+the first control step of the recovery turn re-flags <code>bumped</code>. Bump-then-turn-away
+is the canonical recovery pattern, so a model that turns while still in contact would score
+worse on this published metric than one that reverses with <code>send_velocity</code>, for
+the same number of real collisions. <code>tools.ToolContext.bumps</code> implements exactly
+the two sources named above and is <strong>trial-scoped</strong>: <code>reset_for_stage()</code>
+leaves it alone (<a href="05-agent-harness.html">doc 05</a> §4.1), because "over the trial" in
+the first sentence spans both stages while doc 05 §3.3 resets only turns and
+policy-seconds.</div>
 
 <div class="decision"><strong>5.7 Map accuracy.</strong> Scored against the layout
 ground truth in two parts.

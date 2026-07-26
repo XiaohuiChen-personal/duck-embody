@@ -102,6 +102,16 @@ STAGE_RETURN_HOME = "return_home"
 #
 # Validation is deliberately type-only. It never inspects *meaning* (§8: "the
 # harness never guesses intent"; §1: no repairing the model's graph).
+#
+# `text_error` and `number_arg` are PUBLIC because `agent/tools.py` type-checks
+# the MOTION arguments (`heading_deg`, `distance_m`, `vx/vy/wz/duration_s`) with
+# exactly these functions (T3.2; recorded in doc 05 §5.1, whose rules were
+# previously scoped to the memory tools alone). They need the same semantics for
+# the same reason — `clamp_command("0.2", 0, 0)` raises `TypeError` and
+# `clamp_command(nan, 0, 0)` silently returns `nan`, and either outcome hands a
+# malformed model argument the free trial rerun §8 exists to prevent — and one
+# implementation is the only way the two layers cannot drift into disagreeing
+# about whether `"270"` is a number.
 
 
 def invalid_args(detail: str, hint: str) -> dict:
@@ -109,7 +119,7 @@ def invalid_args(detail: str, hint: str) -> dict:
     return {"error": "invalid_args", "detail": detail, "hint": hint}
 
 
-def _text_error(value: object, field: str, tool: str) -> dict | None:
+def text_error(value: object, field: str, tool: str) -> dict | None:
     """``None`` if ``value`` is a string, else the §8 error shape.
 
     Strings are required rather than coerced: ``str(None)`` would create a room
@@ -124,7 +134,7 @@ def _text_error(value: object, field: str, tool: str) -> dict | None:
     )
 
 
-def _number(value: object, field: str, tool: str) -> tuple[float | None, dict | None]:
+def number_arg(value: object, field: str, tool: str) -> tuple[float | None, dict | None]:
     """``(number, None)`` or ``(None, error)`` — a finite float, or §8's shape.
 
     ``float()`` accepts the numeric strings models emit for number-typed fields
@@ -258,7 +268,7 @@ class Memory:
         """Upsert a room node. Overwriting a description is legal — the model
         may revise what it thinks a place looks like (doc 05 §4.3)."""
         for value, field_name in ((name, "name"), (description, "description")):
-            error = _text_error(value, field_name, "update_room")
+            error = text_error(value, field_name, "update_room")
             if error is not None:
                 return error
         if not name.strip():
@@ -293,7 +303,7 @@ class Memory:
     def add_landmark(self, room: str, description: str) -> dict:
         """Append a landmark string to a room the model already created."""
         for value, field_name in ((room, "room"), (description, "description")):
-            error = _text_error(value, field_name, "add_landmark")
+            error = text_error(value, field_name, "add_landmark")
             if error is not None:
                 return error
         target = self.rooms.get(room)
@@ -308,12 +318,12 @@ class Memory:
 
     def mark_exit(self, room: str, direction_deg: float, status: str) -> dict:
         """Record or update an exit, keyed on (room, direction snapped to 15°)."""
-        error = _text_error(room, "room", "mark_exit")
+        error = text_error(room, "room", "mark_exit")
         if error is not None:
             return error
         if room not in self.rooms:
             return self._unknown_room_error(room, "mark_exit")
-        bearing, error = _number(direction_deg, "direction_deg", "mark_exit")
+        bearing, error = number_arg(direction_deg, "direction_deg", "mark_exit")
         if error is not None:
             return {
                 **error,
@@ -347,7 +357,7 @@ class Memory:
 
     def set_current_room(self, name: str) -> dict:
         """Assert which of the model's OWN rooms it is standing in."""
-        error = _text_error(name, "name", "set_current_room")
+        error = text_error(name, "name", "set_current_room")
         if error is not None:
             return error
         if name not in self.rooms:
@@ -370,7 +380,7 @@ class Memory:
         The one bound on the block's size: see :data:`PLAN_MAX_CHARS`. Rejected,
         never truncated, so what the model reads back is always what it wrote.
         """
-        error = _text_error(text, "text", "update_plan")
+        error = text_error(text, "text", "update_plan")
         if error is not None:
             return error
         if len(text) > PLAN_MAX_CHARS:
@@ -603,6 +613,44 @@ class PositionIntegrator:
         for _ in range(duration_to_steps(duration_s)):
             self.step(vx, vy, heading_deg)
 
+    def integrate_arc(
+        self, vx: float, vy: float, wz: float, heading_deg: float, duration_s: float
+    ) -> float:
+        """Integrate a commanded velocity whose ``wz`` is turning the robot.
+
+        Returns the commanded heading at the end. Identical to
+        :meth:`integrate` when ``wz == 0``, step for step.
+
+        Added by T3.2 for ``send_velocity``, which is the only tool that can
+        command translation and rotation at once (``move`` holds its heading and
+        ``turn_to_heading`` does not translate). Doc 02 §6.3's pseudocode
+        integrates such a command in ONE call at ONE heading, and this method is
+        the recorded deviation from it (AGENTS.md rule 5, doc 02 §6.3 / doc 05
+        §4.2) because that arithmetic is wrong by an amount larger than the
+        success radius: ``send_velocity(0.222, 0, 0.5, 3.0)`` sweeps 86° while
+        travelling 0.67 m, so integrating the whole command along the *start*
+        heading misplaces the estimate by ~0.45 m — against a
+        ``find_kitchen`` success radius of 0.35 m (doc 06 §5.3). That error is
+        the harness's arithmetic, not the robot's slip, and PLAN T3.2 (b) exists
+        precisely to keep those two apart.
+
+        Only *commanded* values are used, so nothing here reads a sensor: the
+        heading advances by ``degrees(wz) * CONTROL_DT`` per control step, the
+        same 50 Hz grid :func:`duration_to_steps` puts the sim on. The compass is
+        re-read by the caller before the *next* command, so a commanded-vs-realised
+        yaw gap (T1.3 measured 0.982) never accumulates across calls — it shows
+        up as honest within-call drift, which is the measurement.
+        """
+        heading = heading_deg
+        per_step_deg = math.degrees(wz) * CONTROL_DT
+        for _ in range(duration_to_steps(duration_s)):
+            # Step at the heading valid at the START of the control step, then
+            # advance — the same convention `execute()` uses, which writes the
+            # command and then steps physics.
+            self.step(vx, vy, heading)
+            heading += per_step_deg
+        return heading
+
     def correct(self, x: float, y: float) -> tuple[float, float]:
         """Overwrite (x, y); return the old estimate. Heading is never reset —
         the compass is absolute, so there is nothing about it to correct."""
@@ -636,15 +684,15 @@ def correct_position(
     coordinate frame that never existed and — because the exception escaped
     before the append below — no ``Correction`` in the log to explain it.
     """
-    new_x, error = _number(x, "x", "correct_position")
+    new_x, error = number_arg(x, "x", "correct_position")
     if error is not None:
         return {**error, "hint": "x and y must be numbers, in metres"}
-    new_y, error = _number(y, "y", "correct_position")
+    new_y, error = number_arg(y, "y", "correct_position")
     if error is not None:
         return {**error, "hint": "x and y must be numbers, in metres"}
-    text_error = _text_error(reason, "reason", "correct_position")
-    if text_error is not None:
-        return text_error
+    reason_error = text_error(reason, "reason", "correct_position")
+    if reason_error is not None:
+        return reason_error
     old = integrator.correct(new_x, new_y)
     new = (new_x, new_y)
     memory.corrections.append(

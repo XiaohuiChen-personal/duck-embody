@@ -343,6 +343,25 @@ as a camera reposition for determinism and declare it in the methods write-up as
 exceptions. It exists because turning the whole robot 4 × 90° to look around costs policy-seconds and injects
 dead-reckoning error into a purely perceptual act.</p>
 
+<div class="note"><strong>AS IMPLEMENTED (T1.4's mount, recorded by T3.2 under AGENTS.md rule 5).</strong>
+Two divergences from the paragraph above.
+<ol>
+<li><strong>There is no "restore the original pose" step.</strong> The chosen mount (rung 1b, "slaved") re-aims
+the camera from the robot's live true pose before <em>every</em> capture, so <code>look_around()</code> simply
+ends by re-aiming at the robot's own heading. Equivalent, and stateless: there is no saved pose that could
+be leaked, staled, or forgotten on an exception path.</li>
+<li><strong><code>look_around()</code> returns raw arrays; encoding is a module-level helper.</strong> It hands
+back <code>[(bearing_deg, rgb_array, forward_vector), …]</code>, and <code>capture_jpeg</code> /
+<code>capture_b64</code> could not encode those frames: both re-<code>capture_rgb()</code> at the robot's own
+heading, so routing a panorama frame through them would silently encode a <em>fifth</em>, forward-facing frame
+and label it "view at compass 90°". T3.2 therefore adds <code>camera.encode_jpeg(rgb, quality)</code> and
+<code>camera.encode_b64(rgb, quality)</code>, with <code>capture_jpeg</code>/<code>capture_b64</code>
+delegating to them — one encoder, and one place enforcing the frozen 512×512 (§4, AGENTS.md rule 4).
+<code>agent/tools.py</code> calls <code>encode_b64</code> per frame and discards the forward vector, which is
+derived from the robot's TRUE yaw and is scoring-side (doc <a href="06-benchmark-evaluation.html">06</a>
+§4).</li>
+</ol></div>
+
 <h2 id="payload">6. Observation payload spec</h2>
 
 <p>Every <code>get_observation()</code> tool result contains exactly one image block plus one JSON text block.
@@ -413,7 +432,7 @@ which independently confirms the camera output is legible to every model in the 
 <tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
 <tr><td><code>compass_deg</code></td><td>float, degrees [0, 360)</td><td>True heading (BNO055-realistic absolute compass; declared exception). Same heading convention as the layout (<a href="03-scene-design.html">Doc 03</a> §3): degrees counter-clockwise from +x, so 0° = +x (east) and 90° = +y (north).</td></tr>
 <tr><td><code>position_estimate.x/y</code></td><td>float, meters</td><td>Dead-reckoned world position integrated from commanded velocities since spawn (or since the last <code>correct_position</code>). Always labeled as an estimate. <strong>Never</strong> ground truth.</td></tr>
-<tr><td><code>status.bumped</code></td><td>bool</td><td>True if the last motion command auto-stopped on a detected collision.</td></tr>
+<tr><td><code>status.bumped</code></td><td>bool</td><td>True if the last motion command <strong>reported</strong> a detected collision. <span class="src">CORRECTED by T3.2's review pass: this row previously read "auto-stopped on a detected collision", which was already too narrow for two of the three motion tools. Only <code>move</code> auto-stops; <code>send_velocity</code> runs its full clamped duration through contact and reports afterwards (<a href="05-agent-harness.html">doc 05</a> §4.2 requires exactly that), and <code>turn_to_heading</code> can scrape a wall while rotating in place. All three set this flag, because a collision the model is not told about is one it cannot route around. Which of them feed the <em>scored</em> bump metric is a separate question, answered by <a href="06-benchmark-evaluation.html">doc 06</a> §5.6: <code>move</code> and <code>send_velocity</code> only.</span></td></tr>
 <tr><td><code>status.fell</code></td><td>bool</td><td>True if the robot fell (which also ends the trial; the final observation reports it).</td></tr>
 <tr><td><code>status.distance_moved_m</code></td><td>float, meters</td><td>Dead-reckoned distance actually covered by the most recent motion command (vs. requested — shortfall signals an obstruction).</td></tr>
 </table>
