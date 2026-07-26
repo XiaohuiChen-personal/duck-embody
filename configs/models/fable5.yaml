@@ -1,0 +1,33 @@
+# Benchmark contestant 1 of 3 — Anthropic's most capable widely released model.
+# FROZEN before the batch (doc 06 §2). Model IDs are configured values, never
+# hardcoded in the loop, so results/freeze.json can hash exactly what ran.
+provider: anthropic
+model_id: claude-fable-5
+
+# max_tokens caps thinking AND response text together. A turn's visible output
+# is small (a few tool calls) but thinking can be long, so this is sized with
+# headroom rather than around the tool call. 16k is the recommended ceiling for
+# non-streaming requests (above that, SDK HTTP timeouts become the risk).
+max_tokens: 16000
+
+# USD per million tokens.
+price_in_per_mtok: 10.0
+price_out_per_mtok: 50.0
+
+# No sampling parameters. temperature/top_p/top_k were REMOVED on this model
+# and return HTTP 400 — doc 05 §7.1's warning is correct. Decoding determinism
+# is unavailable; trial reproducibility comes from the fixed sim seeds instead.
+# `effort` is deliberately unset: the API default (high) applies to both
+# Anthropic contestants, so no arbitrary constant is applied to 2 of 3 models.
+params: {}
+
+notes: >
+  Thinking is ALWAYS ON for this model and cannot be disabled — an explicit
+  thinking:{type:"disabled"} returns 400. The adapter requests
+  {"type":"adaptive","display":"summarized"} so the transcript records the
+  model's reasoning summary for the qualitative audit; display controls
+  visibility only and does not change what is billed. The raw chain of thought
+  is never returned by the API. Assistant turns are echoed back verbatim
+  because thinking blocks must be replayed unchanged.
+  REQUIRES 30-DAY DATA RETENTION: an organisation configured for zero data
+  retention gets HTTP 400 on every request regardless of payload.

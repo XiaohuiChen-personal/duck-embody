@@ -462,11 +462,14 @@ in the model config; reported per trial.</li>
 <div class="warning"><strong>"temperature 0" cannot be sent to the Anthropic models.</strong> The locked models
 <code>claude-fable-5</code> and <code>claude-opus-5</code> reject <code>temperature</code> /
 <code>top_p</code> / <code>top_k</code> with HTTP 400 (sampling parameters were removed on Opus 4.7+ and
-Fable 5), and Fable 5's extended thinking is always on. So the determinism-of-decoding intent is realized, at
-most, on the OpenAI adapter — and even that is unverified until the §12 temperature probe runs (if
-GPT&nbsp;5.6&nbsp;sol also rejects <code>temperature=0</code>, no locked model supports deterministic decoding);
-the Anthropic adapter omits sampling parameters entirely and we accept run-to-run variation from the models
-themselves. Trial-level reproducibility comes from fixed sim seeds, not decoding.
+Fable 5), and Fable 5's extended thinking is always on.
+<strong>RESOLVED (T3.3, 2026-07-26): GPT&nbsp;5.6&nbsp;sol rejects it too</strong> —
+<code>"Unsupported value: 'temperature' does not support 0 with this model. Only the default (1)
+value is supported."</code> The conditional in this warning therefore resolves to its pessimistic
+branch: <strong>no locked model supports deterministic decoding.</strong> Every adapter omits
+sampling parameters entirely and we accept run-to-run variation from the models themselves.
+Trial-level reproducibility comes from fixed sim seeds, not decoding — and the results write-up
+must say so plainly rather than implying repeatable model behaviour.
 <span class="src">source: Anthropic model docs via claude-api skill reference (cached 2026-06-24); tool-use
 docs page HTTP 200 verified 2026-07-26</span></div>
 
@@ -489,18 +492,47 @@ derailment path of §8, not the infra path.</li>
 <p><span class="src">source: https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.md
 (HTTP 200, 2026-07-26)</span></p>
 
-<h3>7.3 OpenAI adapter (chat completions tool calling)</h3>
+<h3>7.3 OpenAI adapter — <strong>Responses API</strong>, not chat completions</h3>
+
+<div class="warning"><strong>CORRECTED (T3.3, 2026-07-26) — chat completions does not work
+for this model.</strong> This section originally specified
+<code>/v1/chat/completions</code>. Measured against the live API:
+<pre><code>POST /v1/chat/completions -> 400
+"Function tools with reasoning_effort are not supported for gpt-5.6-sol in
+ /v1/chat/completions. To use function tools, use /v1/responses or set
+ reasoning_effort to 'none'."</code></pre>
+The error offers two escapes and <strong>only one is admissible.</strong> Setting
+<code>reasoning_effort='none'</code> would run the OpenAI contestant with reasoning
+<em>disabled</em> while both Anthropic contestants run with thinking on at the API
+default — not a wire-format detail but a handicap that would invalidate the very
+cross-lab comparison this third model exists to provide. The harness therefore uses
+<strong><code>/v1/responses</code></strong>, where function tools and reasoning coexist
+(verified: a probe returned a well-formed tool call alongside 19 reasoning tokens).
+This is exactly the failure T3.3 was pulled ahead of Phase 2 to catch; inside the frozen
+batch it would have cost four trials and a re-freeze.</div>
+
+<p>Verified shapes (probed live, not assumed):</p>
 <ul>
-<li>Tools are wrapped: <code>{type: "function", function: {name, description, parameters}}</code> —
-<code>parameters</code> is the same JSON Schema.</li>
-<li>The assistant message carries <code>tool_calls</code>:
-<code>{id, type: "function", function: {name, arguments}}</code> where <code>arguments</code> is a
-<strong>JSON string</strong> that must be parsed (and can fail to parse — §8).</li>
-<li>Results go back as <strong>separate <code>role: "tool"</code> messages</strong>, one per call, each with
-<code>tool_call_id</code> — the opposite convention from Anthropic's single user message.</li>
-<li>Images ride as user-content parts: <code>{type: "image_url", image_url: {url:
-"data:image/jpeg;base64,..."}}</code>.</li>
+<li>System prompt &rarr; the top-level <code>instructions</code> parameter, not a message.</li>
+<li>Tools are <strong>flat</strong>: <code>{type: "function", name, description,
+parameters}</code>. This differs from chat completions, which nests them under
+<code>function</code> — confusing the two is a 400.</li>
+<li>User content parts are <code>input_text</code> / <code>input_image</code> (not
+<code>text</code> / <code>image_url</code>), and the image is a bare data-URL string.</li>
+<li>The model's turn returns a <strong>list of output items</strong>
+(<code>reasoning</code>, <code>function_call</code>, <code>message</code>) which are echoed
+back verbatim next turn. The <code>reasoning</code> items matter for multi-turn continuity
+the same way Anthropic's thinking blocks do.</li>
+<li>A <code>function_call</code> carries <code>call_id</code> — what a result must
+reference, <em>not</em> <code>id</code> — and <code>arguments</code> as a <strong>JSON
+string</strong> that must be parsed, and can fail to parse (§8).</li>
+<li>Results go back as their own items: <code>{type: "function_call_output", call_id,
+output}</code>, where <code>output</code> is a <strong>string</strong>.</li>
+<li><code>max_output_tokens</code> replaces <code>max_tokens</code>.</li>
 </ul>
+<p>The asymmetry <a href="04-camera-observation.html">Doc 04</a> §6.1 flagged survives the
+API change: a tool result still cannot carry an image, so frames follow in an adjacent
+user message, labelled and attributed to the originating <code>call_id</code>.</p>
 <p><span class="src">source: https://platform.openai.com/docs/guides/function-calling (HTTP 200,
 2026-07-26)</span></p>
 

@@ -555,7 +555,7 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
 
 ## Phase 3′ (pulled early) — Providers
 
-### T3.3 `[ ]` Providers (Anthropic + OpenAI) [no sim] — **run before T2.3**
+### T3.3 `[x]` Providers (Anthropic + OpenAI) [no sim] — **run before T2.3**
 
 - **Context:** Two adapters behind one interface. **Pulled ahead of Phase 2**
   because T2.3's survey gate needs a live VLM call. Wire formats differ (doc 05
@@ -577,8 +577,54 @@ tightens them. **Cut order if behind:** return_home stage → GPT 5.6 sol → N�
   both adapters transmit the same image with the same JSON. This is doc 04 §6.1's
   freeze condition — **the OpenAI image path must NOT first execute inside the
   frozen batch**, where a wire-shape error costs four trials.
-- **Acceptance:** both image-bearing probes succeed; transport mechanism recorded
-  in doc 04 §6.1 (same commit); temperature probe result recorded.
+- **Acceptance:** PASSED (`scripts/probe_providers.py`, exit 0;
+  `results/figures/smoke/provider_probe.json`). All three contestants + the judge
+  made live image-bearing calls and returned well-formed tool calls whose
+  arguments parsed. **All three described the T1.4 frame consistently** —
+  "grid floor" / "Grid plane" / "grid floor", `horizon_visible: true` —
+  independently confirming the camera output is legible to every model.
+  28 unit tests green (`tests/test_providers.py`).
+- **THE FINDING THAT JUSTIFIES PULLING THIS TASK EARLY — doc 05 §7.3 was wrong
+  about the OpenAI endpoint (doc corrected this commit):**
+  `gpt-5.6-sol` **rejects function tools on `/v1/chat/completions`**:
+  `400 "Function tools with reasoning_effort are not supported for gpt-5.6-sol
+  in /v1/chat/completions. To use function tools, use /v1/responses or set
+  reasoning_effort to 'none'."` The error offers two escapes and only one is
+  admissible: `reasoning_effort='none'` would run the OpenAI contestant **with
+  reasoning disabled** while both Anthropic contestants think at the API
+  default — a handicap that would invalidate the cross-lab comparison this model
+  exists to provide. The adapter was rewritten for the **Responses API**, where
+  tools and reasoning coexist (verified: well-formed tool call + 19 reasoning
+  tokens). Inside the frozen batch this would have cost four trials and a
+  re-freeze — exactly the outcome T3.3's early placement was designed to avoid.
+  - Shapes verified live, not assumed: tools are **flat** (not nested under
+    `function`); system prompt is the `instructions` parameter; parts are
+    `input_text`/`input_image`; the assistant turn is a **list of output items**
+    echoed verbatim (reasoning included); results are
+    `{type:"function_call_output", call_id, output}` — and `call_id`, not `id`,
+    is what a result must reference.
+- **Open question resolved (doc 05 §7.1, §12):** `temperature=0` is **rejected**
+  by GPT 5.6 sol too — *"Only the default (1) value is supported"*. The
+  conditional resolves to its pessimistic branch: **no locked model supports
+  deterministic decoding.** Reproducibility rests on the fixed sim seeds alone;
+  recorded in `gpt56sol.yaml` and doc 05 §7.1, and the report must state it.
+- **Deliverables (done):** `duck_embody/agent/providers/{base,anthropic,openai}.py`;
+  `configs/models/{fable5,opus5,gpt56sol,judge}.yaml`; `tests/test_providers.py`
+  (28 tests incl. semantic-equivalence assertions that both adapters transmit
+  byte-identical base64 and byte-identical status JSON); `scripts/probe_providers.py`;
+  `results/figures/smoke/provider_probe.json`; doc 04 §6.1 + doc 05 §7.1/§7.3 updated.
+- **Notes for later tasks:**
+  - **`gpt-5.6-sol` verified to exist** on the live models endpoint (created
+    2026-06-23, alongside `gpt-5.6-luna` / `gpt-5.6-terra`). AGENTS.md locks "sol".
+  - **GPT 5.6 sol pricing is still unknown** (doc 06 §12). `gpt56sol.yaml` carries
+    0.0 placeholders; exact token counts ARE recorded per trial, so cost can be
+    recomputed later. Any published cost figure must say the OpenAI row is TBD.
+  - **T2.3 must not expect a bare one-word judge answer.** Asked "What room of a
+    home is this? one word", Sonnet 5 replied with a full sentence. The gate's
+    scoring must extract the room term (match the frozen synonym table anywhere
+    in the reply) rather than compare the whole string.
+  - `effort` is deliberately unset for both Anthropic contestants: the API
+    default (high) applies, so no arbitrary constant is imposed on 2 of 3 models.
 
 ---
 

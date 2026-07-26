@@ -1,0 +1,59 @@
+{
+  "acceptance": "PASS",
+  "failures": [],
+  "frame": "camera_standing.jpg",
+  "frame_bytes": 15920,
+  "gpt56sol_temperature_detail": "BadRequestError: Error code: 400 - {'error': {'message': \"Unsupported value: 'temperature' does not support 0 with this model. Only the default (1) value is supported.\", 'type':",
+  "gpt56sol_temperature_zero_accepted": false,
+  "judge": {
+    "answer": "This appears to be a digital 3D rendering or grid environment rather than an actual room in a home\u2014it looks like a virtual space with a horizon and grid floor, possibly used for testing or as a design template.",
+    "model_id": "claude-sonnet-5"
+  },
+  "models": {
+    "fable5": {
+      "model_id": "claude-fable-5",
+      "stop_reason": "tool_use",
+      "tool_args": {
+        "horizon_visible": true,
+        "primary_subject": "grid floor"
+      },
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.01458,
+        "input_tokens": 1053,
+        "output_tokens": 81
+      }
+    },
+    "gpt56sol": {
+      "model_id": "gpt-5.6-sol",
+      "stop_reason": "completed",
+      "tool_args": {
+        "horizon_visible": true,
+        "primary_subject": "grid floor"
+      },
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0,
+        "input_tokens": 545,
+        "output_tokens": 61
+      }
+    },
+    "opus5": {
+      "model_id": "claude-opus-5",
+      "stop_reason": "tool_use",
+      "tool_args": {
+        "horizon_visible": true,
+        "primary_subject": "Grid plane"
+      },
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.007295,
+        "input_tokens": 1049,
+        "output_tokens": 82
+      }
+    }
+  }
+}

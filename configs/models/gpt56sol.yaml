@@ -1,0 +1,41 @@
+# Benchmark contestant 3 of 3 — the cross-lab data point.
+provider: openai
+# VERIFIED against the live models endpoint 2026-07-26: `gpt-5.6-sol` exists
+# (created 2026-06-23), alongside siblings gpt-5.6-luna and gpt-5.6-terra.
+# AGENTS.md locks "sol" specifically.
+model_id: gpt-5.6-sol
+
+max_tokens: 16000
+
+# PRICING IS A PLACEHOLDER pending confirmation — doc 06 §12 lists OpenAI
+# pricing as an open question and the cost table's OpenAI row as TBD. The
+# harness records exact token counts regardless, so cost can be recomputed
+# from the raw JSONs once the real rate is known. Any published figure derived
+# from these numbers must say so.
+price_in_per_mtok: 0.0
+price_out_per_mtok: 0.0
+
+# T3.3 temperature probe RESULT (doc 05 §7.1 open question), recorded here so
+# the decision lives in the frozen config rather than being assumed in code:
+#   temperature=0 -> HTTP 400 "Unsupported value: 'temperature' does not
+#   support 0 with this model. Only the default (1) value is supported."
+# Combined with the Anthropic models (which reject sampling params outright),
+# NO locked model supports deterministic decoding. Reproducibility rests on the
+# fixed sim seeds alone, and the write-up must say so.
+params: {}
+
+notes: >
+  USES THE RESPONSES API (/v1/responses), NOT chat completions. Measured
+  2026-07-26: /v1/chat/completions returns 400 "Function tools with
+  reasoning_effort are not supported for gpt-5.6-sol ... use /v1/responses or
+  set reasoning_effort to 'none'". Disabling reasoning was rejected as an
+  option — it would run this contestant without reasoning while both Anthropic
+  contestants think, which is a handicap, not a wire-format detail.
+  Wire shape the adapter absorbs: tools are FLAT ({type,name,description,
+  parameters}, not nested under "function"); content parts are input_text /
+  input_image; the assistant turn is a LIST of output items (reasoning,
+  function_call, message) echoed back verbatim — reasoning items included, for
+  the same continuity reason Anthropic thinking blocks are replayed; results
+  are {type:"function_call_output", call_id, output} where output is a STRING,
+  so camera frames cannot ride inside a tool result and are delivered in an
+  adjacent user message with the originating call_id named (doc 04 §6.1).

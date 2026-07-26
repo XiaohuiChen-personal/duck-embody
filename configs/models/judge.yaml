@@ -1,0 +1,25 @@
+# NOT a benchmark contestant. The out-of-benchmark judge for T2.3's scene
+# survey gate.
+#
+# WHY a fourth model: doc 04 §8 requires the room-recognition gate to be judged
+# by "a VLM that is not one of the three benchmark models ... to avoid tuning
+# the scene to any contestant's strengths". T2.3 iterates the layout until the
+# probe passes, so using a contestant would tune the world to that contestant —
+# a benchmark-integrity defect. The judge is named in the methods write-up.
+provider: anthropic
+model_id: claude-sonnet-5
+
+# One-word room answers; no tool use, no thinking budget needed.
+max_tokens: 64
+
+# $3/$15 standard; an introductory $2/$10 per MTok runs through 2026-08-31, so
+# the recorded cost is an upper bound.
+price_in_per_mtok: 3.0
+price_out_per_mtok: 15.0
+
+params: {}
+
+notes: >
+  Used only by scripts/render_scene_survey.py, offline, after the kit process
+  exits. Its spend is reported separately from the benchmark batch and never
+  pooled with contestant results.

@@ -1,0 +1,23 @@
+# Benchmark contestant 2 of 3 — the second Anthropic tier, giving the
+# generational comparison that mirrors the Anthropic robotics paper.
+provider: anthropic
+model_id: claude-opus-5
+
+# Thinking is ON BY DEFAULT on this model (unlike Opus 4.8/4.7, where omitting
+# the parameter meant no thinking), and max_tokens caps thinking + text
+# together — so the same headroom as Fable 5 applies.
+max_tokens: 16000
+
+price_in_per_mtok: 5.0
+price_out_per_mtok: 25.0
+
+# Same as Fable 5: sampling parameters return 400; `effort` left at the API
+# default so both Anthropic contestants are configured identically.
+params: {}
+
+notes: >
+  Safety classifiers can decline a request: HTTP 200 with
+  stop_reason="refusal" and possibly empty content. The adapter checks
+  stop_reason BEFORE reading content — indexing content[0] blindly would crash
+  on exactly the trials most worth recording. A refusal is scored as a model
+  outcome, not an infra failure.

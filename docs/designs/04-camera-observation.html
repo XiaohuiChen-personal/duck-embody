@@ -389,6 +389,24 @@ per-model content differences — the no-per-model-tuning rule applies to transp
 verified against the live API and frozen during the harness dry run, before the batch (open question,
 Section 10).</p>
 
+<div class="note"><strong>RESOLVED (T3.3, 2026-07-26) — mechanism verified live and frozen.</strong>
+The OpenAI contestant runs on the <strong>Responses API</strong>, not chat completions
+(<code>gpt-5.6-sol</code> rejects function tools on <code>/v1/chat/completions</code> unless
+reasoning is disabled — see <a href="05-agent-harness.html">Doc 05</a> §7.3). The asymmetry this
+section predicted survives the API change unchanged: a tool result
+(<code>{type: "function_call_output", call_id, output}</code>) carries a <strong>string</strong>
+and cannot hold an image.
+<br><strong>Frozen transport:</strong> the JSON status object goes in the tool result; the frames
+follow in an immediately-adjacent <code>role: "user"</code> message as <code>input_image</code>
+data-URL parts, preceded by a carrier line naming the originating <code>call_id</code> and tool, and
+carrying the same per-bearing labels Anthropic uses. Semantic equivalence is enforced by unit tests
+that assert both adapters transmit byte-identical base64 and byte-identical status JSON for the same
+observation, and by a live probe that sent a <strong>real 512&times;512 JPEG</strong> (T1.4's
+standing frame) through both paths. All three contestants returned a well-formed tool call and
+described the frame consistently — "grid floor" / "Grid plane" / "grid floor", horizon visible —
+which independently confirms the camera output is legible to every model in the study.
+<span class="src">evidence: results/figures/smoke/provider_probe.json; tests/test_providers.py</span></div>
+
 <h3>6.2 Field semantics</h3>
 
 <table>
