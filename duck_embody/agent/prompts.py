@@ -258,7 +258,9 @@ Headings everywhere — compass, breadcrumbs, exit directions, `turn_to_heading`
 90° HFOV — furniture looks large; doorways are ~0.35 m wide vs your ~0.16 m
 body, so center yourself before passing. Walking is slow (max 0.222 m/s
 forward); turning in place then driving beats sideways motion. A fall ends the
-trial — prefer short moves near obstacles. You cannot get up, you cannot open
+trial — prefer short moves near obstacles. Your walk sways wider than your
+body: within ~10 cm of an obstacle your legs can scrape it, felt as sustained
+contact. You cannot get up, you cannot open
 doors, you cannot move furniture, and looking up at a counter from 0.36 m is
 the normal view, not a sign that something is wrong.
 

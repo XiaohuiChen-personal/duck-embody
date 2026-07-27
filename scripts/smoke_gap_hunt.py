@@ -535,7 +535,10 @@ class ScriptedNavigator:
             if math.dist((x, y), (tx, ty)) > 0.10:
                 anchor_calls.append(self._call(
                     "correct_position", x=round(tx, 3), y=round(ty, 3),
-                    reason="scripted oracle re-anchor (harness smoke)",
+                    # No "oracle" in this string: reason lands in the corrections
+                    # log, which is model-visible, and audit_trial's leak scan
+                    # (correctly) bans that word anywhere a model could read.
+                    reason="scripted re-anchor (harness smoke)",
                 ))
                 x, y = tx, ty
         dist_to_goal = math.dist((x, y), goal_xy)
@@ -1082,44 +1085,90 @@ def scenario_s3(report: Report, session) -> None:
 
 
 def scenario_s4(report: Report, session) -> None:
-    """move() must not spuriously abort while brushing furniture."""
+    """move()'s abort semantics, BOTH directions, at measured clearances.
+
+    The first two gate runs walked 3 cm beyond the body radius and demanded no
+    abort — a premise the robot's own gait refutes. MEASURED (s4_forensics2,
+    2026-07-27): at 3 cm the right knee scrapes the counter run LATERALLY
+    (81.9 N peak, 20 steps, horiz >> vert — real furniture contact, not a floor
+    strike); at 7 cm and 11 cm the counter contact vanishes. The swept
+    half-width of the walking gait is ~0.11-0.15 m against the 0.08 m nominal
+    body radius, which is also why the 0.35 m doorways (0.175 m to each face)
+    transit clean 8/8 in T2.4.
+
+    So the honest scenario is TWO corridors:
+      leg A (clean): 7 cm beyond radius — measured scrape-free — must complete
+        with no abort (the spurious-abort defect the first run was after);
+      leg B (scrape): 3 cm — measured sustained scrape — MUST abort with
+        stop_reason 'bump' and an accurate right-leg report (the harness's
+        protective stop, working as designed).
+    """
     from duck_embody.sim.session import SpawnPose
 
     pb = session.playback
     north, west, east = counter_faces()
-    # Centreline offset from the counter faces: body half-width + one wall
-    # thickness of clearance (0.03 m, a layout constant — not an invented gap).
-    y0 = north + BODY_RADIUS_M + LAYOUT["wall_thickness"]
     x0 = 2.0
-    session.reset(seed=101, spawn=SpawnPose(x0, y0, 0.0))
-    pb.settle(0.4)
+    measurements: dict = {}
+    problems: list[str] = []
 
-    free = reach_along(x0, y0, 0.0)
+    # -- leg A: measured-walkable clearance, must NOT abort ------------------
+    y_clean = north + BODY_RADIUS_M + 0.07
+    session.reset(seed=101, spawn=SpawnPose(x0, y_clean, 0.0))
+    pb.settle(0.4)
+    free = reach_along(x0, y_clean, 0.0)
     commanded = max(0.3, min(1.5, free - 0.15))
     result = pb.move(commanded, hold_heading=True, stop_on_bump=True)
-
-    measurements = {
-        "corridor_free_m": free, "commanded_m": commanded,
+    measurements["clean_leg"] = {
+        "y0": round(y_clean, 3), "corridor_free_m": free, "commanded_m": commanded,
         "stop_reason": result.stop_reason,
         "true_displacement_m": result.true_displacement_m,
-        "dead_reckoned_m": result.dead_reckoned_distance_m,
         "contact_groups": result.contact_groups,
         "stop_pose": list(result.true_pose),
     }
-    problems = []
     if result.stop_reason != "reached":
         problems.append(
-            f"stop_reason={result.stop_reason!r} with {free - result.true_displacement_m:.2f} m "
-            f"geometrically free ahead — spurious-abort defect, triage before the batch"
+            f"CLEAN leg: stop_reason={result.stop_reason!r} at a measured "
+            f"scrape-free clearance — spurious abort, triage before the batch"
         )
     if result.true_displacement_m < 0.8 * commanded:
         problems.append(
-            f"displacement {result.true_displacement_m:.2f} < 0.8x commanded {commanded:.2f}"
+            f"CLEAN leg: displacement {result.true_displacement_m:.2f} < 0.8x "
+            f"commanded {commanded:.2f}"
         )
+
+    # -- leg B: measured-scrape clearance, MUST abort accurately -------------
+    y_scrape = north + BODY_RADIUS_M + LAYOUT["wall_thickness"]
+    session.reset(seed=101, spawn=SpawnPose(x0, y_scrape, 0.0))
+    pb.settle(0.4)
+    free_b = reach_along(x0, y_scrape, 0.0)
+    commanded_b = max(0.3, min(1.5, free_b - 0.15))
+    result_b = pb.move(commanded_b, hold_heading=True, stop_on_bump=True)
+    measurements["scrape_leg"] = {
+        "y0": round(y_scrape, 3), "commanded_m": commanded_b,
+        "stop_reason": result_b.stop_reason,
+        "true_displacement_m": result_b.true_displacement_m,
+        "contact_groups": result_b.contact_groups,
+        "stop_pose": list(result_b.true_pose),
+    }
+    if result_b.stop_reason == "bump":
+        if "right_leg" not in (result_b.contact_groups or []):
+            problems.append(
+                f"SCRAPE leg aborted but reported {result_b.contact_groups!r} — "
+                "the measured contact is the right knee on the counter"
+            )
+    elif result_b.stop_reason == "reached":
+        # Gait variance can thread it — that is a pass for the walk, but the
+        # scrape assertion then proved nothing; say so honestly.
+        measurements["scrape_leg"]["note"] = (
+            "no sustained scrape this run — assertion not exercised"
+        )
+    elif result_b.stop_reason == "fell":
+        problems.append("SCRAPE leg FELL — 3 cm clearance topples, not just scrapes")
     report.record(
         "S4", not problems,
         "; ".join(problems) or
-        f"reached: {result.true_displacement_m:.2f} m of {commanded:.2f} m commanded",
+        (f"clean leg reached {measurements['clean_leg']['true_displacement_m']:.2f} m; "
+         f"scrape leg {measurements['scrape_leg']['stop_reason']}"),
         measurements, [],
     )
 

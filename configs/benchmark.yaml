@@ -128,6 +128,16 @@ locomotion:
     # (4 doorways x both directions) report bumped=false.
     doorway_transits_clean: 8
 
+  # MEASURED (gap-hunt S4 forensics, 2026-07-27): the walking gait's swept
+  # half-width is ~0.11-0.15 m against the 0.08 m nominal body radius used for
+  # grid inflation. At 3 cm beyond the radius the right knee scrapes a cabinet
+  # run laterally (81.9 N peak, sustained); at 7 cm the contact vanishes.
+  # Doorways (0.175 m to each face) clear it - consistent with T2.4's 8/8
+  # transits. The ORACLE grid stays at 0.08 m (its corridors are all >= the
+  # doorway margin, measured); this constant records the physical truth so a
+  # future narrower layout knows the real constraint.
+  swept_half_width_measured_m: [0.11, 0.15]
+
   # Fall termination (doc 02 §5). Nominal trunk height measured 0.170-0.176 m
   # across all T1.3 runs, so 0.09 m is unambiguous.
   fall:
