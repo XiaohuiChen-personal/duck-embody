@@ -2638,11 +2638,15 @@ class TestVisitedRooms:
 
 
 class TestChartsSkeleton:
-    """PLAN T4.1 ships a ``charts.py`` skeleton; T4.4 fills it in.
+    """PLAN T4.1 shipped a ``charts.py`` skeleton; T4.4 filled it in.
 
-    The point of testing a skeleton is the contract: the signatures are what
+    The point of testing the skeleton was the contract: the signatures are what
     stop T4.4 from re-deriving a metric that would then be free to disagree with
-    the table beside it.
+    the table beside it. With T4.4 landed, the surviving contract is those
+    pinned signatures plus the matplotlib-free import; the stub-honesty
+    assertion (``raises NotImplementedError``) retired with the stubs it
+    described. ``tests/test_charts.py`` covers the implementation's pure
+    helpers.
     """
 
     def test_importing_charts_does_not_pull_in_a_plotting_stack(self):
@@ -2654,15 +2658,23 @@ class TestChartsSkeleton:
         assert "matplotlib" not in sys.modules
         assert charts.MODEL_ORDER == ("fable5", "opus5", "gpt56sol")
 
-    def test_the_figure_entry_points_exist_and_are_honest_about_being_stubs(self):
+    def test_the_figure_entry_points_keep_the_pinned_signatures(self):
+        import inspect
+
         from duck_embody import charts
 
-        with pytest.raises(NotImplementedError, match="T4.4"):
-            charts.bar_with_ci("spl", {}, "out.png")
-        with pytest.raises(NotImplementedError, match="T4.4"):
-            charts.trajectory_vs_belief(None, {}, "out.png")
-        with pytest.raises(NotImplementedError, match="T4.4"):
-            charts.per_trial_table([])
+        assert list(inspect.signature(charts.bar_with_ci).parameters) == [
+            "metric", "estimates", "out_path", "ylabel",
+        ]
+        assert list(inspect.signature(charts.trajectory_vs_belief).parameters) == [
+            "trial", "document", "out_path",
+        ]
+        assert list(inspect.signature(charts.per_trial_table).parameters) == [
+            "trials",
+        ]
+        # per_trial_table is pure: callable with no plotting stack at all.
+        header = charts.per_trial_table([]).splitlines()[0]
+        assert header.startswith("| Trial | Model |")
 
 
 def imported_module_names(source: str, package: str) -> set[str]:

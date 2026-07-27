@@ -1,0 +1,313 @@
+"""Build results/scores.json + results/summary_table.md from the frozen batch.
+
+Run with the kit python (needs duck_embody importable):
+
+    ~/IsaacLab/_isaac_sim/python.sh scripts/build_scores.py [CLI_SCORES.json]
+
+Inputs (all frozen, never modified):
+  - results/raw/<model>_seed<seed>.json  (the 12 trial logs)
+  - duck_embody/scoring.py               (every metric + the seeded bootstrap)
+  - configs/benchmark.yaml scoring:      (bootstrap_resamples / bootstrap_seed)
+
+The optional CLI_SCORES.json argument is the captured stdout of
+``python -m duck_embody.scoring results/raw/*.json``; when given, this script
+asserts its own ``score_trial`` output is byte-identical to it, so the shipped
+scores.json is provably the scoring CLI's numbers.
+
+Timestamps: every timestamp in the output is READ FROM THE TRIAL FILES (the
+last turn's ``timestamp``); nothing here calls a clock.
+"""
+
+from __future__ import annotations
+
+import json
+import statistics
+import sys
+from pathlib import Path
+
+from duck_embody.scoring import (
+    NA,
+    STAGES,
+    Estimate,
+    estimate,
+    load_trial,
+    score_trial,
+    scoring_config,
+    summarise,
+)
+
+REPO = Path(__file__).resolve().parents[1]
+RAW = REPO / "results" / "raw"
+
+MODELS = ("fable5", "opus5", "gpt56sol")
+SEEDS = (101, 102, 103, 104)
+STAGE1, STAGE2 = STAGES  # find_kitchen, return_home
+
+
+def median_or_na(values):
+    usable = [v for v in values if not isinstance(v, str)]
+    return round(statistics.median(usable), 4) if usable else NA
+
+
+def build():
+    documents = {}
+    metrics = {}
+    for model in MODELS:
+        for seed in SEEDS:
+            trial_id = f"{model}_seed{seed}"
+            document = load_trial(RAW / f"{trial_id}.json")
+            documents[trial_id] = document
+            metrics[trial_id] = score_trial(document)
+
+    trial_dicts = [metrics[f"{m}_seed{s}"].as_dict() for m in MODELS for s in SEEDS]
+
+    # Cross-check against the scoring CLI's captured stdout, if provided.
+    if len(sys.argv) > 1:
+        cli = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+        if cli != trial_dicts:
+            raise SystemExit("score_trial output != scoring CLI output — refusing to write")
+        print("cross-check: score dicts identical to the scoring CLI output", file=sys.stderr)
+
+    # Per-trial provenance extensions — each field is a verbatim copy of a
+    # frozen trial-JSON field (or a length of a frozen array), never computed
+    # from a clock or re-derived.
+    for entry in trial_dicts:
+        document = documents[entry["trial_id"]]
+        turns = document["turns"]
+        total_turns = len(turns)
+        declared = sum(
+            int(document["final"]["stages"][stage]["turns_used"]) for stage in STAGES
+        )
+        if total_turns != declared:
+            raise SystemExit(
+                f"{entry['trial_id']}: len(turns)={total_turns} != sum(turns_used)={declared}"
+            )
+        entry["cost_usd"] = document["final"]["tokens"]["cost_usd_estimate"]
+        entry["tokens"] = {
+            k: document["final"]["tokens"][k]
+            for k in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens")
+        }
+        entry["total_turns"] = total_turns
+        entry["last_turn_timestamp"] = turns[-1]["timestamp"]
+        entry["video"] = document["video_path"]
+
+    config = scoring_config()
+
+    per_model = {}
+    for model in MODELS:
+        rows = [metrics[f"{model}_seed{s}"] for s in SEEDS]
+        summary = summarise(model, rows)
+        # Extras the task's table needs beyond summarise(): medians, cost, turns.
+        summary[STAGE1]["progress"]["median"] = median_or_na(
+            [t.stages[STAGE1].progress for t in rows]
+        )
+        summary[STAGE2]["progress"]["median"] = median_or_na(
+            [t.stages[STAGE2].progress for t in rows]
+        )
+        costs = [documents[f"{model}_seed{s}"]["final"]["tokens"]["cost_usd_estimate"] for s in SEEDS]
+        summary["cost_usd"] = {**estimate(costs).as_dict(), "sum": round(sum(costs), 6)}
+        totals = [float(len(documents[f"{model}_seed{s}"]["turns"])) for s in SEEDS]
+        summary["total_turns"] = {**estimate(totals).as_dict(), "sum": int(sum(totals))}
+        outcome_tally: dict[str, int] = {}
+        for t in rows:
+            reason = t.stages[STAGE1].end_reason
+            outcome_tally[reason] = outcome_tally.get(reason, 0) + 1
+        summary["find_kitchen_end_reasons"] = outcome_tally
+        per_model[model] = summary
+
+    first_doc = documents[f"{MODELS[0]}_seed{SEEDS[0]}"]
+    batch_last = max(e["last_turn_timestamp"] for e in trial_dicts)
+    scores = {
+        "schema": "duck-embody-scores-v1",
+        "config_hash": first_doc["config"]["config_hash"],
+        "freeze_commit": first_doc["config"]["freeze_commit"],
+        # Read from the trial files (max over the 12 last-turn timestamps),
+        # deliberately NOT a wall clock (doc 06 reproducibility stance).
+        "batch_last_turn_timestamp": batch_last,
+        "bootstrap": {
+            "resamples": int(config["bootstrap_resamples"]),
+            "seed": int(config["bootstrap_seed"]),
+            "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3",
+        },
+        "trials": trial_dicts,
+        "per_model": per_model,
+    }
+    out = REPO / "results" / "scores.json"
+    out.write_text(
+        json.dumps(scores, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"wrote {out}", file=sys.stderr)
+    return scores
+
+
+# ---------------------------------------------------------------------------
+# summary_table.md
+# ---------------------------------------------------------------------------
+
+
+def _num(value, digits=3):
+    return NA if isinstance(value, str) else f"{value:.{digits}f}"
+
+
+def _mean_ci(block, digits=3):
+    """'mean [lo, hi]' with the n_defined/n_total shown when metrics were NA."""
+    mean = block["mean"]
+    if isinstance(mean, str):
+        return NA
+    text = f"{mean:.{digits}f}"
+    if block.get("ci95"):
+        lo, hi = block["ci95"]
+        text += f" [{lo:.{digits}f}, {hi:.{digits}f}]"
+    else:
+        text += " (no CI, n<3)"
+    if block["n_defined"] < block["n_total"]:
+        text += f" (n={block['n_defined']}/{block['n_total']})"
+    return text
+
+
+def _sr(block):
+    text = block["printed"]
+    if isinstance(text, str) and text == NA:
+        return NA
+    if block.get("ci95"):
+        lo, hi = block["ci95"]
+        text += f" [{lo:.2f}, {hi:.2f}]"
+    return text
+
+
+def write_table(scores: dict) -> None:
+    per_model = scores["per_model"]
+    trials = scores["trials"]
+    boot = scores["bootstrap"]
+
+    def row(label, cell):
+        return "| " + label + " | " + " | ".join(cell(per_model[m]) for m in MODELS) + " |"
+
+    lines = [
+        "# Duck Embody — 12-trial benchmark results",
+        "",
+        f"Batch: 3 models x 4 seeds (101-104), config_hash `{scores['config_hash'][:12]}`, "
+        f"freeze commit `{scores['freeze_commit'][:12]}`, last trial turn at "
+        f"{scores['batch_last_turn_timestamp']} (read from the trial logs).",
+        "",
+        "**Headline: 0/12 find_kitchen successes — an honest null.** 10 trials ended in a "
+        "fall (all with |wz| at/near the 0.5 rad/s command-hull limit at the tilt-60 "
+        "termination), 2 ended by `declare_done` outside the target radius "
+        "(fable5_seed104, gpt56sol_seed103). `return_home` therefore never ran: its SR is "
+        "0/4 with the unrun stage counted a failure (doc 06 §3.2), and the conditional SR "
+        "over stage-1 successes is — (k=0). Differentiation between models lives in "
+        "progress, map precision/recall, QA, bumps, and drift below.",
+        "",
+        f"Statistics: mean [95% bootstrap CI], percentile method, {boot['resamples']} "
+        f"resamples, seed {boot['seed']} (configs/benchmark.yaml `scoring:`); \"—\" = "
+        "undefined, excluded from means, never coerced to 0; no CI when n_defined < 3.",
+        "",
+        "## Per-model aggregate (N=4 trials each)",
+        "",
+        "| Metric | fable5 (claude-fable-5) | opus5 (claude-opus-5) | gpt56sol (gpt-5.6-sol) |",
+        "|---|---|---|---|",
+        row("find_kitchen SR", lambda s: _sr(s[STAGE1]["success_rate"])),
+        row("return_home SR (unrun = failure)", lambda s: _sr(s[STAGE2]["success_rate"])),
+        row(
+            "return_home SR given stage-1 success (x/k)",
+            lambda s: _sr(s[STAGE2]["success_rate_given_stage1"]),
+        ),
+        row("find_kitchen progress (mean)", lambda s: _mean_ci(s[STAGE1]["progress"])),
+        row(
+            "find_kitchen progress (median)",
+            lambda s: _num(s[STAGE1]["progress"]["median"]),
+        ),
+        row("find_kitchen SPL", lambda s: _mean_ci(s[STAGE1]["spl"])),
+        row("time-to-kitchen (s)", lambda s: _mean_ci(s[STAGE1]["time_s"], 1)),
+        row("find_kitchen turns", lambda s: _mean_ci(s[STAGE1]["turns_used"], 2)),
+        row("bumps / trial", lambda s: _mean_ci(s["bumps"], 2)),
+        row("falls / trial", lambda s: _mean_ci(s["falls"], 2)),
+        row("dead-reckoning drift (m, stage 1)", lambda s: _mean_ci(s[STAGE1]["drift_m"])),
+        row("position corrections (stage 1)", lambda s: _mean_ci(s[STAGE1]["corrections"], 2)),
+        row("map precision", lambda s: _mean_ci(s["map_precision"])),
+        row("map recall", lambda s: _mean_ci(s["map_recall"])),
+        row("edge accuracy", lambda s: _mean_ci(s["edge_accuracy"])),
+        row("QA score (0-1)", lambda s: _mean_ci(s["qa"])),
+        row(
+            "cost (USD / trial)",
+            lambda s: _mean_ci(s["cost_usd"], 3) + f", sum ${s['cost_usd']['sum']:.2f}",
+        ),
+        row(
+            "total turns / trial",
+            lambda s: _mean_ci(s["total_turns"], 2) + f", sum {s['total_turns']['sum']}",
+        ),
+        row(
+            "stage-1 end reasons",
+            lambda s: ", ".join(
+                f"{k}: {v}" for k, v in sorted(s["find_kitchen_end_reasons"].items())
+            ),
+        ),
+        "",
+        "Notes: time-to-kitchen is — for every trial (defined only on success, doc 06 "
+        "§5.4). SPL is 0.0 (not —) on failure by definition (§5.3). return_home rows "
+        "beyond SR are omitted: the stage never ran, so progress = 0.0 and drift = — for "
+        "all 12 by convention (§3.2). Edge accuracy is — when a trial claimed no "
+        "`leads_to:` edge. The two `declare_done` trials are stage-1 failures "
+        "(declared outside the 0.35 m radius), consistent with the videos (rule 11: "
+        "video is authoritative; no metric-vs-video disagreement found).",
+        "",
+        "## Per-trial results",
+        "",
+    ]
+
+    for model in MODELS:
+        lines += [
+            f"### {model}",
+            "",
+            "| Trial | Stage-1 end | Progress | SPL | Path (m) | Turns | Bumps | Falls "
+            "| Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+        for entry in trials:
+            if entry["model"] != {"fable5": "claude-fable-5", "opus5": "claude-opus-5", "gpt56sol": "gpt-5.6-sol"}[model]:
+                continue
+            s1 = entry["stages"][STAGE1]
+            acc = entry["map_accuracy"]
+            video = Path(entry["video"]).name
+            lines.append(
+                "| {id} | {end} | {prog} | {spl} | {path} | {turns} | {bumps} | {falls} "
+                "| {drift} | {corr} | {p} | {r} | {edge} | {qa} | {cost:.3f} | "
+                "[{video}](videos/{video}) |".format(
+                    id=entry["trial_id"],
+                    end=s1["end_reason"],
+                    prog=_num(s1["progress"]),
+                    spl=_num(s1["spl"]),
+                    path=_num(s1["true_path_m"], 2),
+                    turns=s1["turns_used"],
+                    bumps=entry["bumps"],
+                    falls=entry["falls"],
+                    drift=_num(s1["drift_m"]),
+                    corr=s1["corrections"],
+                    p=_num(acc["precision"], 2),
+                    r=_num(acc["recall"], 2),
+                    edge=_num(acc["edge_accuracy"], 2),
+                    qa=_num(entry["qa"]["score"], 2),
+                    cost=entry["cost_usd"],
+                    video=video,
+                )
+            )
+        lines.append("")
+
+    lines += [
+        "Per-question QA scores, matched room names, visited rooms, token counts and "
+        "the return_home rows are in `results/scores.json`; raw evidence is "
+        "`results/raw/<trial>.json` and `results/videos/<trial>.mp4`.",
+        "",
+        "Generated by `scripts/build_scores.py` from `results/raw/*.json` via "
+        "`duck_embody.scoring` (no frozen file touched).",
+        "",
+    ]
+
+    out = REPO / "results" / "summary_table.md"
+    out.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote {out}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    write_table(build())

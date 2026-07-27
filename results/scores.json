@@ -1,0 +1,1678 @@
+{
+  "schema": "duck-embody-scores-v1",
+  "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+  "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+  "batch_last_turn_timestamp": "2026-07-27T09:31:34Z",
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260726,
+    "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
+  },
+  "trials": [
+    {
+      "trial_id": "fable5_seed101",
+      "model": "claude-fable-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.9654,
+          "progress": 0.0483,
+          "oracle_path_m": 2.3935,
+          "true_path_m": 0.9186,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 2,
+          "drift_m": 0.0153,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.4551,
+          "d_final_m": 0.4551,
+          "progress": 0.0,
+          "oracle_path_m": 0.4207,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 1,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Living Room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 0.141513,
+      "tokens": {
+        "input_tokens": 3032,
+        "output_tokens": 1129,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 4055
+      },
+      "total_turns": 2,
+      "last_turn_timestamp": "2026-07-27T08:33:30Z",
+      "video": "results/videos/fable5_seed101.mp4"
+    },
+    {
+      "trial_id": "fable5_seed102",
+      "model": "claude-fable-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.8492,
+          "progress": 0.0,
+          "oracle_path_m": 4.1657,
+          "true_path_m": 5.6064,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 14,
+          "drift_m": 0.3361,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 1.4032,
+          "d_final_m": 1.4032,
+          "progress": 0.0,
+          "oracle_path_m": 1.4899,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 7,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Bedroom",
+            "bedroom"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          0.0,
+          0.5
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 2.67586,
+      "tokens": {
+        "input_tokens": 193699,
+        "output_tokens": 13642,
+        "cache_read_tokens": 56770,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 14,
+      "last_turn_timestamp": "2026-07-27T08:41:23Z",
+      "video": "results/videos/fable5_seed102.mp4"
+    },
+    {
+      "trial_id": "fable5_seed103",
+      "model": "claude-fable-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.9534,
+          "progress": 0.0777,
+          "oracle_path_m": 3.4835,
+          "true_path_m": 5.3086,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 5,
+          "drift_m": 0.1775,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 4.1008,
+          "d_final_m": 4.1008,
+          "progress": 0.0,
+          "oracle_path_m": 4.1828,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 1,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 0.5,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Hallway",
+            "hallway"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "hallway"
+      ],
+      "cost_usd": 0.312845,
+      "tokens": {
+        "input_tokens": 17362,
+        "output_tokens": 2379,
+        "cache_read_tokens": 20275,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 5,
+      "last_turn_timestamp": "2026-07-27T08:44:14Z",
+      "video": "results/videos/fable5_seed103.mp4"
+    },
+    {
+      "trial_id": "fable5_seed104",
+      "model": "claude-fable-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "d_initial_m": 1.9243,
+          "d_final_m": 1.6606,
+          "progress": 0.137,
+          "oracle_path_m": 2.1814,
+          "true_path_m": 4.8819,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 11,
+          "drift_m": 0.1102,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.3586,
+          "d_final_m": 0.3586,
+          "progress": 0.0,
+          "oracle_path_m": 0.3414,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 2,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 0.5,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.269495,
+      "tokens": {
+        "input_tokens": 71864,
+        "output_tokens": 10125,
+        "cache_read_tokens": 44605,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 11,
+      "last_turn_timestamp": "2026-07-27T08:50:05Z",
+      "video": "results/videos/fable5_seed104.mp4"
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "model": "claude-opus-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.9685,
+          "progress": 0.0468,
+          "oracle_path_m": 2.3935,
+          "true_path_m": 0.9316,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 2,
+          "drift_m": 0.0153,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.4419,
+          "d_final_m": 0.4419,
+          "progress": 0.0,
+          "oracle_path_m": 0.4207,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 1,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 0.068559,
+      "tokens": {
+        "input_tokens": 2878,
+        "output_tokens": 1073,
+        "cache_read_tokens": 4051,
+        "cache_write_tokens": 4051
+      },
+      "total_turns": 2,
+      "last_turn_timestamp": "2026-07-27T08:52:15Z",
+      "video": "results/videos/opus5_seed101.mp4"
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "model": "claude-opus-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.001,
+          "progress": 0.1195,
+          "oracle_path_m": 4.1657,
+          "true_path_m": 13.0805,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 28,
+          "drift_m": 0.1682,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.4598,
+          "d_final_m": 0.4598,
+          "progress": 0.0,
+          "oracle_path_m": 0.4707,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 13,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "bedroom"
+      ],
+      "cost_usd": 1.887599,
+      "tokens": {
+        "input_tokens": 290957,
+        "output_tokens": 15044,
+        "cache_read_tokens": 113428,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 28,
+      "last_turn_timestamp": "2026-07-27T09:04:36Z",
+      "video": "results/videos/opus5_seed102.mp4"
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "model": "claude-opus-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.9823,
+          "progress": 0.0687,
+          "oracle_path_m": 3.4835,
+          "true_path_m": 21.8145,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 16,
+          "drift_m": 0.3455,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 3.9279,
+          "d_final_m": 3.9279,
+          "progress": 0.0,
+          "oracle_path_m": 3.95,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 3,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "score": 0.8
+      },
+      "visited_rooms": [
+        "hallway"
+      ],
+      "cost_usd": 1.482478,
+      "tokens": {
+        "input_tokens": 202724,
+        "output_tokens": 17458,
+        "cache_read_tokens": 64816,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 16,
+      "last_turn_timestamp": "2026-07-27T09:19:22Z",
+      "video": "results/videos/opus5_seed103.mp4"
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "model": "claude-opus-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 1.9243,
+          "d_final_m": 1.2166,
+          "progress": 0.3678,
+          "oracle_path_m": 2.1814,
+          "true_path_m": 2.1244,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 3,
+          "drift_m": 0.0673,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 1.1859,
+          "d_final_m": 1.1859,
+          "progress": 0.0,
+          "oracle_path_m": 1.2,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 0,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 0.070281,
+      "tokens": {
+        "input_tokens": 5861,
+        "output_tokens": 1396,
+        "cache_read_tokens": 12153,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 3,
+      "last_turn_timestamp": "2026-07-27T09:20:59Z",
+      "video": "results/videos/opus5_seed104.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed101",
+      "model": "gpt-5.6-sol",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.8347,
+          "progress": 0.1116,
+          "oracle_path_m": 2.3935,
+          "true_path_m": 1.3028,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 6,
+          "drift_m": 0.0065,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.6685,
+          "d_final_m": 0.6685,
+          "progress": 0.0,
+          "oracle_path_m": 0.7036,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 1,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Living Room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 0.161175,
+      "tokens": {
+        "input_tokens": 26912,
+        "output_tokens": 701,
+        "cache_read_tokens": 11170,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 6,
+      "last_turn_timestamp": "2026-07-27T09:22:06Z",
+      "video": "results/videos/gpt56sol_seed101.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed102",
+      "model": "gpt-5.6-sol",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.2206,
+          "progress": 0.0229,
+          "oracle_path_m": 4.1657,
+          "true_path_m": 3.8464,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 11,
+          "drift_m": 0.2531,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.6154,
+          "d_final_m": 0.6154,
+          "progress": 0.0,
+          "oracle_path_m": 0.6743,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 3,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Bedroom",
+            "bedroom"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "bedroom"
+      ],
+      "cost_usd": 0.396867,
+      "tokens": {
+        "input_tokens": 67112,
+        "output_tokens": 1634,
+        "cache_read_tokens": 24574,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 11,
+      "last_turn_timestamp": "2026-07-27T09:24:51Z",
+      "video": "results/videos/gpt56sol_seed102.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed103",
+      "model": "gpt-5.6-sol",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "d_initial_m": 3.2022,
+          "d_final_m": 0.8342,
+          "progress": 0.7395,
+          "oracle_path_m": 3.4835,
+          "true_path_m": 7.5661,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 27,
+          "drift_m": 0.3962,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 2.9949,
+          "d_final_m": 2.9949,
+          "progress": 0.0,
+          "oracle_path_m": 3.6899,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 2,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "hallway",
+        "kitchen"
+      ],
+      "cost_usd": 0.897459,
+      "tokens": {
+        "input_tokens": 158286,
+        "output_tokens": 2529,
+        "cache_read_tokens": 60318,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 27,
+      "last_turn_timestamp": "2026-07-27T09:29:52Z",
+      "video": "results/videos/gpt56sol_seed103.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed104",
+      "model": "gpt-5.6-sol",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "fall",
+          "end_reason": "fall",
+          "success": false,
+          "d_initial_m": 1.9243,
+          "d_final_m": 2.5613,
+          "progress": 0.0,
+          "oracle_path_m": 2.1814,
+          "true_path_m": 1.9023,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 8,
+          "drift_m": 0.0509,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "d_initial_m": 0.8191,
+          "d_final_m": 0.8191,
+          "progress": 0.0,
+          "oracle_path_m": 0.8414,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 1,
+      "falls": 1,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Living room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.2
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 0.261764,
+      "tokens": {
+        "input_tokens": 42815,
+        "output_tokens": 1329,
+        "cache_read_tokens": 15638,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 8,
+      "last_turn_timestamp": "2026-07-27T09:31:34Z",
+      "video": "results/videos/gpt56sol_seed104.mp4"
+    }
+  ],
+  "per_model": {
+    "fable5": {
+      "model": "fable5",
+      "n_trials": 4,
+      "trials": [
+        "fable5_seed101",
+        "fable5_seed102",
+        "fable5_seed103",
+        "fable5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0658,
+          "ci95": [
+            0.0194,
+            0.1148
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.063
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 8.0,
+          "ci95": [
+            3.5,
+            12.5
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1598,
+          "ci95": [
+            0.0559,
+            0.2796
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        }
+      },
+      "bumps": {
+        "mean": 2.75,
+        "ci95": [
+          1.0,
+          5.5
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.75,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.625,
+        "ci95": [
+          0.5,
+          0.875
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.875,
+        "ci95": [
+          0.625,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 3,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.575,
+        "ci95": [
+          0.5,
+          0.65
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 1.0999,
+        "ci95": [
+          0.2272,
+          2.0851
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 4.399713
+      },
+      "total_turns": {
+        "mean": 8.0,
+        "ci95": [
+          3.5,
+          12.5
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 32
+      },
+      "find_kitchen_end_reasons": {
+        "fall": 3,
+        "declare_done": 1
+      }
+    },
+    "opus5": {
+      "model": "opus5",
+      "n_trials": 4,
+      "trials": [
+        "opus5_seed101",
+        "opus5_seed102",
+        "opus5_seed103",
+        "opus5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.1507,
+          "ci95": [
+            0.0578,
+            0.293
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0941
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 12.25,
+          "ci95": [
+            2.5,
+            22.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1491,
+          "ci95": [
+            0.0413,
+            0.2759
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        }
+      },
+      "bumps": {
+        "mean": 4.25,
+        "ci95": [
+          0.5,
+          10.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.5,
+        "ci95": [
+          0.0,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.5,
+        "ci95": [
+          0.0,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 1,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.65,
+        "ci95": [
+          0.55,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 0.8772,
+        "ci95": [
+          0.0694,
+          1.685
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 3.508917
+      },
+      "total_turns": {
+        "mean": 12.25,
+        "ci95": [
+          2.5,
+          22.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 49
+      },
+      "find_kitchen_end_reasons": {
+        "fall": 4
+      }
+    },
+    "gpt56sol": {
+      "model": "gpt56sol",
+      "n_trials": 4,
+      "trials": [
+        "gpt56sol_seed101",
+        "gpt56sol_seed102",
+        "gpt56sol_seed103",
+        "gpt56sol_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2185,
+          "ci95": [
+            0.0115,
+            0.5604
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0673
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 13.0,
+          "ci95": [
+            7.0,
+            22.25
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1767,
+          "ci95": [
+            0.0287,
+            0.3247
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        }
+      },
+      "bumps": {
+        "mean": 1.75,
+        "ci95": [
+          1.0,
+          2.5
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.75,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.75,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.75,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 1,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.3,
+        "ci95": [
+          0.225,
+          0.375
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 0.4293,
+        "ci95": [
+          0.2115,
+          0.7385
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 1.717265
+      },
+      "total_turns": {
+        "mean": 13.0,
+        "ci95": [
+          7.0,
+          22.25
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 52
+      },
+      "find_kitchen_end_reasons": {
+        "fall": 3,
+        "declare_done": 1
+      }
+    }
+  }
+}

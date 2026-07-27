@@ -647,11 +647,26 @@ class TestShippedArtifacts:
         assert (REPO_ROOT / "results" / "incomplete" / ".gitkeep").exists()
 
     def test_the_rerun_log_ships_with_the_runner_header(self):
-        """The committed header and the one ensure_rerun_log writes must be the
-        same bytes — otherwise a fresh batch dir and the shipped results tree
-        would carry two different 'contracts' for the same table."""
+        """The committed log must BEGIN with ensure_rerun_log's header — same
+        bytes — or a fresh batch dir and the shipped results tree would carry
+        two different 'contracts' for the same table.
+
+        PREFIX, not equality: pre-batch this file was the bare header and
+        equality held, but doc 06 §7 says the rerun log SHIPS WITH the results,
+        rows included — and the completed batch legitimately appended one (the
+        opus5_seed101 attempt-1 Anthropic 529). Asserting emptiness after the
+        batch would demand deleting evidence to green the suite. Any rows must
+        still look like table rows.
+        """
         shipped = (REPO_ROOT / "results" / "rerun_log.md").read_text(encoding="utf-8")
-        assert shipped == RERUN_LOG_HEADER
+        assert shipped.startswith(RERUN_LOG_HEADER), (
+            "the shipped log does not begin with the runner's header contract"
+        )
+        for line in shipped[len(RERUN_LOG_HEADER):].splitlines():
+            if line.strip():
+                assert line.startswith("|") and line.count("|") >= 5, (
+                    f"non-table content in the rerun log: {line!r}"
+                )
 
     def test_run_trial_script_still_wires_after_the_refactor(self):
         """run_trial.py now delegates its per-trial body to
