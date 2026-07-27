@@ -84,6 +84,38 @@ deviate, update the doc in the same commit:
    are logged and scored.
 4. **No per-model prompt tuning.** One prompt template, one camera config, one tool
    set, frozen before the batch. Changing any of these invalidates the comparison.
+
+   **Pre-freeze tuning criteria** (owner-approved 2026-07-27). Before the freeze
+   commit the scaffold *may* change — that is what T3.5 is for. After it, never.
+   But inside the pre-freeze window four different diagnoses look identical when
+   you watch a trial, and only two of them are yours to fix:
+
+   | Observation | Diagnosis | Action |
+   |---|---|---|
+   | Robot does not move at all | Harness defect — macro no-ops, wrong units, tool silently fails | **FIX.** Not a fairness question |
+   | Robot moves but the model was never told what happened | Reporting gap — the model could not have known | **FIX.** The harness *formats*; that is rule 5-legal |
+   | Model issues a bad command and bumps a wall | The model chose badly | **LEAVE.** That is the measurement |
+   | Model cannot work out how to navigate | Navigating is hard | **LEAVE.** Scaffolding it away measures our prompt engineering, not the model |
+
+   Rows 3 and 4 are where a benchmark quietly dies. Tuning the prompt because
+   *one contestant* kept getting lost fits the scaffold to that contestant's
+   weaknesses and tilts every later comparison — the same hazard doc 04 §8 guards
+   against by having an out-of-benchmark judge score the T2.3 scene gate, "to
+   avoid tuning the scene to any contestant's strengths".
+
+   **The test:** a change must be justifiable *without naming which model exposed
+   it*. "The model kept failing at X" is a result, not a bug. "The harness told
+   the model something false, or nothing at all" is a bug no matter who found it.
+
+   **The boundary test (rule 5):** if the new tool makes the decision — a
+   `navigate_to_room`, say — you have crossed the line and are now measuring your
+   own pathfinding.
+
+   Generous scaffolding IS the design (doc 01 §8: maximum-scaffold); the question
+   is whether a frontier model can do LLM-as-SLAM *given the best scaffold we can
+   build*. So a genuinely missing capability is fair to add pre-freeze. It just
+   has to be added blind to who needed it. Record every such judgement, including
+   the ones you decide to LEAVE, with the evidence.
 5. **The harness stores and formats; the LLM perceives, estimates, and decides.**
    No geometric fact enters memory unless the model asserted it from its own
    observations. Exceptions (declared in docs): dead-reckoning integration of
