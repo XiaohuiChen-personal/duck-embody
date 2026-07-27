@@ -432,7 +432,7 @@ results/         raw JSON · figures · videos (committed)
       Rule-11 video audits 3/3 CONSISTENT; figure spot-check CONSISTENT.
       Artifacts: `results/scores.json`, `results/summary_table.md`,
       `results/figures/`, `results/audit_notes.md`; report in README § Results +
-      `docs/EXPERIMENTS.md`. Pending: owner sign-off + push (rule 7).
+      `docs/EXPERIMENTS.md`. Owner sign-off GIVEN and pushed 2026-07-27 — **project complete**.
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.
