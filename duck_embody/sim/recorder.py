@@ -261,7 +261,16 @@ def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
     while done_steps < total_steps:
         remaining = (total_steps - done_steps) * CONTROL_DT
         part = execute(vx, vy, wz, min(chunk_s, remaining), **kwargs)
-        recorder.grab(env)
+        if not part.fell:
+            # No grab after the falling piece: Isaac auto-reset the terminated
+            # env INSIDE step(), so the viewport now shows a healthy duck
+            # standing at spawn — grabbing it made every fall video END on a
+            # post-teleport frame, structurally deleting rule 11's "video wins"
+            # evidence for the most consequential event a trial has. Skipping
+            # leaves the previous piece's frame (<= 40 ms before the topple
+            # began) as the last one; S2 of scripts/smoke_gap_hunt.py verifies
+            # the final frames no longer show the spawn pose.
+            recorder.grab(env)
         done_steps += part.steps
 
         if start_xy is None:

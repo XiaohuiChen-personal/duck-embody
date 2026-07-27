@@ -179,6 +179,48 @@ class TestChunkedExecuteMerge:
         assert merged.clamp_notes == [note]
 
 
+class TestFallFrameGrab:
+    """G8: no viewport grab after the falling piece. Isaac auto-reset the
+    terminated env inside step(), so a post-fall grab films a healthy duck at
+    spawn — every fall video ENDED on a post-teleport frame, structurally
+    deleting rule 11's 'video wins' evidence for the event that ends trials."""
+
+    @staticmethod
+    def _run_counting_grabs(parts):
+        calls = iter(parts)
+
+        def fake_execute(vx, vy, wz, duration_s, **kwargs):
+            return next(calls)
+
+        grabs: list[int] = []
+        recorder = SimpleNamespace(grab=lambda env: grabs.append(1))
+        chunked_execute(fake_execute, object(), recorder, 0.2, 0.0, 0.0, 0.08)
+        return len(grabs)
+
+    def test_no_grab_for_the_falling_piece(self):
+        n = self._run_counting_grabs(
+            [
+                _res(pose_trace=[(0.0, 0.0), (0.1, 0.0)], true_pose=(0.1, 0.0, 0.0)),
+                _fell_res(
+                    {"height_m": 0.05, "tilt_deg": 75.0},
+                    pose_trace=[(0.1, 0.0), (0.12, 0.0)],
+                    true_pose=(0.12, 0.0, 0.0),
+                ),
+            ]
+        )
+        assert n == 1, "the falling piece must not be grabbed (post-teleport frame)"
+
+    def test_every_upright_piece_is_still_grabbed(self):
+        """Positive control: without a fall, one grab per piece as always."""
+        n = self._run_counting_grabs(
+            [
+                _res(pose_trace=[(0.0, 0.0), (0.1, 0.0)], true_pose=(0.1, 0.0, 0.0)),
+                _res(pose_trace=[(0.1, 0.0), (0.2, 0.0)], true_pose=(0.2, 0.0, 0.0)),
+            ]
+        )
+        assert n == 2
+
+
 class TestSharedMergeIsShared:
     """The recorder's chunk merge and the macros' `_merge` used to be two
     hand-mirrored copies, and the copies drifted (that drift IS gap G1). Both

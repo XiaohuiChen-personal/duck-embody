@@ -551,9 +551,12 @@ class PolicyPlayback:
                 # whole trial (doc 01 §8), making it the single most
                 # consequential event in a run — and T3.5 recorded one that
                 # could not be audited afterwards: the JSON said `fell` with no
-                # height, no tilt and no term, and the audit video stops at the
-                # chunk boundary BEFORE the topple (see `_fall_frames`), so
-                # neither artifact could say whether it was genuine.
+                # height, no tilt and no term (the recorder-merge drop, since
+                # fixed — see merge_exec_results), and the audit video's last
+                # frame was grabbed AFTER the auto-reset, i.e. a healthy duck
+                # at spawn (also fixed: recorder.chunked_execute skips the
+                # grab on a falling piece), so neither artifact could say
+                # whether the fall was genuine.
                 #
                 # These are the PRE-STEP values, for the same reason the pose is:
                 # the env has already auto-reset, so live state now describes a
