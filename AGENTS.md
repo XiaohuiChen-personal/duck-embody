@@ -6,7 +6,7 @@ never duplicate rules there. **Update this file whenever a decision changes**; i
 the project's institutional memory and is deliberately context-rich so a fresh agent
 can pick up work with no other briefing.
 
-Last updated: 2026-07-26 (design docs drafted + adversarially reviewed; pending owner approval).
+Last updated: 2026-07-27 (benchmark batch COMPLETE + scored + reported; see §8).
 
 ---
 
@@ -404,9 +404,10 @@ results/         raw JSON · figures · videos (committed)
       **APPROVED by owner 2026-07-26**
 - [x] docs/PLAN.md — task-level implementation plan (every task follows hard
       rules 10–11)
-- [ ] Vendor policy artifacts into `policy/`
-- [ ] Smoke tests (camera PNG, net displacement, asset inspection)
-- [ ] Apartment scene + survey renders
+- [x] Vendor policy artifacts into `policy/` (T0.1; provenance in `policy/README.md`)
+- [x] Smoke tests (camera PNG, net displacement, asset inspection)
+- [x] Apartment scene + survey renders (T2.3 judge gate passed; judge = out-of-benchmark
+      `claude-sonnet-5`)
 - [x] Agent loop + tools + memory + providers (T3.1–T3.4; `bash
       scripts/run_tests.sh tests/ -q` → 1068 passed, 3 skipped). Single-trial
       entry point is `scripts/run_trial.py --model --seed`; it writes doc 06 §4's
@@ -414,16 +415,25 @@ results/         raw JSON · figures · videos (committed)
       post-episode layout QA. Second adversarial review pass done (24 findings,
       all dispositioned, 28 mutations re-verified — see `docs/PLAN.md` T3.4).
       **Not yet exercised against a live model — that is T3.5's gate.**
-- [ ] Sanity LLM episode → freeze configs → batch (Fable 5, Opus 5, GPT 5.6 sol × N=3–5).
-      T3.5 gate PASSED (sanity trial + GPT dry run, both AUDIT PASS; latency frozen in
-      `configs/benchmark.yaml runtime.*`). T4.2 batch runner DONE:
-      `duck_embody/runner.py` — freeze manifest (`--freeze` → `results/freeze.json`),
-      hash guard (hard refuse, no `--force`), resume by trial id, rerun log,
-      `--dry-run`; `scripts/run_trial.py` now shares its per-trial body
-      (`runner.run_one_trial`); suite 1489 passed / 3 skipped. Remaining: T4.3 —
-      move the two pre-freeze T3.5 sanity JSONs out of `results/raw/` (the runner
-      hard-refuses the batch on them by design), freeze, launch.
-- [ ] Scoring, figures, README results
+- [x] Sanity LLM episode → freeze configs → batch. T3.5 gate PASSED; T4.2 batch
+      runner DONE (`duck_embody/runner.py`: freeze manifest, hash guard with no
+      `--force`, resume, rerun log). **T4.3 BATCH COMPLETE 2026-07-27**: 12/12
+      trials (Fable 5, Opus 5, GPT 5.6 sol × seeds 101–104) under ONE
+      `config_hash cf29ec164676…` (freeze commit `13f438d`), 12/12 AUDIT PASS
+      (`scripts/audit_trial.py`), total cost $9.63, one infra 529 rerun logged in
+      `results/rerun_log.md` (the only rerun; model failures never retried).
+- [x] Scoring, figures, README results (T4.4–T4.5, 2026-07-27).
+      **Headline: 0/12 `find_kitchen` — an honest null.** 10 falls (5 spin falls
+      at |wz| = 0.5 exactly, 5 forward-step topples at |wz| 0.02–0.29 — the
+      audit-corrected wording in `results/audit_notes.md`), 2 `declare_done`
+      outside the 0.35 m radius (fable5_seed104 at 1.66 m; gpt56sol_seed103 at
+      0.83 m — entered the real kitchen, declared at the wrong counter);
+      `return_home` never ran; `correct_position` never called by any model.
+      Rule-11 video audits 3/3 CONSISTENT; figure spot-check CONSISTENT.
+      Artifacts: `results/scores.json`, `results/summary_table.md`,
+      `results/figures/`, `results/audit_notes.md`; report in README § Results +
+      `docs/EXPERIMENTS.md`. Pending: owner sign-off + push (rule 7).
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.
+(Outcome: nothing was cut — full 3×4 matrix with both stages configured ran.)

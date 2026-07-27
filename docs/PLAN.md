@@ -1642,7 +1642,17 @@ cabinet with no penetration.
   JSON whose `config.config_hash` differs from `results/freeze.json` — run it
   over all 12 as the acceptance check, not a by-eye hash grep.
 
-### T4.4 `[ ]` Figures + video audit [no sim]
+### T4.4 `[x]` Figures + video audit [no sim]
+
+**DONE 2026-07-27** (commit `c5f1899`). `results/scores.json` +
+`results/summary_table.md` (via `scripts/build_scores.py`); 5 figures via
+`bash scripts/make_figures.sh` (per_metric_bars, turns_survived, 3
+trajectory-vs-belief); Rule-11 video audits of one trial per model
+(fable5_seed102, opus5_seed102, gpt56sol_seed103) — all CONSISTENT — plus an
+independent figure recomputation from raw JSON (CONSISTENT), recorded verbatim
+in `results/audit_notes.md`. One reporting action from the audits: the fall
+headline must read 5 hull-limit spin falls + 5 forward-step topples (see
+audit_notes.md). No metric-vs-video disagreement; Rule-11 resolution unused.
 
 - **Context:** Raw logs → portfolio artifacts.
 - **Read first:** doc 06 §10; AGENTS.md rule 11.
@@ -1657,7 +1667,18 @@ cabinet with no penetration.
 - **Smoke test [no sim]:** spot-check 3 values per figure against raw JSON.
 - **Acceptance:** figures reproducible from `results/raw/` with one command.
 
-### T4.5 `[ ]` Report + finalize [no sim]
+### T4.5 `[x]` Report + finalize [no sim] — pending owner sign-off
+
+**WRITTEN 2026-07-27.** README § Results (aggregate table with CIs, per-trial
+table, 3 embedded figures + `results/videos/gpt56sol_seed103.gif` at 4.1 MB,
+two-layer findings story with the audit-corrected fall wording, doc 06 §1 scope
+quote); `docs/EXPERIMENTS.md` (batch identity, environment, repro commands
+0–6, per-trial record with log+video links, the 529 rerun story); README
+caveats expanded (N=4, one apartment/policy/prompt, duck-scale visuals,
+degraded SimReady materials, judge-gate reliance, decoding nondeterminism);
+AGENTS.md §8 closed out. Every number traces to `results/scores.json` /
+`results/summary_table.md` / `results/raw/*.json`. Push awaits owner
+confirmation (rule 7); acceptance (owner sign-off) still open.
 
 - **Context:** README results, EXPERIMENTS.md, caveats, status close-out.
 - **Read first:** README.md; **doc 06 §1 (claim limits)**; `docs/EXPERIMENTS.md`.
