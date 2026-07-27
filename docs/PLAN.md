@@ -1458,6 +1458,23 @@ cabinet with no penetration.
   (same commit).
 - **Deliverables:** sanity trial JSON + mp4 + filmstrip + GPT dry-run log + latency
   numbers + fixes.
+- **Concurrency probe (recorded by the pre-freeze forensic pass; cited by
+  AGENTS.md rule 1):** rule 1's old justification — "the second kit dies in its
+  init banner" — is refuted. Probed concurrent kit launches did NOT reliably
+  die at init: a second kit can run to completion, or fail nondeterministically
+  mid-run at material binding / camera attach, with kvdb contention between the
+  processes (a `kvdb` log line is the detector — see the signal patterns in
+  `results/logs/README.md`). Separately, 2 of the 26 probe-era logs end in an
+  exception-exit HANG: the kit process throws during shutdown, never exits, and
+  holds the GPU until SIGKILLed (~22 min in the worst case). Both committed
+  examples: `results/logs/t3_5_contact_side.log` (NameError traceback, then
+  `python.sh: line 73: … Killed`) and `results/logs/t2_4_viewer.log` (viewport
+  controller AttributeError during teardown, log ends mid-shutdown). Guards now
+  in place: automated rule-1 preflight (`duck_embody/sim/preflight.py`, wired
+  into `run_trial.py`); every probe/smoke does its work in `try` with
+  `session.close()` in `finally`; sim scripts are invoked under
+  `timeout --kill-after` with a budget derived from their own step counts
+  (`scripts/smoke_gap_hunt.py` documents the pattern).
 - **Unit tests:** regression tests for every bug fixed here.
 - **Smoke test (this IS one):** rule-11 video checklist + transcript audit: every
   tool exercised; no crash; memory block grows correctly; camera frames usable;

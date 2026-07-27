@@ -178,6 +178,16 @@ QA_TOOLS: list[dict] = []
 #: trials, so doc 06 §7's guard would see nothing and the published table would
 #: average two incomparable halves. ``tests/test_loop.py`` now asserts that
 #: editing EVERY listed file moves the hash.
+#:
+#: OPEN DECISION (pre-freeze gap G14, owner/orchestrator to call before T4.3):
+#: ``sim/recorder.py`` and ``sim/session.py`` are NOT listed, though both shape
+#: recorded-trial execution — ``recorder.chunked_execute`` is the merge every
+#: recorded command runs through (the drifted copy it used to carry was gap
+#: G1), and ``session.py`` owns reset/spawn. By doc 06 §2's
+#: hash-the-file-that-ENFORCES rule they arguably belong here; adding them
+#: changes ``config_hash``, so the decision must land before the freeze or not
+#: at all. Recorded rather than decided unilaterally because widening the list
+#: also widens what a post-freeze hotfix invalidates.
 FROZEN_FILES: tuple[str, ...] = (
     "duck_embody/agent/prompts.py",
     "duck_embody/agent/tools.py",

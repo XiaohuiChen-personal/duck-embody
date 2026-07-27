@@ -15,8 +15,13 @@ assets/Assets/
 # scratch
 *.tmp
 _staging/
-# kit run logs (large, regenerated); curated evidence lives in the task entry
-results/logs/
+# kit run logs (large, regenerated); curated evidence lives in the task entry.
+# `results/logs/*` rather than `results/logs/`: git cannot re-include a file
+# whose parent DIRECTORY is excluded, and the README below must be tracked.
+results/logs/*
+# …except the log POLICY + benign-noise allowlist + batch canary checklist,
+# which is curated evidence the T4.3 canary greps against (gaps G13/G22/G23).
+!results/logs/README.md
 # Intermediate per-frame PNG dumps from the recorder / camera smoke tests.
 # The mp4s and filmstrips they produce ARE committed; the raw frames are bulky
 # and fully regenerable.

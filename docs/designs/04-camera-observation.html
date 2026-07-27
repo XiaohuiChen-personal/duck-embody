@@ -254,6 +254,17 @@ buried lens can never pass again.</div>
 <tr><td>Frames per call</td><td>1 (<code>get_observation</code>), 4 (<code>look_around</code>)</td><td>On-demand only; no streaming (Section 5).</td></tr>
 </table>
 
+<div class="warning"><strong>CORRECTED by the pre-freeze forensic pass (gap G19) — the pipeline UPSCALES;
+it never downscales.</strong> The table's Resolution row and §5.3's step 3 ("downscale to 512×512 if
+needed") describe the pipeline backwards. Measured: every rendering launch logs
+<code>[rtx.postprocessing.plugin] DLSS increasing input dimensions: Render resolution of (297, 297) is below
+minimal input resolution of 300</code> — the RTX path renders <em>natively at ~297×297</em> and DLSS
+reconstructs the 512×512 frame the camera delivers. Effective detail is therefore ~300&nbsp;px, not a true
+512 render. Fairness is unaffected — the identical pipeline produced every frame all three models see, and
+the T2.3 judge gate scored these exact frames — so the render scale is deliberately NOT touched pre-freeze:
+changing it now would produce frames the passed gate never saw (a post-gate frame change), for a benchmark
+whose camera is frozen. Recorded so the published methods section states the true effective resolution.</div>
+
 <p><strong>Why 90° and not the stock IMX219's FOV?</strong> The stock IMX219 module is a ~62° horizontal FOV
 part — too narrow indoors at duck height: in a 0.35 m-wide doorway world, a 62° camera sees one wall and no
 context, forcing constant look_around calls. Wide-FOV IMX219 variants (the same sensor behind wide-angle

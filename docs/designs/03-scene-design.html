@@ -394,6 +394,27 @@ builder resolves paths only against the local mirror. <strong>Why:</strong> the 
 must never depend on a live bucket — a mid-batch network hiccup or upstream asset change would
 silently break cross-model comparability.</div>
 
+<div class="warning"><strong>RECORDED by the pre-freeze forensic pass (gap G4) — SimReady MDL materials are
+silently degraded, in EVERY rendering run, and that state is deliberately kept.</strong> The asset mirror
+fetched <code>simready_content/materials/SimPBR.mdl</code> but never its sibling modules
+(<code>SimPBR_Model</code>, <code>baking_annotations</code>), so the MDL compiler cannot resolve them and
+SimReady furniture renders under Hydra's fallback shading rather than its authored PBR materials. The
+signature, byte-stable in every committed apartment-launch log (8/8 in <code>results/logs/</code>; the
+forensic sweep counted 18/18 across all rendering runs) — a 6-line block:
+3× <code>[MDLC:COMPILER] comp error: …/SimPBR.mdl(30,7): C120 could not find module '.::SimPBR_Model'</code>
+(and <code>baking_annotations</code>, and the consequent <code>C109 'SimPBR_Model' has not been
+declared</code>), 2× <code>[rtx.neuraylib.plugin] Loading MdlModule to DB … failed / NOT in the DB</code>,
+1× <code>[omni.usd] USD_MDL … MdlModuleId … is Invalid</code> — followed by 12×
+<code>[omni.hydra] Unable to find SdrShaderNode … &lt;SimPBR&gt;&lt;mdl&gt;</code>.
+<strong>Why this is recorded rather than fixed:</strong> fairness is intact — the identical degraded frames
+were produced for every launch, the T2.3 judge gate passed three times on <em>these exact frames</em>, and
+the asset checksums freeze the state. Fetching the sibling .mdl files now (option B) would change every
+frame the models see, reopen a passed gate (survey + judge + warmup would all need rerunning), and is a
+separate owner-elected procedure. One dependency to know: T1.4's
+<code>measured_warmup_renders: 1</code> (<code>results/figures/smoke/camera_report.json</code>) was measured
+in THIS degraded state — real MDL compilation streams in asynchronously, so if the siblings are ever
+fetched, the warmup number must be re-measured (doc <a href="04-camera-observation.html">04</a> §5.2).</div>
+
 <div class="warning"><strong>License boundaries.</strong> NVIDIA's official ready-made
 <em>Environments</em> (Office, Hospital, etc.) are under a "Limited Use" no-modification license —
 they may not be remixed into a custom apartment, so we build our own from props. Separately, the
@@ -506,7 +527,14 @@ anything.</td>
 the builder overrides them on every native-collision asset via
 <code>CollisionPropertiesCfg(contact_offset=0.002, rest_offset=0.0)</code>, applied nested to all
 collider prims <span class="src">source: modify path at from_files.py:333-334 &rarr;
-schemas.py:366</span>. Exact value tuned in the physics pass (§8.3).</td></tr>
+schemas.py:366</span>. Exact value tuned in the physics pass (§8.3).
+<span class="src">CAVEAT recorded by the pre-freeze forensic pass (gap G21): "every" is wrong for
+the 5 Sektion counters — their collision prims sit inside an instanceable subtree, so the
+override cannot be applied and every apartment launch logs exactly 5
+<code>Could not perform 'modify_collision_properties'</code> warnings (one per counter, measured
+in every committed apartment-launch log). Accepted as-is: T2.4's <code>counter_bump</code> pass
+validated the counters' authored offsets at duck scale, so the collision behaviour the override
+exists to guarantee holds anyway.</span></td></tr>
 <tr><td><strong><code>collision_props</code> cannot create colliders</strong></td>
 <td><code>UsdFileCfg(collision_props=...)</code> only MODIFIES colliders that already exist in the
 USD: the schema helper returns <code>False</code> if the prim has no
@@ -679,10 +707,19 @@ lands in <code>results/figures/</code> destined for publication.</li>
 verified on one downloaded sofa (<code>Arnold.usd</code>); the specific bed/fridge/oven files
 chosen for the scene must each pass <code>inspect_assets.py</code> before the
 native-vs-proxy decision is final.</li>
-<li><strong>Sektion_Cabinet articulation.</strong> The cabinet has doors/drawers (it is used as a
-manipulation asset elsewhere). Does spawning it as a static <code>AssetBaseCfg</code> leave the
-doors rigidly fixed, or must joints be explicitly locked? Resolved in the survey render +
-physics pass.</li>
+<li><strong class="src">RESOLVED (T2.4, recorded by the pre-freeze forensic pass) —
+Sektion_Cabinet articulation.</strong> Spawning the cabinet static leaves its doors/drawers
+<em>rigidly fixed by design</em>: PhysX refuses to create a joint between static bodies, so every
+apartment launch prints exactly <strong>45</strong>
+<code>[Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static
+bodies</code> lines — the 9 authored joints (2 doors + 2 drawers + 2 handles + 2 knob transforms
++ <code>rootJoint</code>) × the 5 counters, measured across every committed apartment-launch log.
+This is the loudest error in every log and it is <strong>benign</strong>: the joints failing to
+exist is precisely what keeps the drawers rigid, and T2.4's <code>counter_bump</code> physics
+pass PASSED against these cabinets (the duck collides with a solid counter). No joints need
+explicit locking. The line is in the benign-noise allowlist
+(<code>results/logs/README.md</code>); a count other than 45 per launch is the signal, not the
+lines themselves.</li>
 <li><strong>Wall height 0.5 m vs. over-wall visibility.</strong> Whether the wide-FOV camera
 glimpsing adjacent rooms over 0.5&nbsp;m walls helps or hurts VLM room identification — decided
 by the §8.2 acceptance run; contingency is 0.7&nbsp;m walls.</li>

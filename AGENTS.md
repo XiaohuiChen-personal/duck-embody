@@ -73,9 +73,16 @@ deviate, update the doc in the same commit:
 ## 3. Hard rules
 
 1. **ONE Isaac Sim / GPU job at a time** on this machine (DGX Spark). Never launch a
-   second kit process; the second dies in its init banner. Check `nvidia-smi` before
-   launching. Trials run sequentially in ONE persistent sim process (startup is
-   minutes — never relaunch per trial).
+   second kit process. NOT because it dies in its init banner — this rule used to
+   say that, and the T3.5 concurrency probe refuted it (evidence in
+   `docs/PLAN.md` T3.5): a second kit may run to completion, or fail
+   nondeterministically mid-run at material binding / camera attach, with kvdb
+   contention between the processes — i.e. it can silently degrade BOTH jobs
+   instead of loudly killing itself. `scripts/run_trial.py` (and the future
+   `runner.py`) now automates the check via `duck_embody/sim/preflight.py`
+   (nvidia-smi compute-apps + a pgrep for other kit interpreters; refuses and
+   prints the PIDs). Trials run sequentially in ONE persistent sim process
+   (startup is minutes — never relaunch per trial).
 2. **Scoring is unit-tested before any batch launches** (`tests/test_scoring.py`).
    Non-negotiable; a scoring bug discovered after the batch is a wasted batch.
 3. **Evidence discipline** (inherited from the parent project): every number in any
@@ -271,6 +278,15 @@ Robot / policy (paths in parent repo or `~/IsaacLab`):
 - **Pausing is safe**: physics advances ONLY inside `env.step()`. Not stepping = frozen.
 
 Agent harness (found in T3.4's review pass, 2026-07-26):
+- **Never import `anthropic`/`openai` before `AppLauncher`** (measured, T3.5's
+  first sanity run): imported pre-kit, the anthropic SDK loses the ability to
+  strip its own unset-parameter defaults — twelve `Omit` sentinels
+  (cache_control, temperature, tool_choice, …) survive into the request body
+  and the first call dies with `TypeError: Object of type Omit is not JSON
+  serializable`. The pattern is **preflight pre-kit, build post-kit**:
+  `preflight_provider()` (no SDK import) validates keys/config before the
+  multi-minute cold start; `build_provider()` runs only after kit is up.
+  `scripts/run_trial.py` is the reference implementation.
 - **An Anthropic refusal is HTTP 200 with an EMPTY `content` array**, so
   `AssistantTurn.raw` is `[]`. Echoing that back is
   `{"role": "assistant", "content": []}` — an API 400 on the *next* request,
