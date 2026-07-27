@@ -1444,9 +1444,18 @@ cabinet with no penetration.
   GPT 5.6 sol dry run (≥3 turns with real observations)** so the OpenAI image path
   executes end-to-end pre-freeze. Frame-by-frame video review + full transcript
   audit (tool errors, malformed calls, memory renders, map plausibility). Fix
-  issues (rule 10.5); **up to 2 reruns — a third failure escalates to the owner**
-  per the standing constraint. Record per-turn latency distribution → doc 06 §8 +
-  `configs/benchmark.yaml` (same commit).
+  issues (rule 10.5); ~~up to 2 reruns — a third failure escalates to the owner~~
+  **SUPERSEDED 2026-07-27 by owner instruction: on any error, root-cause it and
+  rerun — no escalation, however many attempts have failed.** WHY: a harness
+  crash is not the phenomenon under study. The rerun budget was written to stop
+  *cherry-picking trial outcomes* (rule 3's selection bias); repairing a
+  serialization bug and rerunning is repairing the instrument, which is a
+  different act. Findings are still reported every time — what is dropped is
+  pausing for permission, not the reporting. NOTE the boundary this does **not**
+  move: rule 3 still forbids re-running a *completed* trial because its outcome
+  was unwelcome. This covers runs that crashed, not runs that finished badly.
+  Record per-turn latency distribution → doc 06 §8 + `configs/benchmark.yaml`
+  (same commit).
 - **Deliverables:** sanity trial JSON + mp4 + filmstrip + GPT dry-run log + latency
   numbers + fixes.
 - **Unit tests:** regression tests for every bug fixed here.
@@ -1561,9 +1570,18 @@ cabinet with no penetration.
 - Commit per task with the task ID; PLAN.md status + evidence updated in the same
   commit (rule 10.5). Pushing follows rule 7.
 - Any design-doc deviation updates that doc in the same commit.
-- If a task exceeds ~2× expected effort, or a gate fails structurally (k out of
-  band, a room unrecognizable, batch forecast blows the window): **stop and surface
-  to the owner with evidence** instead of improvising scope.
+- **Errors are never escalated** (owner instruction, 2026-07-27). On any crash or
+  error: dive into the message, isolate the ACTUAL root cause — minimal repro,
+  instrument if needed, confirm the mechanism rather than inferring it — fix it,
+  add a regression test, rerun. No attempt limit. Report every finding; do not
+  pause for permission to continue. T3.5's "2 reruns then escalate" clause is
+  superseded; see the note in that task.
+- If a task exceeds ~2× expected effort, or a gate fails **structurally** — not a
+  fixable bug, but a result that changes what the benchmark can claim (k out of
+  band, a room unrecognizable, batch forecast blows the window): **surface it to
+  the owner with evidence** instead of improvising scope. Surface it and keep
+  working where the rest of the task is unblocked; the point is that the owner
+  learns of it, not that everything stops.
 
 ## Review corrections (rev 2, 2026-07-26)
 
