@@ -357,6 +357,9 @@ class ToolContext:
     #: the keys would change the payload's shape between turn 1 and turn 2.
     #: STAGE-scoped: cleared by :meth:`reset_for_stage`.
     last_bumped: bool = False
+    #: Regions in contact at the last bump; carried so the next
+    #: `get_observation` can report it alongside `bumped`.
+    last_contact_groups: list = field(default_factory=list)
     last_distance_moved_m: float = 0.0
     #: Compass heading latched at the moment of the fall, or ``None`` while the
     #: robot is upright. TRIAL-scoped and write-once: a fall ends the trial, so
@@ -637,6 +640,13 @@ def _state_payload(context: ToolContext) -> dict:
         },
         "status": {
             "bumped": context.last_bumped,
+            # WHERE the last collision was felt: head / torso / left_leg /
+            # right_leg. Without it `bumped` is a bare boolean and the model can
+            # only guess which way is blocked — T3.5 measured 6 of 13 moves
+            # stopping under 0.11 m while it pinballed. Proprioception, not
+            # ground truth: it says what the ROBOT felt, never what was hit or
+            # where that thing is, so it stays on the sensor side of doc 05 §1.
+            "contact": list(context.last_contact_groups),
             # Read LIVE, not carried: `fell` is sticky and ends the trial, so
             # the final observation must report it however it is reached
             # (doc 04 §6.2).
@@ -685,6 +695,7 @@ def _record_motion(
     if result.bumped and counts_bump:
         context.bumps += 1
     context.last_bumped = bool(result.bumped)
+    context.last_contact_groups = list(result.contact_groups)
     context.last_distance_moved_m = distance_moved_m
     if result.fell and context.compass_at_fall is None:
         # BEFORE the breadcrumb below, which would otherwise be the first thing
@@ -709,13 +720,22 @@ def _record_motion(
         # `execution.result` line can be written without re-parsing the payload.
         "distance_moved_m": distance_moved_m,
         "bumped": bool(result.bumped),
+        "contact_groups": list(result.contact_groups),
         "fell": bool(result.fell),
         # WHY it ended — height, tilt, which term fired, and the command in
         # flight. A fall ends the whole TRIAL (doc 01 §8), so it is the most
         # consequential event in a run; T3.5 produced one that could not be
         # audited afterwards because the log recorded only the boolean. None
         # on every non-terminating call.
-        "fall_diagnostics": result.fall_diagnostics,
+        # Falls back to the playback's own copy. The ExecResult carries it on
+        # every path I could exercise, but a T3.5 trial recorded `fell: true`
+        # with None and I could not reproduce that specific case — so rather
+        # than trust a negative, read the instance state too. Safe: a fall ends
+        # the trial, so there is at most one per run, and `reset()` clears it.
+        "fall_diagnostics": (
+            result.fall_diagnostics
+            or (context.playback.fall_diagnostics if result.fell else None)
+        ),
         "stop_reason": result.stop_reason,
         "counted_as_bump": bool(result.bumped and counts_bump),
     }

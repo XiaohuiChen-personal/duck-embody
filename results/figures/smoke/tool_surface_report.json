@@ -1,0 +1,195 @@
+{
+  "calls": [
+    {
+      "tool": "get_observation",
+      "args": {},
+      "is_error": false,
+      "payload_keys": [
+        "compass_deg",
+        "position_estimate",
+        "status"
+      ],
+      "n_images": 1,
+      "has_execution": false
+    },
+    {
+      "tool": "look_around",
+      "args": {},
+      "is_error": false,
+      "payload_keys": [
+        "compass_deg",
+        "position_estimate",
+        "status"
+      ],
+      "n_images": 4,
+      "has_execution": false
+    },
+    {
+      "tool": "update_room",
+      "args": {
+        "name": "start_room",
+        "description": "beige floor, red sofa"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "ok",
+        "rooms"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "add_landmark",
+      "args": {
+        "room": "start_room",
+        "description": "red sofa to the west"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "landmarks",
+        "ok"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "mark_exit",
+      "args": {
+        "room": "start_room",
+        "direction_deg": 90,
+        "status": "unexplored"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "exits",
+        "ok"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "set_current_room",
+      "args": {
+        "name": "start_room"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "ok"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "update_plan",
+      "args": {
+        "text": "sweep east along the south wall"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "ok"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "turn_to_heading",
+      "args": {
+        "heading_deg": 0
+      },
+      "is_error": false,
+      "payload_keys": [
+        "compass_deg",
+        "heading_error_deg",
+        "policy_seconds",
+        "position_estimate",
+        "requested_heading_deg",
+        "status",
+        "timed_out"
+      ],
+      "n_images": 0,
+      "has_execution": true
+    },
+    {
+      "tool": "move",
+      "args": {
+        "distance_m": 0.4
+      },
+      "is_error": false,
+      "payload_keys": [
+        "compass_deg",
+        "policy_seconds",
+        "position_estimate",
+        "requested_distance_m",
+        "status"
+      ],
+      "n_images": 0,
+      "has_execution": true
+    },
+    {
+      "tool": "send_velocity",
+      "args": {
+        "vx": 0.1,
+        "vy": 0.0,
+        "wz": 0.0,
+        "duration_s": 0.5
+      },
+      "is_error": false,
+      "payload_keys": [
+        "compass_deg",
+        "executed",
+        "policy_seconds",
+        "position_estimate",
+        "status"
+      ],
+      "n_images": 0,
+      "has_execution": true
+    },
+    {
+      "tool": "correct_position",
+      "args": {
+        "x": 0.9,
+        "y": 0.5,
+        "reason": "re-anchored on the sofa corner"
+      },
+      "is_error": false,
+      "payload_keys": [
+        "delta_m",
+        "detail",
+        "ok"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    },
+    {
+      "tool": "declare_done",
+      "args": {},
+      "is_error": false,
+      "payload_keys": [
+        "detail",
+        "ok",
+        "stage_ended"
+      ],
+      "n_images": 0,
+      "has_execution": false
+    }
+  ],
+  "negative_case": {
+    "tool": "update_plan",
+    "args": {
+      "plan": "wrong argument name on purpose"
+    },
+    "is_error": true,
+    "payload": {
+      "error": "invalid_args",
+      "detail": "update_plan is missing required argument(s): text",
+      "hint": "update_plan takes: text (string)"
+    }
+  },
+  "failures": [],
+  "acceptance": "PASS"
+}

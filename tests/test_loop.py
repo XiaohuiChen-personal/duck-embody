@@ -184,6 +184,10 @@ class FakePlayback:
     """
 
     def __init__(self, compass_deg: float = START_COMPASS_DEG):
+        #: Mirrors PolicyPlayback.fall_diagnostics — the real one is a
+        #: property over instance state that survives the call, which is
+        #: what tools.py falls back to when an ExecResult lacks it.
+        self.fall_diagnostics: dict | None = None
         self._compass = compass_deg
         self._fell = False
         self._true_xy = TRUE_XY

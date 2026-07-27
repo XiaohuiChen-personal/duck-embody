@@ -213,7 +213,20 @@ def backticked_identifiers(text: str) -> set[str]:
 #: a tool" assertion fails on these three, and weakening it to a substring check
 #: would stop catching a renamed tool, which is the whole point (PLAN T3.2).
 #: The test below also asserts `tools.py` really does emit all three.
-RESULT_FIELDS_NAMED_IN_THE_PROMPT = {"timed_out", "bumped", "hint"}
+#: Backticked names in the prompt that are RESULT FIELDS or field VALUES, not
+#: tools. Excusing them from the tool-name check is safe only because
+#: `test_the_result_fields_the_prompt_promises_are_really_emitted` asserts each
+#: one is genuinely produced — the allowlist redirects the assertion, it does
+#: not remove it.
+RESULT_FIELDS_NAMED_IN_THE_PROMPT = {
+    "timed_out", "bumped", "hint",
+    # `status.contact` and its four possible values (T3.5).
+    "status", "contact", "head", "torso", "left_leg", "right_leg",
+}
+
+#: The exact regions `status.contact` may report. The prompt names all four, so
+#: the code must be able to produce all four and no others.
+CONTACT_REGIONS = {"head", "torso", "left_leg", "right_leg"}
 
 
 # ---------------------------------------------------------------------------
@@ -599,6 +612,26 @@ class TestToolNamesMatchTheFrozenPrompt:
         assert "bumped" in turn.payload["status"]
         bad = dispatch(call("move", distance_m="north"), context)
         assert "hint" in bad.payload
+
+        # `status.contact` and the four region names the prompt promises.
+        obs = dispatch(call("get_observation"), context)
+        assert "contact" in obs.payload["status"], (
+            "the prompt documents status.contact but no observation emits it"
+        )
+        assert isinstance(obs.payload["status"]["contact"], list)
+
+    def test_the_contact_regions_the_prompt_names_are_the_ones_the_code_groups(self):
+        """The prompt tells the model to expect head / torso / left_leg /
+        right_leg. If `policy_wrapper` ever groups the articulation tree into a
+        different set, the prompt would be describing regions the model can
+        never be shown — silent, and frozen into the batch."""
+        import inspect
+
+        from duck_embody.sim import policy_wrapper
+
+        src = inspect.getsource(policy_wrapper.PolicyPlayback.__init__)
+        for region in CONTACT_REGIONS:
+            assert f'"{region}"' in src, f"{region} is promised but never grouped"
 
 
 # ---------------------------------------------------------------------------
@@ -1578,11 +1611,12 @@ class TestObservationPayload:
         assert outcome.images[0].label is None
         assert set(outcome.payload) == {"compass_deg", "position_estimate", "status"}
         assert set(outcome.payload["position_estimate"]) == {"x", "y", "note"}
-        assert set(outcome.payload["status"]) == {
-            "bumped",
-            "fell",
-            "distance_moved_m",
-        }
+        # Derived from doc 04 §6, not transcribed: a hardcoded set here means
+        # the doc and the payload can drift apart silently, and adding
+        # `status.contact` in T3.5 is exactly the change that would have done it.
+        assert set(outcome.payload["status"]) == set(
+            doc_04_frozen_payload()["status"]
+        )
 
     def test_the_estimate_note_is_doc_04s_frozen_string_verbatim(self):
         """doc 04 §6's frozen payload carries the note in every observation, and
@@ -1689,6 +1723,9 @@ class TestObservationPayload:
         outcome = dispatch(call("get_observation"), make_context())
         assert outcome.payload["status"] == {
             "bumped": False,
+            # Empty, not absent: `contact` refines `bumped`, so it has to keep
+            # the same shape on turn 1 as on every turn after it.
+            "contact": [],
             "fell": False,
             "distance_moved_m": 0.0,
         }

@@ -275,7 +275,11 @@ request; these are the notes that are not in them.
    the compass to within 5 deg, and reports `timed_out` rather than spinning
    forever. `move(distance_m)` walks forward at 0.2 m/s, at most 1.5 m per
    call, and auto-stops on contact with `bumped: true` plus the distance it
-   actually covered. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
+   actually covered. `status.contact` names which parts of YOUR OWN body felt
+   it — any of `head`, `torso`, `left_leg`, `right_leg`. It tells you what you
+   touched with, never what you touched: `head` means something at your own
+   height, `torso` something lower, and a single leg means you caught an edge
+   on that side and can often clear it by shifting the other way. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
    hatch and does **not** auto-stop — it runs its full duration even through a
    collision. Every command is clamped to the policy's trained envelope and the
    clamp is echoed back: if a command returns changed, the changed one is what

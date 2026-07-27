@@ -165,6 +165,10 @@ class ExecResult:
     clamp_notes: list[str] = field(default_factory=list)
     stopped_early: bool = False
     stop_reason: str = ""
+    #: Which body regions were in contact when `bumped` went true — one or more
+    #: of head / torso / left_leg / right_leg. Proprioception, shown to the
+    #: model: it refines the `bumped` boolean without revealing WHAT was hit.
+    contact_groups: list[str] = field(default_factory=list)
     #: Why the trial ended, captured at the terminating step (height, tilt,
     #: which term fired, and the command in flight). None unless this call
     #: terminated. SCORING/AUDIT ONLY — never shown to the model.
@@ -252,6 +256,37 @@ class PolicyPlayback:
             self._contact_sensor.body_names[i] for i in self._bump_body_ids
         ]
         self._foot_body_names = foot_names
+
+        # Contact grouped by kinematic region, so a bump can say WHERE it was
+        # felt rather than merely that it happened.
+        #
+        # Grouped by position in the articulation tree, NOT by name suffix: the
+        # names lie. `knee_and_ankle_assembly_2` sits under
+        # `left_roll_to_pitch_assembly` and is a LEFT-leg body, while `_3`/`_4`
+        # sit under `right_roll_to_pitch_assembly`. A suffix heuristic gets that
+        # exactly backwards, which is how a "left/right" report would have been
+        # confidently wrong.
+        #
+        # The tree, from the T2.4 sensor dump:
+        #   0-2   base / trunk_assembly / trunk          -> torso
+        #   3-8   hip_roll_assembly .. left_foot         -> left leg
+        #   9-15  neck_* / head_assembly / head / antennae -> head
+        #   16-21 hip_roll_assembly_2 .. right_foot      -> right leg
+        self._contact_groups: dict[str, list[int]] = {"head": [], "torso": [],
+                                                      "left_leg": [], "right_leg": []}
+        seen_right_hip = False
+        for idx, body in enumerate(self._contact_sensor.body_names):
+            low = body.lower()
+            if "hip_roll_assembly_2" in low or "right_roll_to_pitch" in low:
+                seen_right_hip = True
+            if any(k in low for k in ("head", "neck", "antenna")):
+                group = "head"
+            elif any(k in low for k in ("hip_roll", "roll_to_pitch", "knee", "ankle", "foot")):
+                group = "right_leg" if seen_right_hip else "left_leg"
+            else:
+                group = "torso"
+            if idx in set(self._bump_body_ids):
+                self._contact_groups[group].append(idx)
         if not self._bump_body_ids:
             raise RuntimeError(
                 "Every contact-sensor body matched the foot pattern; bump "
@@ -311,6 +346,16 @@ class PolicyPlayback:
         yaw = math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
         return wrap_deg(math.degrees(yaw))
 
+    @property
+    def fall_diagnostics(self) -> dict | None:
+        """The last fall's diagnostics, or None if this run has not fallen.
+
+        Instance state, and safe to read as a fallback: a fall ends the TRIAL
+        (doc 01 §8), so within one run there is at most one, and `reset()`
+        clears it between runs.
+        """
+        return self._fall_diagnostics
+
     def tilt_deg(self) -> float:
         """Trunk tilt from vertical, in degrees. SCORING/DIAGNOSTIC ONLY.
 
@@ -324,6 +369,23 @@ class PolicyPlayback:
         """Peak contact force (N) over every non-foot body. See __init__."""
         forces = self._contact_sensor.data.net_forces_w[0, self._bump_body_ids]
         return float(forces.norm(dim=-1).max())
+
+    def contact_groups(self) -> list[str]:
+        """Which parts of the body are in contact right now, coarsely.
+
+        One of `head`, `torso`, `left_leg`, `right_leg`. This is proprioception,
+        not ground truth: it says what the robot FELT, never what it hit or
+        where that thing is, so it sits on the sensor side of doc 05 §1's
+        boundary — the same side as the compass and the `bumped` flag it
+        refines.
+        """
+        forces = self._contact_sensor.data.net_forces_w[0]
+        norms = forces.norm(dim=-1)
+        out = []
+        for group, ids in self._contact_groups.items():
+            if ids and float(norms[ids].max()) > BUMP_FORCE_N:
+                out.append(group)
+        return out
 
     def contact_report(self) -> dict[str, float]:
         """Per-body force for the non-foot bodies above threshold. Debug only."""
@@ -339,6 +401,9 @@ class PolicyPlayback:
     def reset(self):
         self._obs, _ = self.env.reset()
         self._fell = False
+        # Cleared with `_fell`, or a fallback read could serve the PREVIOUS
+        # trial's fall to this one.
+        self._fall_diagnostics = None
         self._bump_run = 0
         self._step_counter = 0
         return self._obs
@@ -373,6 +438,7 @@ class PolicyPlayback:
         start_xy = self.true_xy()
         sampled_xy: list[tuple[float, float]] = []
         bumped = False
+        contact_groups: list[str] = []
         stopped_early = False
         stop_reason = ""
         steps_done = 0
@@ -453,6 +519,11 @@ class PolicyPlayback:
                 self._bump_run += 1
                 if self._bump_run >= BUMP_DEBOUNCE_STEPS:
                     bumped = True
+                    # Sampled AT the bump, not afterwards: by the end of the
+                    # call the robot has usually separated and the regions read
+                    # empty — which is how `contact_report()` came back {} in
+                    # the T3.5 probe right after a confirmed sofa collision.
+                    contact_groups = self.contact_groups()
                     if stop_on_bump:
                         stopped_early = True
                         stop_reason = "bump"
@@ -486,6 +557,7 @@ class PolicyPlayback:
             steps=steps_done,
             policy_seconds=steps_done * CONTROL_DT,
             bumped=bumped,
+            contact_groups=contact_groups,
             fell=self._fell,
             fall_diagnostics=self._fall_diagnostics if terminated_this_call else None,
             pose_trace=pose_trace,
@@ -509,6 +581,8 @@ class PolicyPlayback:
         total.steps += part.steps
         total.policy_seconds += part.policy_seconds
         total.bumped = total.bumped or part.bumped
+        if part.contact_groups:
+            total.contact_groups = part.contact_groups
         # Diagnostics belong to the chunk that terminated, so never overwrite a
         # captured one with a later None.
         total.fall_diagnostics = part.fall_diagnostics or total.fall_diagnostics

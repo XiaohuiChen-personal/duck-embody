@@ -1,0 +1,72 @@
+{
+  "approaches": [
+    {
+      "label": "wall head-on",
+      "spawn": [
+        2.55,
+        1.7,
+        90.0
+      ],
+      "peak_by_body": {},
+      "left_total": 0,
+      "right_total": 0,
+      "head_total": 0
+    },
+    {
+      "label": "wall from the left",
+      "spawn": [
+        2.55,
+        1.7,
+        65.0
+      ],
+      "peak_by_body": {
+        "knee_and_ankle_assembly_3": 70.89,
+        "head_assembly": 19.16
+      },
+      "left_total": 0,
+      "right_total": 70.9,
+      "head_total": 19.2
+    },
+    {
+      "label": "wall from the right",
+      "spawn": [
+        2.55,
+        1.7,
+        115.0
+      ],
+      "peak_by_body": {},
+      "left_total": 0,
+      "right_total": 0,
+      "head_total": 0
+    },
+    {
+      "label": "sofa head-on",
+      "spawn": [
+        0.3,
+        0.75,
+        90.0
+      ],
+      "peak_by_body": {
+        "trunk_assembly": 25.61,
+        "knee_and_ankle_assembly_3": 7.55
+      },
+      "left_total": 0,
+      "right_total": 7.5,
+      "head_total": 0
+    },
+    {
+      "label": "counter head-on",
+      "spawn": [
+        2.72,
+        0.95,
+        270.0
+      ],
+      "peak_by_body": {
+        "trunk_assembly": 26.79
+      },
+      "left_total": 0,
+      "right_total": 0,
+      "head_total": 0
+    }
+  ]
+}
