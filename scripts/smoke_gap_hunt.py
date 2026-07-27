@@ -1112,7 +1112,14 @@ def scenario_s4(report: Report, session) -> None:
     problems: list[str] = []
 
     # -- leg A: measured-walkable clearance, must NOT abort ------------------
-    y_clean = north + BODY_RADIUS_M + 0.07
+    # 9 cm, NOT the 7 cm the holdless forensics measured clean: move()'s
+    # heading-hold corrections swing the legs wider than open-loop walking, and
+    # at 7 cm the right leg catches counter_1's protruding west corner (round-3
+    # gate run: abort at 0.32 m, heading 344.7 deg mid-correction). The
+    # move()-with-hold sweep (s4_sweep, 2x each at 9/11/13/15 cm) is clean from
+    # 9 cm up — 8/8 completions, zero contact. The prompt's "~10 cm" guidance
+    # sits exactly on this measured boundary.
+    y_clean = north + BODY_RADIUS_M + 0.09
     session.reset(seed=101, spawn=SpawnPose(x0, y_clean, 0.0))
     pb.settle(0.4)
     free = reach_along(x0, y_clean, 0.0)
