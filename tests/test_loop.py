@@ -59,6 +59,7 @@ from duck_embody.agent.loop import (
     EpisodeRunner,
     TranscriptEntry,
     TrialLog,
+    _json_safe,
     build_request,
     config_hash,
     context_messages,
@@ -1987,6 +1988,40 @@ class TestTrialLogFramesHygiene:
         paths = log.save_frames(1, [ImageBlock(data_b64=base64.b64encode(b"x").decode())])
         assert paths == ["frames/fake_seed101/t001_0.jpg"]
         assert (log.frames_dir / "t001_0.jpg").read_bytes() == b"x"
+
+
+class TestTrialLogStrictJson:
+    """G12: a physics NaN in a scoring-only field must RAISE at flush (doc 05
+    §8's infra path) rather than silently write the non-RFC `NaN` token — a
+    strict parser would otherwise crash at scoring time, weeks after the
+    batch. Model-authored NaN is already neutralised by `_json_safe`, so
+    strictness cannot misfire on a model fault."""
+
+    def test_a_physics_nan_in_a_scoring_field_raises_at_flush(self, tmp_path):
+        log = make_log(tmp_path)
+        with pytest.raises(ValueError):
+            log.append_turn({"execution": {"pose_trace": [[float("nan"), 0.0]]}})
+        # The file on disk is still the last GOOD state — parseable, no final —
+        # which doc 06 §9.1's resume check treats as an infra rerun.
+        document = json.loads(log.path.read_text())
+        assert document["turns"] == []
+        assert "final" not in document
+
+    def test_a_model_authored_nan_still_logs_as_a_string(self, tmp_path):
+        """The other half of §8's agency line: the model's own non-finite
+        argument is `_json_safe`d into its repr and the turn records fine."""
+        log = make_log(tmp_path)
+        record = {
+            "model_output": {
+                "tool_calls": [{"name": "move", "args": _json_safe({"distance_m": float("nan")})}]
+            }
+        }
+        log.append_turn(record)
+        document = json.loads(log.path.read_text())
+        assert (
+            document["turns"][0]["model_output"]["tool_calls"][0]["args"]["distance_m"]
+            == "nan"
+        )
 
 
 class TestTrialLogSchema:

@@ -560,8 +560,25 @@ class TrialLog:
         return self.document
 
     def flush(self) -> None:
+        # `allow_nan=False` is the same doc 05 §8 rule ToolOutcome.to_block
+        # already applies to the model-facing payload, closed for the scoring
+        # channel (gap G12). Python's default emits the bare tokens
+        # `NaN`/`Infinity` — not RFC JSON — so a physics NaN reaching a
+        # scoring-only field (pose_trace, true_pose, policy_seconds) would
+        # WRITE SILENTLY and surface as a strict parser's crash at scoring
+        # time, weeks after the batch; §8's table names "physics NaN" as an
+        # infra fault whose policy is a rerun, which requires raising HERE.
+        # Model-authored NaN cannot trip this: `_json_safe` stringifies it
+        # before it reaches the document, so strictness cannot misfire on a
+        # model fault. Caveat, recorded: if the document is already poisoned,
+        # `note_infra_failure`'s own flush raises too, so the traceback
+        # detail is lost — the JSON then simply stays at its last good state
+        # with no `final`, which doc 06 §9.1 still treats as an infra rerun.
         tmp = self.path.with_name(self.path.name + ".tmp")
-        tmp.write_text(json.dumps(self.document, indent=2) + "\n", encoding="utf-8")
+        tmp.write_text(
+            json.dumps(self.document, indent=2, allow_nan=False) + "\n",
+            encoding="utf-8",
+        )
         os.replace(tmp, self.path)
 
 
