@@ -274,8 +274,8 @@ request; these are the notes that are not in them.
    *Motion.* `turn_to_heading(heading_deg)` rotates in place, closed-loop on
    the compass to within 5 deg, and reports `timed_out` rather than spinning
    forever. `move(distance_m)` walks forward at 0.2 m/s, at most 1.5 m per
-   call, and auto-stops on contact with `bumped: true` plus the distance it
-   actually covered. `status.contact` names which parts of YOUR OWN body felt
+   call, and auto-stops on contact with `bumped: true` plus the dead-reckoned
+   distance it covered. `status.contact` names which parts of YOUR OWN body felt
    it — any of `head`, `torso`, `left_leg`, `right_leg`. It tells you what you
    touched with, never what you touched: `head` means something at your own
    height, `torso` something lower, and a single leg means you caught an edge
@@ -546,17 +546,21 @@ class QAQuestion:
 #: ``tests/test_memory.py`` asserts every string below still appears in the doc.
 #:
 #: Scoring them is T4.1's (``scoring.py``); this module owns only the frozen
-#: text. Two rubric operationalizations are still open in doc 06 §12 and must be
-#: pinned by T4.1's fixtures before the freeze: Q2's direction-vocabulary parse
-#: rules, and Q2's route tolerance (the committed layout has a direct
-#: living_room<->kitchen doorway, so sofa->fridge is 3.152 m direct vs 3.611 m
-#: via the hallway — only ~15 % longer, so the hallway route is plausibly the
-#: one the robot walked, yet the rubric scores an extra room 0). Q4's bucketing
-#: is NOT open: ``apartment_layout.compass_8`` pins it (half-open buckets,
-#: 22.5° rounds up), so seed 101's 22.521° bearing makes NE the gold answer —
-#: 0.021° past the boundary, close enough that the rubric's adjacent-bucket 0.5
-#: is doing the real work there.
-#: [measured: docs/designs/06-benchmark-evaluation.html §5.9, same command]
+#: text. The two Q2 rubric operationalizations an earlier revision of this
+#: comment reported open in doc 06 §12 are both RESOLVED by T4.1 in
+#: ``scoring.py``, fixture-pinned in ``tests/fixtures/qa_q2_answers.json``:
+#: the direction-vocabulary parse rules (``ABSOLUTE_WORDS`` /
+#: ``ABSOLUTE_ABBREV`` / the relative tokens, wedge tolerance
+#: ``DIRECTION_TOL_DEG``), and the route tolerance — ``MAX_EXTRA_ROOMS = 1``,
+#: so the hallway detour (3.611 m vs 3.152 m direct through the committed
+#: layout's living_room<->kitchen doorway) costs exactly one defect and scores
+#: 0.5, never 0: the 0 anchor is "route would not reach the kitchen", which
+#: that route plainly does. Q4's bucketing was never open:
+#: ``apartment_layout.compass_8`` pins it (half-open buckets, 22.5° rounds
+#: up), so seed 101's 22.521° bearing makes NE the gold answer — 0.021° past
+#: the boundary, close enough that the rubric's adjacent-bucket 0.5 is doing
+#: the real work there.
+#: [measured: docs/designs/06-benchmark-evaluation.html §5.9 + scoring.py, same commit]
 LAYOUT_QA_QUESTIONS: tuple[QAQuestion, ...] = (
     QAQuestion(
         number=1,

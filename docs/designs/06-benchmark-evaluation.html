@@ -972,10 +972,16 @@ while standing in the kitchen now takes a precision hit. The sibling near-string
 <em>different</em> room. <code>tests/test_memory.py</code> asserts every canonical
 value is a real layout room, that each true room self-maps, and that "kitchenette"
 does not match.</li>
-<li><strong>Q2 rubric operationalization.</strong> "Turn-by-turn directions" scoring
-requires parsing free-text directions into a room/turn sequence; the parse rules
-(accepted direction vocabulary, how to handle relative vs compass directions) need
-fixture-driven pinning in <code>test_scoring.py</code> before freeze.</li>
+<li><strong class="src">RESOLVED (T4.1) — Q2 rubric operationalization.</strong> Both halves are pinned in
+<code>scoring.py</code> with committed fixtures (<code>tests/fixtures/qa_q2_answers.json</code>). The
+direction vocabulary: absolute compass words and UPPERCASE abbreviations in the prompt's own
+degrees-CCW-from-east frame, relative tokens resolved against the sofa-front reference, matched inside a
+±45° wedge (<code>DIRECTION_TOL_DEG</code>) rather than 8-way buckets — the oracle path's first leg bears
+0.70° from a bucket boundary, so bucketing would turn the headline bit on 0.7°. The route tolerance:
+<code>MAX_EXTRA_ROOMS = 1</code> — the hallway detour (3.611&nbsp;m vs 3.152&nbsp;m direct) is a valid
+route but not the oracle route, so it costs exactly one defect and scores 0.5, never 1 and never 0; that is
+the only reading consistent with the frozen anchors (the 1 anchor requires the <em>oracle</em> sequence, and
+the 0 anchor — "route would not reach the kitchen" — plainly does not cover it).</li>
 <li><strong class="src">RESOLVED (T3.4) — Stage-2 accounting when stage 1 fails.</strong>
 Stage 2 runs <strong>iff stage 1 succeeded</strong> — confirmed, and extended to cover a
 <code>declare_done</code> outside the target radius, which doc
