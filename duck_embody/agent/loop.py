@@ -197,6 +197,17 @@ FROZEN_FILES: tuple[str, ...] = (
     "duck_embody/agent/providers/anthropic.py",
     "duck_embody/agent/providers/openai.py",
     "duck_embody/sim/policy_wrapper.py",
+    # G14, decided at T4.3 freeze (owner delegation): OUTCOME-AFFECTING, so in.
+    # recorder.chunked_execute IS the macro execution path in recorded runs
+    # (every batch trial records video) - a change there re-chunks every motion
+    # command's physics. session.py wires env launch and the seed spawn reset.
+    # embody_env_cfg.py holds the fall thresholds and terminations;
+    # scene_builder.py translates the layout into the world. A mid-batch edit
+    # to any of these would alter trials while the guard stayed silent.
+    "duck_embody/sim/recorder.py",
+    "duck_embody/sim/session.py",
+    "duck_embody/env/embody_env_cfg.py",
+    "duck_embody/env/scene_builder.py",
     "duck_embody/env/camera.py",
     "duck_embody/env/apartment_layout.py",
     "duck_embody/tasks/find_kitchen.py",

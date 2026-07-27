@@ -414,7 +414,15 @@ results/         raw JSON · figures · videos (committed)
       post-episode layout QA. Second adversarial review pass done (24 findings,
       all dispositioned, 28 mutations re-verified — see `docs/PLAN.md` T3.4).
       **Not yet exercised against a live model — that is T3.5's gate.**
-- [ ] Sanity LLM episode → freeze configs → batch (Fable 5, Opus 5, GPT 5.6 sol × N=3–5)
+- [ ] Sanity LLM episode → freeze configs → batch (Fable 5, Opus 5, GPT 5.6 sol × N=3–5).
+      T3.5 gate PASSED (sanity trial + GPT dry run, both AUDIT PASS; latency frozen in
+      `configs/benchmark.yaml runtime.*`). T4.2 batch runner DONE:
+      `duck_embody/runner.py` — freeze manifest (`--freeze` → `results/freeze.json`),
+      hash guard (hard refuse, no `--force`), resume by trial id, rerun log,
+      `--dry-run`; `scripts/run_trial.py` now shares its per-trial body
+      (`runner.run_one_trial`); suite 1489 passed / 3 skipped. Remaining: T4.3 —
+      move the two pre-freeze T3.5 sanity JSONs out of `results/raw/` (the runner
+      hard-refuses the batch on them by design), freeze, launch.
 - [ ] Scoring, figures, README results
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →

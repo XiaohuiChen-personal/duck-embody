@@ -2670,8 +2670,9 @@ class TestRunTrialCli:
             parser.parse_args(["--model", "fable5"])
 
     def test_the_scoring_artifact_is_written_before_the_video_artifacts(self):
-        """Source-level, because `main()` needs a kit process — but the ORDER is
-        the contract, and reversing it is a one-line edit with no other symptom.
+        """Source-level, because the trial body needs a kit process — but the
+        ORDER is the contract, and reversing it is a one-line edit with no other
+        symptom.
 
         `recorder.encode()` runs `subprocess.run(..., check=True)` and `_ffmpeg()`
         raises when the binary is missing, so a video fault after a completed
@@ -2679,30 +2680,49 @@ class TestRunTrialCli:
         byte an infra failure, so doc 06 §9.1's resume check would move a
         finished, fully paid trial to `results/incomplete/` and rerun it. Video
         is rule-11 evidence, not the trial result.
-        """
-        source = (REPO_ROOT / "scripts" / "run_trial.py").read_text()
-        body = source[source.index("def main("):].splitlines()
-        # CODE lines only — the prose above each block names the same calls, and
-        # a test that matched those would pass on a file whose code was reordered.
-        code = [
-            (n, line.strip())
-            for n, line in enumerate(body)
-            if line.strip() and not line.strip().startswith("#")
-        ]
 
-        def line_of(fragment: str) -> int:
+        MOVED WITH THE CODE (T4.2): the per-trial body was factored out of
+        `run_trial.main()` into `duck_embody.runner.run_one_trial` — the ONE
+        implementation the single-trial script and the batch runner share — so
+        this pin follows the enforcement site. Both callers keep the other half
+        of the contract, checked below: `session.close()` inside a `finally`,
+        because a surviving kit process holds the machine's only GPU and the
+        rerun cannot start at all (AGENTS.md rule 1).
+        """
+        def code_lines(source: str, start: str, stop: str | None = None):
+            begin = source.index(start)
+            end = source.index(stop) if stop else len(source)
+            # CODE lines only — the prose above each block names the same
+            # calls, and a test that matched those would pass on a file whose
+            # code was reordered.
+            return [
+                (n, line.strip())
+                for n, line in enumerate(source[begin:end].splitlines())
+                if line.strip() and not line.strip().startswith("#")
+            ]
+
+        def line_of(code, fragment: str, where: str) -> int:
             hits = [n for n, text in code if fragment in text]
-            assert hits, f"{fragment!r} is no longer in run_trial.main()"
+            assert hits, f"{fragment!r} is no longer in {where}"
             return hits[0]
 
-        assert line_of("log.finish(final)") < line_of("recorder.encode()")
-        # ...and the GPU is released on every path, including a Ctrl-C in the
-        # artifact block: a surviving kit process holds the machine's only GPU
-        # and the rerun cannot start at all (AGENTS.md rule 1).
-        finallys = [n for n, text in code if text == "finally:"]
-        assert finallys, "session.close() must run from a finally block"
-        assert max(finallys) < line_of("session.close()")
-        assert line_of("except BaseException") < max(finallys)
+        runner_source = (REPO_ROOT / "duck_embody" / "runner.py").read_text()
+        body = code_lines(runner_source, "def run_one_trial(", "def build_parser(")
+        assert line_of(body, "except BaseException", "run_one_trial") < line_of(
+            body, "log.finish(final)", "run_one_trial"
+        )
+        assert line_of(body, "log.finish(final)", "run_one_trial") < line_of(
+            body, "recorder.encode()", "run_one_trial"
+        )
+
+        for where, source, start in (
+            ("run_trial.main", (REPO_ROOT / "scripts" / "run_trial.py").read_text(), "def main("),
+            ("runner.cmd_run", runner_source, "def cmd_run("),
+        ):
+            code = code_lines(source, start)
+            finallys = [n for n, text in code if text == "finally:"]
+            assert finallys, f"session.close() must run from a finally block in {where}"
+            assert max(finallys) < line_of(code, "session.close()", where)
 
     def test_unknown_flags_are_left_for_the_kit_launcher(self):
         """``AppLauncher`` parses ``sys.argv`` for its own flags, so ours are

@@ -1537,7 +1537,7 @@ cabinet with no penetration.
   T3.5 sanity JSON end to end and eyeball every number.
 - **Acceptance (HARD GATE):** all tests green BEFORE T4.3 launches.
 
-### T4.2 `[ ]` Batch runner + freeze manifest [no sim]
+### T4.2 `[x]` Batch runner + freeze manifest [no sim]
 
 - **Context:** Resumable sequential runner with the config-hash freeze guard
   (doc 06 §7).
@@ -1546,10 +1546,16 @@ cabinet with no penetration.
 - **Depends on:** T3.4, T4.1.
 - **Steps:** implement `runner.py` (matrix 3 models × seeds 101–104; skip trials
   whose JSON is complete under a matching `config_hash`; freeze-hash guard;
-  unattended progress logging). **Enumerate the frozen file paths explicitly**
-  (`prompts.py`, `tools.py` schemas, `camera.py` params, `apartment_layout.py`,
-  `configs/benchmark.yaml`, `configs/models/*.yaml`) and write them with their
-  hashes into `results/freeze.json`. Create `results/incomplete/` and
+  unattended progress logging). **Enumerate the frozen file paths explicitly** —
+  CORRECTED by T4.2's plan review (rule 10.1): the enumeration source is
+  `loop.py::FROZEN_FILES` (all **15** files), not this step's earlier 6-item
+  parenthetical, which omitted `memory.py` (the caps), `loop.py` (K=10),
+  `policy_wrapper.py` (motion clamps), the three `providers/*.py` and
+  `tasks/find_kitchen.py` — the exact gap doc 06 §2 records biting a batch —
+  and whose `configs/models/*.yaml` glob would sweep the out-of-benchmark
+  `judge.yaml` into the fairness contract. Write them with their sha256 hashes
+  into `results/freeze.json` via `runner.py --freeze` (schema pinned in doc 06
+  §7; refuses from a dirty tree). Create `results/incomplete/` and
   `results/rerun_log.md` (doc 06 §7 — the rerun log ships with the results);
   reconcile doc 06 §7's `results/<trial_id>.json` with this repo's
   `results/raw/*.json` (AGENTS.md §7 + doc 01 §5 win — update doc 06 §7 same commit).
@@ -1560,15 +1566,67 @@ cabinet with no penetration.
 - **Smoke test [no sim]:** dry-run lists the 12 trials; deliberately touch a frozen
   file → runner must refuse.
 - **Acceptance:** dry-run correct; guard trips on mutation.
+- **Status (2026-07-27): DONE.** Evidence:
+  - `duck_embody/runner.py` — freeze manifest (`--freeze`), startup guard
+    (per-file sha256 vs `results/freeze.json` + stored `config_hash` in every
+    result resumed around + dirty/unknown-commit refusal), resume
+    (skip iff `scoring.is_complete` AND matching `config_hash` AND no
+    `turn_cap_override`), retirement to `results/incomplete/` with rerun-log
+    rows, per-trial start/end progress lines, `--dry-run`. The per-trial body
+    (`run_one_trial`) is SHARED with `scripts/run_trial.py` (refactored to call
+    it) so the batch runs the exact harness the T3.5 gate proved.
+  - Tests: `tests/test_runner.py` (46 tests, fixture dirs, no kit/API) +
+    `tests/test_loop.py` ordering pin moved to the shared body;
+    `bash scripts/run_tests.sh tests/ -q` → **1489 passed, 3 skipped**.
+  - Smoke: `isaaclab.sh -p duck_embody/runner.py --dry-run` lists 12 trials
+    (live hash `772e2887…`) and REFUSES naming both pre-freeze artifacts —
+    `results/raw/fable5_seed101.json` (complete, stale `config_hash`
+    `bb340a51…`) and `results/raw/gpt56sol_seed101.json`
+    (`turn_cap_override: 5`). Mutation trip is pinned by
+    `test_dry_run_refuses_on_a_frozen_mutation_naming_the_file` and
+    `test_editing_every_frozen_file_is_refused_by_name` (all 15 files).
+  - `configs/benchmark.yaml` audit: seeds/caps/camera/k/warmup-N/latency
+    forecast all present and agreement-tested (no change needed; changing it
+    would have moved `config_hash` for no reason).
+  - `results/freeze.json` is deliberately NOT written yet — T4.3 writes it at
+    the freeze commit; a T4.2-era file would either refuse the batch (stale)
+    or mask a forgotten freeze.
+  - **Second adversarial review pass (2026-07-27, resume/freeze lens), six
+    findings fixed** (doc 06 §7 updated same change, rule 5): (1) the freeze
+    guard now RE-RUNS before every trial launch and infra retry
+    (`midbatch_refusals`) and `scripts/audit_trial.py` FAILs a `results/raw/`
+    trial whose `config.config_hash` differs from `freeze.json` — a mid-batch
+    frozen-file edit no longer runs the rest of the night undetected; (2)
+    `run_trial.py` refuses to overwrite an occupied matrix slot once
+    `freeze.json` exists (`occupied_slot_refusal` — TrialLog would silently
+    destroy a paid result + its frames/video); (3) a CRASHED smoke run
+    (`turn_cap_override`, no `final`) now classifies SMOKE_CAPPED (hard
+    refuse), not INCOMPLETE (silent retire + unrequested paid trial); (4)
+    rerun log hardened: atomic header, torn-append-tolerant rows, row logged
+    BEFORE the retirement move; (5) `--freeze` refuses on ANY dirty tracked
+    file (`git status --porcelain -uno`), not just the frozen 15 (resume
+    keeps the narrow scope for branch (a)); (6) the per-trial infra boundary
+    now covers setup (`session.reset`/warmup/attach) so a reset fault takes
+    retire+log+retry instead of a bare-traceback batch abort. All pinned in
+    `tests/test_runner.py`.
 
 ### T4.3 `[ ]` FREEZE + benchmark batch (12 trials)
 
 - **Context:** The measurement. No selective retries (rule 3).
 - **Read first:** doc 06 §2, §7, §8; AGENTS.md rules 1, 3, 4.
 - **Depends on:** T4.1, T4.2 + gates T2.3 / T2.4 / T3.5 passed.
-- **Steps:** freeze commit (hashes → `results/freeze.json`); launch `runner.py`;
-  monitor by log tail + `nvidia-smi` only (**never a second kit process**); on
-  completion verify 12 schema-valid JSONs (each with `final.qa`) + 12 mp4s.
+- **Steps:** **first, move the two pre-freeze T3.5 sanity artifacts out of
+  `results/raw/`** (`fable5_seed101.json` — complete under stale hash
+  `bb340a51…` — and `gpt56sol_seed101.json` — `turn_cap_override: 5` — plus
+  their `results/raw/frames/<trial_id>/` dirs; `results/logs/t35_sanity/` keeps
+  them citable). MEASURED by T4.2's dry-run: they occupy matrix slots and the
+  runner hard-refuses the whole batch on them by design — it never auto-moves a
+  complete result (that would be `--force` by another name). Then: freeze
+  commit; `runner.py --freeze` (hashes → `results/freeze.json`; refuses from a
+  dirty tree); `runner.py --dry-run` must list 12/12 pending; launch
+  `runner.py`; monitor by log tail + `nvidia-smi` only (**never a second kit
+  process**); on completion verify 12 schema-valid JSONs (each with
+  `final.qa`) + 12 mp4s.
 - **Deliverables:** `results/raw/*.json` ×12 + per-trial mp4s + `freeze.json` +
   `rerun_log.md`.
 - **Unit tests:** n/a.
@@ -1579,6 +1637,10 @@ cabinet with no penetration.
   file** → new freeze commit, move `results/raw/` to a new batch directory, restart
   from zero. Log the branch taken in `rerun_log.md`.
 - **Acceptance:** 12/12 complete under ONE freeze hash; infra reruns logged.
+  Mechanized (T4.2 second review pass): the runner re-checks the freeze before
+  every trial launch, and `scripts/audit_trial.py` FAILs any `results/raw/`
+  JSON whose `config.config_hash` differs from `results/freeze.json` — run it
+  over all 12 as the acceptance check, not a by-eye hash grep.
 
 ### T4.4 `[ ]` Figures + video audit [no sim]
 

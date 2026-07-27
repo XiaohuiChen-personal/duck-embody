@@ -148,8 +148,10 @@ configuration is not a result.</div>
 <div class="decision"><strong>THE HASHED MANIFEST, named by T3.4's review pass (AGENTS.md rule 5).</strong>
 The rows above name frozen <em>items</em>; <code>config.config_hash</code> hashes
 <em>files</em>, and the two lists were not the same list. The manifest is
-<code>duck_embody/agent/loop.py::FROZEN_FILES</code> (provisional until T4.2 owns
-<code>results/freeze.json</code>), and it must contain the file that <strong>enforces</strong>
+<code>duck_embody/agent/loop.py::FROZEN_FILES</code> (the single enumeration source;
+T4.2's <code>runner.py --freeze</code> generates <code>results/freeze.json</code> from it —
+schema in §7 — and the guard refuses when the two disagree, so the manifest is never
+hand-copied anywhere), and it must contain the file that <strong>enforces</strong>
 each item, not the file that documents it:
 <ul>
 <li><code>duck_embody/agent/prompts.py</code> — prompt template, QA questions, synonym table</li>
@@ -159,6 +161,13 @@ each item, not the file that documents it:
 <code>EXIT_DIRECTION_QUANTUM_DEG</code>. <code>configs/benchmark.yaml</code> mirrors the caps and is
 checked by a unit test, but <code>Counters</code> is what the loop compares against and what the model
 reads in its budget line</li>
+<li><code>duck_embody/sim/recorder.py</code>, <code>duck_embody/sim/session.py</code>,
+<code>duck_embody/env/embody_env_cfg.py</code>, <code>duck_embody/env/scene_builder.py</code> —
+<strong>ADDED at the T4.3 freeze (G14)</strong>: outcome-affecting sim wiring. The recorder's
+chunked-execute is the macro execution path in every recorded (i.e. every batch) trial; the session
+owns the seed spawn reset; the env cfg holds the fall thresholds and terminations; the scene builder
+realises the layout. A mid-batch edit to any of these would alter trials while a narrower guard
+stayed silent</li>
 <li><code>duck_embody/sim/policy_wrapper.py</code> — <code>MOVE_MAX_DISTANCE_M</code>,
 <code>MOVE_SPEED_MPS</code>, the command-hull clamp: the numbers the tool-schema row <em>states to the
 model</em> ("Max 1.5 m per call", "vx in (−0.148, 0.222)")</li>
@@ -277,7 +286,7 @@ loses at most the in-flight turn). The log is the single source for scoring — 
 scorer never touches the simulator. Annotated schema:</p>
 
 <pre><code>{
-  "trial_id": "fable-5_seed101",          // {model}_{seed} — also the resume key
+  "trial_id": "fable5_seed101",           // {model_config}_seed{seed} — also the resume key (aligned by T4.2 with the shipped convention, run_trial.py/runner.py)
   "config": {
     "freeze_commit": "&lt;git sha&gt;",        // fairness-contract commit (§2)
     "config_hash": "&lt;sha256&gt;",           // hash over frozen files; runner guard (§7)
@@ -744,15 +753,78 @@ requirements:</p>
 the single persistent Isaac Sim process (§3). The runner never launches a second kit
 process.</li>
 <li><strong>Resumable by trial id.</strong> Before running a trial, the runner
-checks <code>results/&lt;trial_id&gt;.json</code>: if the file exists AND is complete
-(has a <code>final</code> block that validates against the schema), the trial is
-skipped. A partial file (crash mid-trial) is moved to
-<code>results/incomplete/</code> with a timestamp suffix and the trial reruns.</li>
+checks <code>results/raw/&lt;trial_id&gt;.json</code> (RECONCILED by T4.2: this section
+previously said <code>results/&lt;trial_id&gt;.json</code>; AGENTS.md §7's repo map and
+doc 01 §5 both say <code>results/raw/</code>, and the T3.5 artifacts already live there —
+the doc is the thing corrected, rule 5. <code>results/incomplete/</code> and
+<code>results/rerun_log.md</code> stay at <code>results/</code> top level; videos at
+<code>results/videos/</code>): if the file exists AND is complete, the trial is skipped.
+A partial file (crash mid-trial) is moved to
+<code>results/incomplete/</code> with a timestamp suffix (its frames directory moves with
+it — the rerun's <code>TrialLog</code> wipes <code>frames/&lt;trial_id&gt;/</code>, which would
+destroy the evidence the preserved JSON references) and the trial reruns.
+<strong>"Complete" is pinned (T4.2)</strong> as <code>scoring.is_complete</code> —
+<code>final</code> present AND no <code>infra_failure</code> — plus a matching
+<code>config_hash</code> and no <code>config.turn_cap_override</code> (a smoke-capped run is
+never a result; the runner hard-refuses on one occupying a matrix slot rather than
+skipping it as done or shredding it with a rerun — <strong>complete or not</strong>: a
+smoke run that crashed (override present, no <code>final</code>) refuses too, rather than
+being silently retired and its slot spent on a paid trial the operator never asked for).
+Deliberately NOT full §4 schema
+validation: a validator strict enough to reject a paid, complete trial would move it to
+<code>results/incomplete/</code> and rerun it — schema conformance is
+<code>scripts/audit_trial.py</code>'s post-batch job, where a failure costs a re-read, not
+a re-run. <code>scripts/run_trial.py</code> holds the same posture from its side: once
+<code>results/freeze.json</code> exists, it refuses to run into an occupied matrix slot
+(its <code>TrialLog</code> would overwrite the JSON and wipe the frames/video of a paid
+result with no log entry — rule 3's forbidden selective retry); pre-freeze smoke reruns
+are unaffected.</li>
 <li><strong>Config-hash guard.</strong> At startup the runner recomputes the hash
 over the frozen files (§2) and compares it to the <code>config_hash</code> in every
-existing result it would resume around. Mismatch ⇒ hard refuse with a message
-naming the changed file. There is deliberately no <code>--force</code> flag; the
-correct responses are "revert the change" or "start a new batch directory".</li>
+existing result it would resume around, AND compares each frozen file's sha256 to
+<code>results/freeze.json</code>. Mismatch ⇒ hard refuse with a message
+naming the changed file. The freeze half of the guard <strong>re-runs before every
+trial launch and before every infra retry</strong> (<code>midbatch_refusals</code>,
+T4.2's second review pass): a startup-only check would let a mid-batch edit to a frozen
+file — the §2 recorded incident shape, in a tree that "always carries uncommitted
+work" — run the rest of the night under different frozen bytes, detected only if the
+runner happened to be restarted. Post-batch, <code>scripts/audit_trial.py</code> is the
+net for the same failure: it FAILs any <code>results/raw/</code> trial whose
+<code>config.config_hash</code> differs from <code>results/freeze.json</code>, which
+mechanizes T4.3's "12/12 complete under ONE freeze hash" acceptance. There is deliberately no <code>--force</code> flag; the
+correct responses are "revert the change" or "start a new batch directory". The runner
+also refuses when the frozen files carry uncommitted changes
+(<code>freeze_commit()</code> would record <code>-dirty</code>) — §2's "differ from that
+commit" is enforced as content equality (per-file hashes), not HEAD equality, so a
+T4.3-branch-(a) fix touching only non-frozen code resumes cleanly.
+<strong>Pre-freeze artifacts:</strong> a complete trial JSON whose stored hash predates
+the freeze (e.g. the two T3.5 sanity trials, which carry matrix trial ids) trips this
+guard by design — move them out of <code>results/raw/</code> (to
+<code>results/logs/</code>, which keeps them citable) before launching the batch; the
+runner never moves a complete result itself, because auto-moving paid results is what
+<code>--force</code> would have been.</li>
+<li><strong><code>results/freeze.json</code> (written by <code>runner.py --freeze</code>
+at the freeze commit; schema pinned by T4.2):</strong>
+<pre><code>{
+  "schema": "duck-embody-freeze-v1",
+  "frozen_at": "&lt;UTC timestamp&gt;",
+  "freeze_commit": "&lt;git sha&gt;",          // --freeze refuses when ANY tracked file is dirty (see below)
+  "config_hash": "&lt;sha256&gt;",             // loop.config_hash over FROZEN_FILES — never re-implemented
+  "matrix": {"models": [...], "seeds": [...]},   // from configs/benchmark.yaml
+  "files": {"&lt;repo-relative path&gt;": "&lt;sha256 of raw bytes&gt;", ...}  // all 15, FROZEN_FILES order
+}</code></pre>
+The <code>files</code> map is generated from <code>loop.FROZEN_FILES</code> — enumerated,
+never globbed: <code>configs/models/*.yaml</code> also matches the out-of-benchmark
+<code>judge.yaml</code> (doc 04 §8), which must never enter the fairness contract or a
+matrix slot. <strong>"Dirty tree" scope (pinned by T4.2's second review pass):</strong>
+<code>--freeze</code> refuses on ANY uncommitted <em>tracked</em> file
+(<code>git status --porcelain -uno</code>), not only the frozen 15 — freeze night is
+defined as a clean commit, and a dirty <code>runner.py</code>/<code>scoring.py</code> at
+freeze time would stamp <code>freeze.json</code> with a clean sha while the batch
+executors run code no commit contains. Untracked files do not block (they cannot be code
+a commit claims to contain, and this tree carries scratch artifacts). Resume keeps the
+narrower frozen-file scope, so a T4.3-branch-(a) fix touching only non-frozen code
+resumes cleanly.</li>
 <li><strong>Infra failure vs model failure.</strong> A trial that ends by cap, fall,
 or wrong <code>declare_done</code> is a <em>model failure</em> — final, never rerun.
 A trial that ends because the harness broke (sim crash, provider 5xx/429 exhaustion
@@ -761,7 +833,13 @@ after backoff, camera returning black frames, scoring-input corruption) is an
 <code>results/incomplete/</code>, an entry is appended to
 <code>results/rerun_log.md</code> (trial id, timestamp, cause, evidence path), and
 the trial reruns from scratch. The rerun log ships with the results — reruns are
-visible, not silent.</li>
+visible, not silent. The infra boundary starts at per-trial <em>setup</em>
+(<code>session.reset</code> / camera warmup / recorder attach), not at the first model
+turn — a reset-time render fault takes the same retire+log+retry path instead of killing
+an unattended batch with a bare traceback. The log row is appended BEFORE the file
+moves (a logged move that then failed is visible and re-attempted; an unlogged move is
+a silent rerun), rows are torn-append-tolerant, and the header is written atomically —
+the log is the one artifact whose whole job is surviving a crash.</li>
 <li><strong>API keys via env vars only</strong> (<code>ANTHROPIC_API_KEY</code>,
 <code>OPENAI_API_KEY</code>); never in configs or logs.</li>
 </ul>

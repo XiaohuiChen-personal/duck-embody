@@ -35,6 +35,7 @@ Run:  PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p scripts/run_trial.py \\
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -69,6 +70,46 @@ def frozen_matrix() -> tuple[tuple[str, ...], tuple[int, ...]]:
 
     raw = yaml.safe_load((REPO_ROOT / "configs" / "benchmark.yaml").read_text())
     return tuple(raw["models"]), tuple(int(s) for s in raw["seeds"])
+
+
+def occupied_slot_refusal(json_path: Path, freeze_json: Path) -> str | None:
+    """Post-freeze overwrite guard: the refusal message, or None to proceed.
+
+    ``TrialLog``'s constructor OVERWRITES ``json_path`` and WIPES
+    ``frames/<trial_id>/``, and ``Recorder`` wipes and re-encodes the video
+    dir — so once ``results/freeze.json`` exists, re-invoking this script on
+    an occupied matrix slot (a typo'd seed, a "just re-check this one trial")
+    would silently destroy a paid benchmark result and its rule-11 evidence.
+    That is precisely rule 3's forbidden selective retry, and the batch
+    runner's no-``--force`` posture (doc 06 §7) applies here too: a complete
+    result is never rerun, and even a partial one is retired via the runner's
+    LOGGED move, never shredded off the books.
+
+    Pre-freeze (no ``freeze.json`` yet) smoke reruns keep working unchanged —
+    overwriting your own smoke artifacts is the T3.5 workflow.
+    """
+    if not json_path.exists() or not freeze_json.exists():
+        return None
+    from duck_embody.scoring import is_complete
+
+    try:
+        existing = json.loads(json_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        existing = {}
+    what = (
+        "a COMPLETE (paid) benchmark result"
+        if is_complete(existing)
+        else "an existing artifact (partial or smoke-capped)"
+    )
+    return (
+        f"FATAL: {json_path} already holds {what} and results/freeze.json "
+        "exists (post-freeze). Running would OVERWRITE the JSON and WIPE its "
+        "frames/video with no log entry — rule 3 forbids selective retries "
+        "and doc 06 §7 has no --force. Use the batch runner "
+        "(duck_embody/runner.py): it skips complete trials and retires "
+        "partial ones with a logged move. For a post-freeze smoke run, point "
+        "--out-dir somewhere outside results/raw/."
+    )
 
 
 def build_parser():
@@ -119,13 +160,12 @@ def main() -> int:
 
     # Imports that need no kit, so a config typo fails in a second rather than
     # after a multi-minute cold start.
-    from duck_embody.agent.memory import Counters, Memory, PositionIntegrator
     from duck_embody.agent.providers.base import (
         build_provider,
         load_model_config,
         preflight_provider,
     )
-    from duck_embody.tasks.find_kitchen import spawn_for_seed, stage_specs
+    from duck_embody.tasks.find_kitchen import spawn_for_seed
 
     cfg = load_model_config(args.model)
     spawn_xy, spawn_heading = spawn_for_seed(args.seed)
@@ -140,6 +180,14 @@ def main() -> int:
     print(f"  json     : {json_path}")
     if args.max_turns is not None:
         print(f"  WARNING  : --max-turns {args.max_turns} — SMOKE ONLY, not a benchmark result")
+
+    # Post-freeze, an occupied matrix slot is the batch runner's territory —
+    # refuse BEFORE the preflight and the multi-minute cold start (see
+    # occupied_slot_refusal for what an overwrite would destroy).
+    refusal = occupied_slot_refusal(json_path, REPO_ROOT / "results" / "freeze.json")
+    if refusal is not None:
+        print(refusal)
+        return 2
 
     # Fail fast on a missing key or an unknown provider — WITHOUT importing the
     # vendor SDK, which must not be imported before kit starts (see below).
@@ -177,11 +225,13 @@ def main() -> int:
               "Clear __pycache__ and re-run.")
         return 2
 
-    from duck_embody.agent.loop import EpisodeRunner, TrialLog
-    from duck_embody.agent.tools import ToolContext
-    from duck_embody.env.camera import HeadCamera
-    from duck_embody.sim.recorder import Recorder, attach_recorder
-    from duck_embody.sim.session import SimSession, SpawnPose
+    # The per-trial body lives in `duck_embody.runner.run_one_trial` — ONE
+    # implementation shared with the T4.2 batch runner, factored per doc 06
+    # §7's design. Two copies of the reset/attach/log/finish sequence would
+    # drift silently, and then the batch would measure a different harness
+    # than the one the T3.5 gate proved.
+    from duck_embody.runner import announce, run_one_trial
+    from duck_embody.sim.session import SimSession
 
     session = SimSession.launch(
         task_id=TASK_ID, checkpoint=args.checkpoint, headless=not args.headed
@@ -202,148 +252,34 @@ def main() -> int:
     # This kills the trial on turn 1, so it cannot corrupt results — but it
     # would have killed all 12 of them, one cold start at a time.
     provider = build_provider(args.model)
-    session.reset(
-        seed=args.seed,
-        spawn=SpawnPose(spawn_xy[0], spawn_xy[1], spawn_heading),
-    )
-
-    camera = HeadCamera(session.env)
-    camera.warmup()
-
-    recorder = None
-    detach = None
-    if not args.no_video:
-        # hide_ceiling=True is not optional in the apartment: the chase camera
-        # sits above the 0.7 m walls, which puts it above the ceiling the T2.3
-        # gate added — with the roof on, every audit frame is a photo of the
-        # roof (T2.4, recorder.py's own docstring).
-        recorder = Recorder(
-            video_dir / trial_id, fps=25, every_n=args.video_every_n, hide_ceiling=True
-        )
-        detach = attach_recorder(session.playback, session.env.unwrapped, recorder)
-
-    counters = Counters()
-    if args.max_turns is not None:
-        counters.turn_cap = args.max_turns
-    context = ToolContext(
-        playback=session.playback,
-        camera=camera,
-        memory=Memory(),
-        # The seed's spawn coordinates are the integrator's t=0 anchor — the ONE
-        # thing the dead-reckoned estimate takes from ground truth (doc 05 §5.1).
-        integrator=PositionIntegrator(*spawn_xy),
-        counters=counters,
-    )
-
-    log = TrialLog(
-        json_path,
-        trial_id=trial_id,
-        model_id=cfg.model_id,
-        model_name=args.model,
-        seed=args.seed,
-        spawn_xy=spawn_xy,
-        spawn_heading_deg=spawn_heading,
-    )
-    if args.max_turns is not None:
-        log.document["config"]["turn_cap_override"] = args.max_turns
-        log.flush()
-
-    def announce(record: dict) -> None:
-        names = ", ".join(c["name"] for c in record["model_output"]["tool_calls"]) or "(none)"
-        print(
-            f"  [{record['stage']} t{record['turn_idx']:02d}] {names}"
-            f"  |  {record['execution']['result']}"
-            f"  |  budget {record['budget']['stage_turns_used']}"
-            f"/{record['budget']['stage_turn_cap']} turns,"
-            f" {record['budget']['stage_policy_seconds_used']:.1f}"
-            f"/{record['budget']['stage_policy_seconds_cap']:g} s"
-        )
-
-    runner = EpisodeRunner(
-        provider=provider,
-        context=context,
-        stages=stage_specs(args.seed),
-        log=log,
-        on_turn=announce,
-    )
-
-    import traceback
-
-    from duck_embody.agent.loop import redact_secrets
 
     exit_code = 0
-    final = None
-    video_rel = None
     try:
-        try:
-            final = runner.run()
-        except BaseException as exc:  # noqa: BLE001 — deliberate, see below
-            # doc 05 §8's INFRA path, taken at the only place it is allowed to
-            # be taken: the trial boundary. §8 forbids catching a render error
-            # or a physics NaN *inside the loop*, where it would be laundered
-            # into a model-visible result; its actual policy for one is "log,
-            # rerun whole", which is what this does. The JSON deliberately keeps
-            # NO `final` block, so doc 06 §9.1's resume check rejects it and
-            # T4.2 reruns the trial.
-            #
-            # `BaseException`, not `Exception`: a Ctrl-C that skipped
-            # `session.close()` would leave a kit process holding the machine's
-            # single GPU (AGENTS.md rule 1) with no way to start the next run.
-            #
-            # The traceback is scrubbed (`redact_secrets`) before it is stored
-            # OR printed: it is third-party exception text and this JSON is
-            # committed to a public repo (AGENTS.md rules 6 and 7).
-            detail = redact_secrets(
-                "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
-            )
-            log.note_infra_failure(detail)
-            print("\n  INFRA FAILURE — trial is incomplete and must be rerun whole:")
-            print(detail)
+        outcome = run_one_trial(
+            session,
+            model_name=args.model,
+            cfg=cfg,
+            provider=provider,
+            seed=args.seed,
+            out_dir=out_dir,
+            video_dir=video_dir,
+            video_every_n=args.video_every_n,
+            no_video=args.no_video,
+            max_turns=args.max_turns,
+            on_turn=announce,
+        )
+        final = outcome.final
+        video_rel = outcome.video_path
+        if final is None:
             exit_code = 1
-
-        # --- the SCORING artifact first ------------------------------------
-        #
-        # `log.finish(final)` runs before any video work and inside no other
-        # guard. A completed episode is 40-80 turns of paid API plus the QA
-        # exchange; if an ffmpeg fault could reach this line the JSON would hold
-        # every turn and no `final`, which is byte-for-byte what an infra-failed
-        # trial looks like — doc 06 §9.1's resume check would move a finished,
-        # paid result to `results/incomplete/` and rerun it.
-        if final is not None:
-            log.finish(final)
-
-        # --- then the rule-11 audit artifacts, guarded separately -----------
-        #
-        # Video is EVIDENCE, not the result. `recorder.encode()` shells out to
-        # ffmpeg with `check=True` and `_ffmpeg()` raises when the binary is
-        # missing, so a full disk or an absent ffmpeg raises here — and that
-        # must not invalidate a completed trial or strand the GPU.
-        try:
-            if detach is not None:
-                detach()
-            if recorder is not None:
-                mp4 = recorder.encode()
-                if mp4 is not None:
-                    recorder.filmstrip(mp4)
-                    try:
-                        video_rel = str(mp4.relative_to(REPO_ROOT))
-                    except ValueError:
-                        # --video-dir outside the repo: absolute is still a
-                        # usable pointer, and `relative_to` raising here would
-                        # cost the trial for a path preference.
-                        video_rel = str(mp4)
-        except Exception:  # noqa: BLE001 — evidence failure, not a trial failure
-            print("\n  WARNING: video artifacts failed; the trial result stands:")
-            traceback.print_exc()
-        log.set_video(video_rel)
 
         if final is not None:
             print("\n== outcome ==")
-            for stage, outcome in final["outcome"].items():
+            for stage, verdict in final["outcome"].items():
                 detail = final["stages"][stage]
                 distance = detail["score"]["distance_m"] if detail["score"] else None
                 print(
-                    f"  {stage:<13} {outcome:<20} "
+                    f"  {stage:<13} {verdict:<20} "
                     f"turns {detail['turns_used']}, "
                     f"policy-s {detail['policy_seconds_used']:.1f}"
                     + (f", d_final {distance:.3f} m" if distance is not None else "")

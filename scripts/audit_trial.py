@@ -74,6 +74,28 @@ def audit(path: Path, require_tool_coverage: bool = False) -> int:
           f"{len(final.get('qa') or [])} answers")
     check(not trial.get("infra_failure"), "no infra failure recorded")
 
+    # -- freeze traceability (T4.3 acceptance: 12/12 under ONE freeze hash) --
+    # The runner's mid-batch guard aborts on drift BEFORE the next trial, but
+    # this is the post-batch net: every results/raw/ JSON must carry exactly
+    # the config_hash results/freeze.json records, or the published table
+    # averages trials that ran under different frozen bytes. Scoped to
+    # results/raw/ because pre-freeze artifacts (the T3.5 sanity trials,
+    # parked in results/logs/) legitimately carry a stale hash there.
+    freeze_path = REPO_ROOT / "results" / "freeze.json"
+    stored_hash = (trial.get("config") or {}).get("config_hash")
+    in_raw = (REPO_ROOT / "results" / "raw") in path.resolve().parents
+    if freeze_path.exists() and in_raw:
+        frozen_hash = json.loads(freeze_path.read_text()).get("config_hash")
+        check(stored_hash == frozen_hash,
+              "config.config_hash matches results/freeze.json",
+              f"trial {str(stored_hash)[:12]}… vs freeze {str(frozen_hash)[:12]}…")
+    elif freeze_path.exists():
+        print(f"  INFO  outside results/raw/ — freeze-hash check skipped "
+              f"(config_hash {str(stored_hash)[:12]}…)")
+    else:
+        print("  INFO  no results/freeze.json yet (pre-freeze audit) — "
+              "freeze-hash check skipped")
+
     # -- tool coverage: PLAN T3.5 wants every tool exercised at least once --
     used: dict[str, int] = {}
     errors: list[tuple[int, str, str]] = []
