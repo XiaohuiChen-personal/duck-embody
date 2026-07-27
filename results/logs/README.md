@@ -2,8 +2,11 @@
 
 Committed per AGENTS.md rule 3 (every number names its source) and the
 pre-freeze forensic pass (gaps G13/G22/G23). Every count below was measured
-against the committed logs in this directory (grep commands shown), not
-inherited from memory.
+against the local (gitignored) logs in this directory (grep commands shown),
+not inherited from memory. The logs themselves are NOT tracked
+(`results/logs/*` is ignored; only this README is re-included), so the counts
+are re-verifiable on this machine only — the grep commands are the durable
+part, and a fresh clone re-derives the counts from its own first launches.
 
 ## Log policy (G13)
 
@@ -23,8 +26,8 @@ inherited from memory.
 ## Benign-noise allowlist (G22)
 
 Expected severity lines **per apartment-scene launch**, byte-stable across all
-8 committed apartment-launch logs (verify with the greps; a deviation in COUNT
-is the signal, not the lines themselves):
+8 local (gitignored) apartment-launch logs (verify with the greps; a deviation
+in COUNT is the signal, not the lines themselves):
 
 | Count | Pattern (grep) | Why benign |
 |---|---|---|
@@ -45,7 +48,7 @@ lines; the DLSS and seed lines appear on any rendering launch.
 1. **Exception-exit hang.** A `Traceback (most recent call last):` in a sim
    log, especially followed by `python.sh: line 73: … Killed` (the shell had
    to SIGKILL a kit that threw during shutdown and never exited — it holds
-   the machine's only GPU meanwhile). Committed examples:
+   the machine's only GPU meanwhile). Local (gitignored) examples:
    `t3_5_contact_side.log` (NameError → 22-min hang → Killed),
    `t2_4_viewer.log` (teardown AttributeError, log ends mid-shutdown).
 2. **kvdb contention.** Any line mentioning `kvdb` — the T3.5 concurrency

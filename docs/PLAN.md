@@ -1466,8 +1466,9 @@ cabinet with no penetration.
   processes (a `kvdb` log line is the detector — see the signal patterns in
   `results/logs/README.md`). Separately, 2 of the 26 probe-era logs end in an
   exception-exit HANG: the kit process throws during shutdown, never exits, and
-  holds the GPU until SIGKILLed (~22 min in the worst case). Both committed
-  examples: `results/logs/t3_5_contact_side.log` (NameError traceback, then
+  holds the GPU until SIGKILLed (~22 min in the worst case). Both examples are
+  local, gitignored logs (`results/logs/*` is ignored; only its README is
+  tracked): `results/logs/t3_5_contact_side.log` (NameError traceback, then
   `python.sh: line 73: … Killed`) and `results/logs/t2_4_viewer.log` (viewport
   controller AttributeError during teardown, log ends mid-shutdown). Guards now
   in place: automated rule-1 preflight (`duck_embody/sim/preflight.py`, wired

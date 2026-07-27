@@ -4,9 +4,16 @@ ORCHESTRATOR-RUN ONLY (AGENTS.md rule 1 — this launches a kit process).
 This script was written by a no-sim session and has NEVER been executed; the
 orchestrator runs it exactly once per invocation of:
 
-    BUDGET=$(~/IsaacLab/isaaclab.sh -p scripts/smoke_gap_hunt.py --print-budget)
+    BUDGET=$(~/IsaacLab/isaaclab.sh -p scripts/smoke_gap_hunt.py --print-budget \\
+        | tail -n1)
     PYTHONUNBUFFERED=1 timeout --kill-after=60 "$BUDGET" \\
         ~/IsaacLab/isaaclab.sh -p scripts/smoke_gap_hunt.py
+
+The ``tail -n1`` is load-bearing (measured): ``isaaclab.sh -p`` writes terminal
+escape codes and an ``[INFO] Using python from: ...`` banner to STDOUT ahead of
+the number, so a bare capture is a multi-line string and ``timeout`` dies with
+"invalid time interval" before the smoke starts. The budget number is the last
+line printed; stderr redirection alone does NOT fix it (the banner is stdout).
 
 The ``timeout --kill-after`` wrapper is G7 guard (3): 2 of 26 probe-era logs
 ended in an exception-exit hang that held the GPU for 22 minutes, so every sim
@@ -65,6 +72,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from duck_embody.env.apartment_layout import (  # noqa: E402
     BODY_RADIUS_M,
     LAYOUT,
+    clearance,
     grid,
     path_length,
     spawn_pose,
@@ -234,8 +242,12 @@ def estimated_policy_seconds() -> float:
     y4 = north + BODY_RADIUS_M + LAYOUT["wall_thickness"]
     total += reach_along(2.0, y4, 0.0) / MOVE_SPEED_MPS + 2.0
     # S5: out-and-back along the A* route, with the macro time margin, plus a
-    # per-waypoint allowance for turn_to_heading (its 8 s timeout is the
-    # worst case; typical turns finish in 1-2 s — budget half the timeout).
+    # per-leg allowance for turn_to_heading (its 8 s timeout is the worst
+    # case; typical turns finish in 1-2 s — budget half the timeout).
+    # length/0.3 is a conservative UPPER bound on macro legs: the navigator's
+    # line-of-sight shortcuts issue fewer, longer moves, and the headroom
+    # also covers its bounded bump-recovery send_velocity calls (the seed-101
+    # dry run measured <= 62 policy-seconds against this term's ~126).
     g = grid()
     route = g.path(spawn_pose(101)[0], target_point())
     length = path_length(route) if route else 6.0
@@ -289,10 +301,10 @@ def tee_process_output(capture_path: Path):
 
 
 #: (pattern, expected count per apartment launch) — measured across all 8
-#: committed apartment-launch logs; the authoritative table with rationale is
-#: results/logs/README.md. NOTE: if the owner ever elects G4 option B (fetch
-#: the SimPBR sibling modules), the three MDL rows drop to zero and this list
-#: must be updated with the re-run evidence.
+#: local (gitignored) apartment-launch logs; the authoritative table with
+#: rationale is results/logs/README.md. NOTE: if the owner ever elects G4
+#: option B (fetch the SimPBR sibling modules), the three MDL rows drop to
+#: zero and this list must be updated with the re-run evidence.
 BENIGN_ALLOWLIST: tuple[tuple[str, int], ...] = (
     ("CreateJoint - cannot create a joint between static bodies", 45),
     ("MDLC:COMPILER", 3),
@@ -369,10 +381,38 @@ class ScriptedNavigator:
     this smoke JSON lives under results/logs (never pooled, never scored).
     """
 
+    #: Planning-grid inflation. 0.12 m, not the scoring grid's 0.08 m body
+    #: radius: cell centres then clear obstacles by > 0.12 m, so a chord
+    #: between ADJACENT route vertices (<= 0.0354 m off a centre) keeps true
+    #: clearance >= 0.0846 m > the 0.08 m contact radius — the polyline is
+    #: drivable BY CONSTRUCTION. 0.135 m is the tightest doorway-crossing cell
+    #: clearance in the layout, so 0.12 m still leaves every doorway open.
+    PLAN_INFLATE_M = 0.12
+    #: A next-hop chord (to the immediate waypoint) carries a small margin
+    #: over the contact radius.
+    NEXT_HOP_CLEAR_M = BODY_RADIUS_M + 0.02
+    #: A line-of-sight SHORTCUT (skipping vertices) must carry a full margin —
+    #: shortcuts are exactly how the corner-cut wedge happened, and the margin
+    #: has to absorb move()'s documented up-to-0.04 m quantisation overshoot
+    #: plus accumulated dead-reckoning error (the 1.02-factor dry run measured
+    #: a 0.10 m-clearance shortcut ending in real corner contact).
+    LOS_CLEAR_M = BODY_RADIUS_M + 0.05
+    #: Stop this short of the aimed waypoint: move() overshoots by up to
+    #: 0.04 m (0.2 s chunk quantisation, doc 05 §4.2), and commanding the full
+    #: chord converts a margin-legal chord ENDPOINT into contact. The 0.15 m
+    #: prune still counts the waypoint as reached.
+    STOP_SHORT_M = 0.05
+    #: Exemption for the first stretch of a chord (departing from a surface
+    #: after a bump — walls block >= 0.19 m of any crossing chord, so the
+    #: exemption cannot let a chord tunnel through one).
+    CHORD_START_EXEMPT_M = 0.10
+    CHORD_MAX_M = 1.2
+
     def __init__(self, goals: list[tuple[tuple[float, float], float]]):
         from duck_embody.agent.providers.base import Usage  # pure import
 
         self._usage_cls = Usage
+        self._plan_grid = None  # built lazily; a padded FreeSpaceGrid
         self.goals = goals  # [(xy, declare_when_within_m)], stage order
         self.stage_idx = 0
         self.turn_in_stage = 0
@@ -381,6 +421,12 @@ class ScriptedNavigator:
         self.did_precision_tools = False
         self.did_bump_probe = False
         self.calls_made = 0
+        # Stall detector state: (current waypoint, distance to it) at the last
+        # navigate decision.
+        self._stall_ref: tuple[tuple[float, float], float] | None = None
+        self._stall_turns = 0
+        # Consecutive bump recoveries without intervening progress.
+        self._bump_recoveries = 0
 
     # -- provider protocol ---------------------------------------------------
 
@@ -479,58 +525,181 @@ class ScriptedNavigator:
                                duration_s=0.5),
                 ]
             if self.stage_idx == 0 and not self.did_bump_probe:
-                # A deliberate auto-stopped bump against the counter run just
-                # before declaring: stage 2's first observation must then show
-                # bumped=false, contact=[] (the reset regression, end to end).
+                # A deliberate auto-stopped bump against the counter run,
+                # declared in the SAME turn: stage 2's first observation must
+                # then show bumped=false, contact=[] (the reset regression,
+                # end to end). The declare must ride the same turn — any later
+                # clean motion would clear last_bumped and the boundary check
+                # would test nothing. 0.7 m: from anywhere in the 0.2 m
+                # declare disc (plus drift) the southward ray hits the
+                # counter/stove face and stops at y~0.433, still inside the
+                # 0.35 m true target radius.
                 self.did_bump_probe = True
-                return [
+                calls = [
                     self._call("turn_to_heading", heading_deg=270.0),
-                    self._call("move", distance_m=0.4),
+                    self._call("move", distance_m=0.7),
+                    self._call("declare_done"),
                 ]
+                self._advance_stage()
+                return calls
             call = self._call("declare_done")
             self._advance_stage()
             return [call]
 
-        # -- navigate: waypoints on the free-space grid ----------------------
+        # -- bump reaction (reads status.bumped/contact, as a model would) ----
+        if (state.get("status") or {}).get("bumped"):
+            # The last motion ended in real contact. Disengage by walking back
+            # the way we came (that space was just driven through) — with an
+            # ESCALATING distance, a sidestep AWAY from the felt side (the S3
+            # recovery recipe, from the same status.contact a model reads),
+            # and a bounded give-up. Grinding forward instead is what creeps
+            # the dead-reckoned estimate off the true pose (move() credits the
+            # estimate with the bump chunk's commanded distance every retry
+            # while the robot stays put — measured off-sim, 0.5-0.9 m of
+            # compounded drift), and an UNbounded back-out/re-approach cycle
+            # is just a slower wedge (also measured).
+            self.waypoints = None
+            self._stall_ref = None
+            self._stall_turns = 0
+            self._bump_recoveries += 1
+            if self._bump_recoveries > 5:
+                call = self._call("declare_done")  # honest give-up: scored
+                self._advance_stage()
+                return [call]
+            back_m = min(0.10 + 0.05 * (self._bump_recoveries - 1), 0.25)
+            calls = [self._call("send_velocity", vx=-0.1, vy=0.0, wz=0.0,
+                                duration_s=round(back_m / 0.1, 1))]
+            felt = (state.get("status") or {}).get("contact") or []
+            vy = 0.0
+            if "left_leg" in felt and "right_leg" not in felt:
+                vy = -0.1  # obstacle felt on the left: step right
+            elif "right_leg" in felt and "left_leg" not in felt:
+                vy = 0.1
+            if vy:
+                calls.append(self._call("send_velocity", vx=0.0, vy=vy,
+                                        wz=0.0, duration_s=1.0))
+            return calls
+
+        # -- navigate: line-of-sight chords over the A* polyline --------------
         if self.waypoints is None:
-            route = grid().path((x, y), goal_xy)
+            route = self._planner().path((x, y), goal_xy)
             if route is None:
                 return [self._call("get_observation")]  # honest stall
-            step_m = 0.3  # dense waypoints: straight moves stay in free cells
-            waypoints, acc = [], 0.0
-            for a, b in zip(route, route[1:]):
-                acc += math.dist(a, b)
-                if acc >= step_m:
-                    waypoints.append(b)
-                    acc = 0.0
-            waypoints.append(goal_xy)
-            self.waypoints = waypoints
+            # ALL polyline vertices, planned on the PADDED grid. The earlier
+            # every-0.3 m densification (on the 0.08 m grid) let the commanded
+            # chord CUT THE CORNER around wall B1's north tip at 0.06-0.075 m
+            # true clearance — under the 0.08 m body radius, so stage 2 wedged
+            # against real contact until the turn cap (measured off-sim
+            # against the layout geometry, nav_debug dry run). Density is
+            # handled by the 0.15 m prune; long straight moves by the
+            # line-of-sight shortcut below; corner safety by _chord_clear.
+            self.waypoints = [tuple(p) for p in route[1:]] + [tuple(goal_xy)]
 
         while self.waypoints and math.dist((x, y), self.waypoints[0]) < 0.15:
             self.waypoints.pop(0)
         if not self.waypoints:
             # Drift ate the plan: replan from the current estimate (bounded).
-            self.replans += 1
-            self.waypoints = None
-            if self.replans > 4:
-                call = self._call("declare_done")  # honest give-up: scored
-                self._advance_stage()
-                return [call]
-            return [self._call("get_observation")]
+            return self._force_replan()
+
+        # Stall detector: two consecutive navigate decisions with < 0.05 m of
+        # progress toward the SAME waypoint means the robot is bump-wedged (or
+        # drift-blind) — the identical blocked move would otherwise repeat
+        # until the 40-turn stage cap, which is exactly how the corner-cut
+        # wedge stayed silent. Progress is read from the position_estimate
+        # deltas, the same channel a model would have to use.
+        wp0, d_now = self.waypoints[0], math.dist((x, y), self.waypoints[0])
+        stalled = (
+            self._stall_ref is not None
+            and self._stall_ref[0] == wp0
+            and self._stall_ref[1] - d_now < 0.05
+        )
+        self._stall_turns = self._stall_turns + 1 if stalled else 0
+        if not stalled:
+            self._bump_recoveries = 0  # real progress: recovery worked
+        self._stall_ref = (wp0, d_now)
+        if self._stall_turns >= 2:
+            return self._force_replan()
+
+        if not self._chord_clear((x, y), self.waypoints[0], self.NEXT_HOP_CLEAR_M):
+            # The immediate chord is blocked (estimate drifted into the
+            # inflation margin, or the plan is stale): replan, bounded.
+            return self._force_replan()
+        # Aim at the FARTHEST waypoint reachable by a clear straight chord —
+        # long moves where the corridor is straight, vertex-by-vertex at
+        # corners, and never a shortcut that dips near the body radius.
+        target_idx = 0
+        while (
+            target_idx + 1 < len(self.waypoints)
+            and math.dist((x, y), self.waypoints[target_idx + 1]) <= self.CHORD_MAX_M
+            and self._chord_clear(
+                (x, y), self.waypoints[target_idx + 1], self.LOS_CLEAR_M
+            )
+        ):
+            target_idx += 1
+        del self.waypoints[:target_idx]
 
         wx, wy = self.waypoints[0]
         bearing = math.degrees(math.atan2(wy - y, wx - x)) % 360.0
         err = (bearing - compass + 180.0) % 360.0 - 180.0
         if abs(err) > 10.0:
             return [self._call("turn_to_heading", heading_deg=round(bearing, 1))]
-        return [self._call("move",
-                           distance_m=round(min(1.5, math.dist((x, y), (wx, wy))), 3))]
+        commanded = min(1.5, max(0.08, math.dist((x, y), (wx, wy)) - self.STOP_SHORT_M))
+        return [self._call("move", distance_m=round(commanded, 3))]
+
+    def _planner(self):
+        """The padded planning grid (see PLAN_INFLATE_M), built once."""
+        if self._plan_grid is None:
+            from duck_embody.env.apartment_layout import FreeSpaceGrid
+
+            self._plan_grid = FreeSpaceGrid(inflate=self.PLAN_INFLATE_M)
+        return self._plan_grid
+
+    def _chord_clear(
+        self, a: tuple[float, float], b: tuple[float, float], min_clear: float
+    ) -> bool:
+        """A straight drive from ``a`` to ``b`` keeps true clearance >= min_clear.
+
+        Sampled every 0.01 m against the layout's TRUE obstacle rectangles —
+        never a cell lookup: a free CELL of the scoring grid may contain
+        points as little as ~0.045 m from a wall, which is how the corner-cut
+        chord looked clean while producing real contact. The first
+        CHORD_START_EXEMPT_M is exempt so the robot can drive AWAY from a
+        surface it is resting against after a bump.
+        """
+        length = math.dist(a, b)
+        if length < 1e-6:
+            return True
+        ux, uy = (b[0] - a[0]) / length, (b[1] - a[1]) / length
+        s = 0.0
+        while s < length:
+            s = min(s + 0.01, length)
+            if s <= self.CHORD_START_EXEMPT_M:
+                continue
+            px, py = a[0] + ux * s, a[1] + uy * s
+            if clearance(px, py) < min_clear:
+                return False
+        return True
+
+    def _force_replan(self):
+        """Drop the plan and replan from the current estimate, bounded."""
+        self.replans += 1
+        self.waypoints = None
+        self._stall_ref = None
+        self._stall_turns = 0
+        if self.replans > 4:
+            call = self._call("declare_done")  # honest give-up: scored
+            self._advance_stage()
+            return [call]
+        return [self._call("get_observation")]
 
     def _advance_stage(self) -> None:
         self.stage_idx = min(self.stage_idx + 1, len(self.goals) - 1)
         self.turn_in_stage = -1  # the send() wrapper increments to 0
         self.waypoints = None
         self.replans = 0
+        self._stall_ref = None
+        self._stall_turns = 0
+        self._bump_recoveries = 0
 
 
 # ---------------------------------------------------------------------------
@@ -970,6 +1139,24 @@ def scenario_s5(report: Report, session, out_dir: Path) -> None:
         if "final" not in document:
             problems.append("no final block")
 
+        # BOTH stages must end in the declare-based success — this is the
+        # mini-trial's premise, asserted explicitly. Without it a navigator
+        # that wedges against a wall until the 40-turn cap (the corner-cut
+        # defect this scenario's dry run caught) still passes every other S5
+        # check — audit included, since tool coverage completes in stage 1 —
+        # and the degradation is silent.
+        from duck_embody.tasks.find_kitchen import OUTCOME_SUCCESS
+
+        outcome = final.get("outcome") or {}
+        for stage_name in ("find_kitchen", "return_home"):
+            if outcome.get(stage_name) != OUTCOME_SUCCESS:
+                problems.append(
+                    f"{stage_name} outcome {outcome.get(stage_name)!r} != "
+                    f"{OUTCOME_SUCCESS!r} — the scripted navigator must "
+                    "complete both stages (wedge/cap/give-up must FAIL here, "
+                    "not pass silently)"
+                )
+
         # audit_trial.py conformance (the doc-06-§4 gate).
         sys.path.insert(0, str(REPO_ROOT / "scripts"))
         import audit_trial
@@ -1052,8 +1239,9 @@ def scenario_s5(report: Report, session, out_dir: Path) -> None:
 
 def main() -> int:
     if "--print-budget" in sys.argv:
-        # Pre-kit: pure layout math only. Prints ONE number (seconds) for the
-        # orchestrator's `timeout` wrapper.
+        # Pre-kit: pure layout math only. Prints the budget (seconds) as the
+        # LAST stdout line — the isaaclab.sh wrapper prepends its own banner
+        # to stdout, so the documented run line captures via `tail -n1`.
         print(wallclock_budget_s())
         return 0
 
