@@ -1691,7 +1691,7 @@ confirmation (rule 7); acceptance (owner sign-off) still open.
 - **Unit tests:** n/a.
 - **Smoke test [no sim]:** every README number traces to a JSON field; links
   resolve; GIFs render on GitHub.
-- **Acceptance:** owner sign-off.
+- **Acceptance:** owner sign-off. **GIVEN 2026-07-27** — owner reviewed the README and approved the publishable state. The project is complete: 21/21 tasks, all gates passed, batch published under config_hash cf29ec164676.
 
 ---
 
