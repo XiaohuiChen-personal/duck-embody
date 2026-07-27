@@ -59,6 +59,15 @@ POSE_TRACE_EVERY = 10
 BUMP_FORCE_N = 1.0
 BUMP_DEBOUNCE_STEPS = 3
 
+#: Fall thresholds, MIRRORED from DuckEmbodyEnvCfg (doc 02 §5). Duplicated
+#: rather than imported because embody_env_cfg pulls in the parent repo and
+#: needs a running kit app, while this module's pure half must stay importable
+#: for the unit tests. `tests/test_wrapper_math.py` asserts the two agree, so
+#: the copy cannot drift — the failure it would otherwise cause is a fall
+#: report whose stated threshold is not the one that actually fired.
+FALL_MIN_HEIGHT_M = 0.09
+FALL_TILT_LIMIT_DEG = 60.0
+
 # --- Motion macros (doc 02 §6) ---------------------------------------------
 # These live in the playback layer, not the tool layer: doc 02 owns the macros
 # and `tools.py` only wires tool schemas to them. Putting them here means the
@@ -156,6 +165,10 @@ class ExecResult:
     clamp_notes: list[str] = field(default_factory=list)
     stopped_early: bool = False
     stop_reason: str = ""
+    #: Why the trial ended, captured at the terminating step (height, tilt,
+    #: which term fired, and the command in flight). None unless this call
+    #: terminated. SCORING/AUDIT ONLY — never shown to the model.
+    fall_diagnostics: dict | None = None
     #: Distance the DEAD-RECKONING integrator believes was covered. This is what
     #: the model is told; `true_displacement_m` above is scoring-only and never
     #: shown. Set by `move`; the gap between them is the drift being measured.
@@ -204,6 +217,7 @@ class PolicyPlayback:
         # 2-step chunk, so bumps would have been undetectable in exactly the
         # runs that record video — including T2.4's physics gate.
         self._bump_run = 0
+        self._fall_diagnostics: dict | None = None
         # Likewise a persistent control-step counter for pose_trace sampling.
         # doc 06 §5.3 pins that trace to 5 Hz; a per-call index would restart at
         # 0 in every 2-step recording chunk, fire `step % 10 == 0` on the first
@@ -297,6 +311,15 @@ class PolicyPlayback:
         yaw = math.atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
         return wrap_deg(math.degrees(yaw))
 
+    def tilt_deg(self) -> float:
+        """Trunk tilt from vertical, in degrees. SCORING/DIAGNOSTIC ONLY.
+
+        Derived from projected gravity, the same signal `mdp.bad_orientation`
+        terminates on, so a logged tilt and the term that fired cannot disagree.
+        """
+        gz = float(self._robot.data.projected_gravity_b[0][2])
+        return math.degrees(math.acos(max(-1.0, min(1.0, -gz))))
+
     def bump_contact_force(self) -> float:
         """Peak contact force (N) over every non-foot body. See __init__."""
         forces = self._contact_sensor.data.net_forces_w[0, self._bump_body_ids]
@@ -371,6 +394,8 @@ class PolicyPlayback:
             # earlier — is the closest true pose we can honestly report.
             pre_step_xy = self.true_xy()
             pre_step_heading = self.compass_deg()
+            pre_step_height = self.true_height()
+            pre_step_tilt = self.tilt_deg()
 
             with torch.no_grad():
                 actions = self.policy(self._obs)
@@ -394,6 +419,31 @@ class PolicyPlayback:
                 terminated_this_call = True
                 last_live_xy = pre_step_xy
                 last_live_heading = pre_step_heading
+                # WHY it ended, captured here or not at all. A fall ends the
+                # whole trial (doc 01 §8), making it the single most
+                # consequential event in a run — and T3.5 recorded one that
+                # could not be audited afterwards: the JSON said `fell` with no
+                # height, no tilt and no term, and the audit video stops at the
+                # chunk boundary BEFORE the topple (see `_fall_frames`), so
+                # neither artifact could say whether it was genuine.
+                #
+                # These are the PRE-STEP values, for the same reason the pose is:
+                # the env has already auto-reset, so live state now describes a
+                # healthy duck standing at spawn.
+                self._fall_diagnostics = {
+                    "height_m": round(pre_step_height, 4),
+                    "tilt_deg": round(pre_step_tilt, 2),
+                    "terms": {
+                        name: bool(
+                            self.base_env.termination_manager.get_term(name)[0]
+                        )
+                        for name in self.base_env.termination_manager.active_terms
+                    },
+                    "height_threshold_m": FALL_MIN_HEIGHT_M,
+                    "tilt_threshold_deg": FALL_TILT_LIMIT_DEG,
+                    "commanded": (cvx, cvy, cwz),
+                    "policy_seconds_into_call": round(steps_done * CONTROL_DT, 3),
+                }
                 break
 
             last_live_xy = self.true_xy()
@@ -437,6 +487,7 @@ class PolicyPlayback:
             policy_seconds=steps_done * CONTROL_DT,
             bumped=bumped,
             fell=self._fell,
+            fall_diagnostics=self._fall_diagnostics if terminated_this_call else None,
             pose_trace=pose_trace,
             sampled_xy=sampled_xy,
             true_pose=(end_xy[0], end_xy[1], end_heading),
@@ -458,6 +509,9 @@ class PolicyPlayback:
         total.steps += part.steps
         total.policy_seconds += part.policy_seconds
         total.bumped = total.bumped or part.bumped
+        # Diagnostics belong to the chunk that terminated, so never overwrite a
+        # captured one with a later None.
+        total.fall_diagnostics = part.fall_diagnostics or total.fall_diagnostics
         total.fell = part.fell
         total.sampled_xy.extend(part.sampled_xy)
         total.true_pose = part.true_pose

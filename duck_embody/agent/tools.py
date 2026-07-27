@@ -710,6 +710,12 @@ def _record_motion(
         "distance_moved_m": distance_moved_m,
         "bumped": bool(result.bumped),
         "fell": bool(result.fell),
+        # WHY it ended — height, tilt, which term fired, and the command in
+        # flight. A fall ends the whole TRIAL (doc 01 §8), so it is the most
+        # consequential event in a run; T3.5 produced one that could not be
+        # audited afterwards because the log recorded only the boolean. None
+        # on every non-terminating call.
+        "fall_diagnostics": result.fall_diagnostics,
         "stop_reason": result.stop_reason,
         "counted_as_bump": bool(result.bumped and counts_bump),
     }

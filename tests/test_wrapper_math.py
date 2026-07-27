@@ -139,3 +139,54 @@ class TestHullMatchesTrainedPolicy:
         seconds_per_metre = 1.0 / VY_RANGE[1]
         assert seconds_per_metre > 8.0
         assert math.isclose(seconds_per_metre, 9.009, rel_tol=1e-3)
+
+
+class TestFallThresholdsMirrorTheEnvCfg:
+    """`policy_wrapper` duplicates the fall thresholds instead of importing them
+    (importing `embody_env_cfg` pulls in the parent repo and needs a running kit
+    app, while this module's pure half must stay unit-testable).
+
+    A drift here would not crash: the fall REPORT would simply cite a threshold
+    that is not the one that actually fired, so an audit of the most
+    consequential event in a trial would be quietly reading fiction.
+    """
+
+    def test_the_two_copies_agree(self):
+        import re
+        from pathlib import Path
+
+        from duck_embody.sim.policy_wrapper import (
+            FALL_MIN_HEIGHT_M,
+            FALL_TILT_LIMIT_DEG,
+        )
+
+        src = (
+            Path(__file__).resolve().parent.parent
+            / "duck_embody" / "env" / "embody_env_cfg.py"
+        ).read_text()
+
+        height = re.search(r"^FALL_MIN_HEIGHT_M\s*=\s*([0-9.]+)", src, re.M)
+        tilt = re.search(r"^FALL_TILT_LIMIT_RAD\s*=\s*math\.radians\(([0-9.]+)\)", src, re.M)
+        assert height, "FALL_MIN_HEIGHT_M not found in embody_env_cfg.py"
+        assert tilt, "FALL_TILT_LIMIT_RAD not found in embody_env_cfg.py"
+
+        assert float(height.group(1)) == FALL_MIN_HEIGHT_M
+        assert float(tilt.group(1)) == FALL_TILT_LIMIT_DEG
+
+
+class TestFallDiagnosticsAreScoringOnly:
+    """The diagnostics exist to audit a fall, not to inform the model.
+
+    Height, tilt and the termination term are ground truth the model has no
+    sensor for. The model-facing half of this rule is asserted in
+    tests/test_tools.py, where the per-tool payload allowlist lives.
+    """
+
+    def test_execresult_carries_them_and_they_default_to_none(self):
+        from duck_embody.sim.policy_wrapper import ExecResult
+
+        assert "fall_diagnostics" in ExecResult.__dataclass_fields__
+        assert ExecResult(
+            commanded=(0.0, 0.0, 0.0), duration_s=0.0, steps=0,
+            policy_seconds=0.0, bumped=False, fell=False,
+        ).fall_diagnostics is None

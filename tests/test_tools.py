@@ -274,6 +274,9 @@ class FakePlayback:
         #: the corrected clause was written for. `move`'s side is covered by
         #: `stop_after_chunks`; this is the `execute()` side.
         self.execute_stop_after_steps: int | None = None
+        #: Mirrors PolicyPlayback._fall_diagnostics: stamped on the
+        #: ExecResult only by the call that actually terminated.
+        self.fall_diagnostics: dict | None = None
         #: Compass reading `move()` ends on; None = the heading never changes.
         #: The real robot's does: T1.3 measured ~1.8 deg/s of yaw under a
         #: straight command, and a bump-stopped move can end rotated. A fake that
@@ -338,6 +341,7 @@ class FakePlayback:
             policy_seconds=steps * CONTROL_DT,
             bumped=self.bumped,
             fell=self._fell,
+            fall_diagnostics=self.fall_diagnostics if stop_reason == "fell" else None,
             clamp_notes=notes,
             stop_reason=stop_reason,
         )
@@ -1940,3 +1944,39 @@ class TestConstantsAgreeWithTheFrozenConfig:
         assert len(matches) == 1
         bearings = tuple(float(v) for v in matches[0].split(","))
         assert bearings == LOOK_AROUND_BEARINGS_DEG
+
+
+class TestFallDiagnosticsNeverReachTheModel:
+    """A fall's diagnostics (height, tilt, which term fired) are ground truth
+    the model has no sensor for — they ride the SCORING channel only.
+
+    Added after T3.5 logged a fall that could not be audited: the record held
+    only the boolean. Fixing that put real ground truth into the pipeline, so
+    the leak guard has to cover it too.
+    """
+
+    def test_no_tool_payload_may_carry_them(self):
+        for name, (required, optional) in PAYLOAD_KEYS.items():
+            allowed = required | optional
+            for banned in ("fall_diagnostics", "tilt_deg", "height_m", "terms"):
+                assert banned not in allowed, f"{name} would expose {banned}"
+
+    def test_a_falling_move_puts_them_on_the_scoring_channel_only(self):
+        playback = FakePlayback(compass_deg=0.0)
+        playback.execute_stop_after_steps = duration_to_steps(0.2)
+        playback.fall_diagnostics = {
+            "height_m": 0.061, "tilt_deg": 74.3,
+            "terms": {"fell_over": True, "fell_low": False},
+        }
+        context = make_context(playback=playback)
+
+        outcome = dispatch(call("send_velocity", vx=0.2, vy=0.0, wz=0.0,
+                                duration_s=3.0), context)
+
+        assert outcome.execution is not None
+        assert outcome.execution.get("fall_diagnostics") == playback.fall_diagnostics, (
+            "the audit record must carry WHY the trial ended"
+        )
+        blob = json.dumps(outcome.payload)
+        for banned in ("fall_diagnostics", "tilt_deg", "height_m", "74.3", "0.061"):
+            assert banned not in blob, f"{banned} leaked into the model payload"
