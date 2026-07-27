@@ -1,0 +1,4556 @@
+{
+  "trial_id": "fable5_seed102",
+  "config": {
+    "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+    "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "model": "claude-fable-5",
+    "model_config": "fable5",
+    "seed": 102,
+    "spawn": {
+      "xy": [
+        4.3,
+        2.2
+      ],
+      "heading_deg": 270.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-27T08:33:47Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t001_0.jpg",
+          "frames/fable5_seed102/t001_1.jpg",
+          "frames/fable5_seed102/t001_2.jpg",
+          "frames/fable5_seed102/t001_3.jpg"
+        ],
+        "compass_deg": 267.7,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I should start by looking around to get my bearings and understand what's in my immediate surroundings.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.306,
+        "y": 2.1863,
+        "heading_deg": 267.67
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 268 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 274,
+        "output_tokens": 42,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.008895
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-27T08:34:30Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t002_0.jpg"
+        ],
+        "compass_deg": 267.7,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I'm getting a sense of the room layout from different angles\u2014there's a bed to the south, a doorway or passage to the north with what looks like a chair nearby, and some dark furniture objects to the east and west. I'm positioned at coordinates 4.3, 2.2, and I'm starting to map this out as a bedroom to explore further.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Bedroom",
+              "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object)."
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Bedroom"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Bedroom",
+              "direction_deg": 90,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "Mode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 90
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 6,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 90 deg, 5.6 policy-s",
+        "policy_seconds_used": 5.6,
+        "pose_trace": [
+          [
+            4.306026935577393,
+            2.1863346099853516
+          ],
+          [
+            4.309991359710693,
+            2.18092942237854
+          ],
+          [
+            4.267745494842529,
+            2.179072141647339
+          ],
+          [
+            4.283674716949463,
+            2.1721930503845215
+          ],
+          [
+            4.291603088378906,
+            2.167358160018921
+          ],
+          [
+            4.259700298309326,
+            2.181349754333496
+          ],
+          [
+            4.287533283233643,
+            2.159290075302124
+          ],
+          [
+            4.273664951324463,
+            2.1701600551605225
+          ],
+          [
+            4.261250019073486,
+            2.179215431213379
+          ],
+          [
+            4.277655124664307,
+            2.148838758468628
+          ],
+          [
+            4.259821891784668,
+            2.1795990467071533
+          ],
+          [
+            4.260834693908691,
+            2.168612003326416
+          ],
+          [
+            4.262416362762451,
+            2.15140438079834
+          ],
+          [
+            4.254247188568115,
+            2.1879124641418457
+          ],
+          [
+            4.252687931060791,
+            2.1563920974731445
+          ],
+          [
+            4.252017498016357,
+            2.165001392364502
+          ],
+          [
+            4.253637313842773,
+            2.188525438308716
+          ],
+          [
+            4.238336563110352,
+            2.155118942260742
+          ],
+          [
+            4.251999378204346,
+            2.183459520339966
+          ],
+          [
+            4.248101234436035,
+            2.1821823120117188
+          ],
+          [
+            4.229730129241943,
+            2.1659250259399414
+          ],
+          [
+            4.256450176239014,
+            2.1948156356811523
+          ],
+          [
+            4.2348103523254395,
+            2.1820762157440186
+          ],
+          [
+            4.233072757720947,
+            2.1825525760650635
+          ],
+          [
+            4.2595624923706055,
+            2.197439670562744
+          ],
+          [
+            4.223618507385254,
+            2.1900956630706787
+          ],
+          [
+            4.248126983642578,
+            2.1944565773010254
+          ],
+          [
+            4.255688190460205,
+            2.199582576751709
+          ],
+          [
+            4.227683067321777,
+            2.2024943828582764
+          ],
+          [
+            4.242053985595703,
+            2.200491189956665
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 5.600000000000002,
+            "pose_trace": [
+              [
+                4.306026935577393,
+                2.1863346099853516
+              ],
+              [
+                4.309991359710693,
+                2.18092942237854
+              ],
+              [
+                4.267745494842529,
+                2.179072141647339
+              ],
+              [
+                4.283674716949463,
+                2.1721930503845215
+              ],
+              [
+                4.291603088378906,
+                2.167358160018921
+              ],
+              [
+                4.259700298309326,
+                2.181349754333496
+              ],
+              [
+                4.287533283233643,
+                2.159290075302124
+              ],
+              [
+                4.273664951324463,
+                2.1701600551605225
+              ],
+              [
+                4.261250019073486,
+                2.179215431213379
+              ],
+              [
+                4.277655124664307,
+                2.148838758468628
+              ],
+              [
+                4.259821891784668,
+                2.1795990467071533
+              ],
+              [
+                4.260834693908691,
+                2.168612003326416
+              ],
+              [
+                4.262416362762451,
+                2.15140438079834
+              ],
+              [
+                4.254247188568115,
+                2.1879124641418457
+              ],
+              [
+                4.252687931060791,
+                2.1563920974731445
+              ],
+              [
+                4.252017498016357,
+                2.165001392364502
+              ],
+              [
+                4.253637313842773,
+                2.188525438308716
+              ],
+              [
+                4.238336563110352,
+                2.155118942260742
+              ],
+              [
+                4.251999378204346,
+                2.183459520339966
+              ],
+              [
+                4.248101234436035,
+                2.1821823120117188
+              ],
+              [
+                4.229730129241943,
+                2.1659250259399414
+              ],
+              [
+                4.256450176239014,
+                2.1948156356811523
+              ],
+              [
+                4.2348103523254395,
+                2.1820762157440186
+              ],
+              [
+                4.233072757720947,
+                2.1825525760650635
+              ],
+              [
+                4.2595624923706055,
+                2.197439670562744
+              ],
+              [
+                4.223618507385254,
+                2.1900956630706787
+              ],
+              [
+                4.248126983642578,
+                2.1944565773010254
+              ],
+              [
+                4.255688190460205,
+                2.199582576751709
+              ],
+              [
+                4.227683067321777,
+                2.2024943828582764
+              ],
+              [
+                4.242053985595703,
+                2.200491189956665
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.309991359710693,
+                2.18092942237854
+              ],
+              [
+                4.267745494842529,
+                2.179072141647339
+              ],
+              [
+                4.283674716949463,
+                2.1721930503845215
+              ],
+              [
+                4.291603088378906,
+                2.167358160018921
+              ],
+              [
+                4.259700298309326,
+                2.181349754333496
+              ],
+              [
+                4.287533283233643,
+                2.159290075302124
+              ],
+              [
+                4.273664951324463,
+                2.1701600551605225
+              ],
+              [
+                4.261250019073486,
+                2.179215431213379
+              ],
+              [
+                4.277655124664307,
+                2.148838758468628
+              ],
+              [
+                4.259821891784668,
+                2.1795990467071533
+              ],
+              [
+                4.260834693908691,
+                2.168612003326416
+              ],
+              [
+                4.262416362762451,
+                2.15140438079834
+              ],
+              [
+                4.254247188568115,
+                2.1879124641418457
+              ],
+              [
+                4.252687931060791,
+                2.1563920974731445
+              ],
+              [
+                4.252017498016357,
+                2.165001392364502
+              ],
+              [
+                4.253637313842773,
+                2.188525438308716
+              ],
+              [
+                4.238336563110352,
+                2.155118942260742
+              ],
+              [
+                4.251999378204346,
+                2.183459520339966
+              ],
+              [
+                4.248101234436035,
+                2.1821823120117188
+              ],
+              [
+                4.229730129241943,
+                2.1659250259399414
+              ],
+              [
+                4.256450176239014,
+                2.1948156356811523
+              ],
+              [
+                4.2348103523254395,
+                2.1820762157440186
+              ],
+              [
+                4.233072757720947,
+                2.1825525760650635
+              ],
+              [
+                4.2595624923706055,
+                2.197439670562744
+              ],
+              [
+                4.223618507385254,
+                2.1900956630706787
+              ],
+              [
+                4.248126983642578,
+                2.1944565773010254
+              ],
+              [
+                4.255688190460205,
+                2.199582576751709
+              ],
+              [
+                4.227683067321777,
+                2.2024943828582764
+              ]
+            ],
+            "true_pose": [
+              4.242053985595703,
+              2.200491189956665,
+              90.95468943415881
+            ],
+            "true_displacement_m": 0.06552058520681828,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.2421,
+        "y": 2.2005,
+        "heading_deg": 90.95
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 268 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 5.6,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 2010,
+        "output_tokens": 823,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.065305
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 3,
+      "global_turn_idx": 3,
+      "timestamp": "2026-07-27T08:34:52Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t003_0.jpg"
+        ],
+        "compass_deg": 91.0,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "Looking at the view ahead, I can see a lavender wall on the right side and an opening to the left that leads into a passage with a brown floor. There's a red bucket visible further back against the wall, and the doorway appears to be just ahead slightly to the left. I should move forward cautiously to explore this space.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.0
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.42 m, 2.3 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 2.28,
+        "pose_trace": [
+          [
+            4.242053985595703,
+            2.200491189956665
+          ],
+          [
+            4.261773109436035,
+            2.201277494430542
+          ],
+          [
+            4.231649875640869,
+            2.2306554317474365
+          ],
+          [
+            4.224680423736572,
+            2.2685048580169678
+          ],
+          [
+            4.25748348236084,
+            2.3138697147369385
+          ],
+          [
+            4.222248077392578,
+            2.3567581176757812
+          ],
+          [
+            4.2394819259643555,
+            2.3944811820983887
+          ],
+          [
+            4.25152587890625,
+            2.4365057945251465
+          ],
+          [
+            4.216415882110596,
+            2.48093318939209
+          ],
+          [
+            4.250662326812744,
+            2.523979425430298
+          ],
+          [
+            4.235057830810547,
+            2.561655282974243
+          ],
+          [
+            4.21591854095459,
+            2.595712661743164
+          ],
+          [
+            4.241187572479248,
+            2.607311964035034
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 2.28,
+            "pose_trace": [
+              [
+                4.242053985595703,
+                2.200491189956665
+              ],
+              [
+                4.261773109436035,
+                2.201277494430542
+              ],
+              [
+                4.231649875640869,
+                2.2306554317474365
+              ],
+              [
+                4.224680423736572,
+                2.2685048580169678
+              ],
+              [
+                4.25748348236084,
+                2.3138697147369385
+              ],
+              [
+                4.222248077392578,
+                2.3567581176757812
+              ],
+              [
+                4.2394819259643555,
+                2.3944811820983887
+              ],
+              [
+                4.25152587890625,
+                2.4365057945251465
+              ],
+              [
+                4.216415882110596,
+                2.48093318939209
+              ],
+              [
+                4.250662326812744,
+                2.523979425430298
+              ],
+              [
+                4.235057830810547,
+                2.561655282974243
+              ],
+              [
+                4.21591854095459,
+                2.595712661743164
+              ],
+              [
+                4.241187572479248,
+                2.607311964035034
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.261773109436035,
+                2.201277494430542
+              ],
+              [
+                4.231649875640869,
+                2.2306554317474365
+              ],
+              [
+                4.224680423736572,
+                2.2685048580169678
+              ],
+              [
+                4.25748348236084,
+                2.3138697147369385
+              ],
+              [
+                4.222248077392578,
+                2.3567581176757812
+              ],
+              [
+                4.2394819259643555,
+                2.3944811820983887
+              ],
+              [
+                4.25152587890625,
+                2.4365057945251465
+              ],
+              [
+                4.216415882110596,
+                2.48093318939209
+              ],
+              [
+                4.250662326812744,
+                2.523979425430298
+              ],
+              [
+                4.235057830810547,
+                2.561655282974243
+              ],
+              [
+                4.21591854095459,
+                2.595712661743164
+              ]
+            ],
+            "true_pose": [
+              4.241187572479248,
+              2.607311964035034,
+              92.58817044606299
+            ],
+            "true_displacement_m": 0.40682169668469237,
+            "distance_moved_m": 0.41600000000000015,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.2412,
+        "y": 2.6073,
+        "heading_deg": 92.59
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 90 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 91 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,91)\nBudget: turns 2/40, policy-seconds 5.6/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search."
+      },
+      "budget": {
+        "stage_turns_used": 3,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 7.88,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4009,
+        "output_tokens": 243,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.056295
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 4,
+      "global_turn_idx": 4,
+      "timestamp": "2026-07-27T08:35:04Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t004_0.jpg",
+          "frames/fable5_seed102/t004_1.jpg",
+          "frames/fable5_seed102/t004_2.jpg",
+          "frames/fable5_seed102/t004_3.jpg"
+        ],
+        "compass_deg": 92.6,
+        "position_estimate": {
+          "x": 4.29,
+          "y": 2.62
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.416
+        }
+      },
+      "model_output": {
+        "thought": "I bumped my head after moving 0.42 meters north, hitting something at head height that's blocking the passage ahead. Looking at the current view, I see a wall with a potted plant near the right corner and brown flooring continuing into what appears to be a larger room or hallway beyond. The distance I traveled before impact was about 0.416 meters, and I'm trying to reconcile what I'm seeing now with the previous heading.\n\nThe wall ahead is roughly 1-1.5 meters away, and the head contact suggests I hit something at my own height rather than something below the camera. I might have passed through a doorway and struck the far wall, though it's hard to judge distances precisely. I should look around to get a better sense of where I am now.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.2412,
+        "y": 2.6073,
+        "heading_deg": 92.59
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 90 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.29, y=2.62  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 93 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93)\nBudget: turns 3/40, policy-seconds 7.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search."
+      },
+      "budget": {
+        "stage_turns_used": 4,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 7.88,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4941,
+        "output_tokens": 354,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.071165
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 5,
+      "global_turn_idx": 5,
+      "timestamp": "2026-07-27T08:36:24Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t005_0.jpg"
+        ],
+        "compass_deg": 92.6,
+        "position_estimate": {
+          "x": 4.29,
+          "y": 2.62
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.416
+        }
+      },
+      "model_output": {
+        "thought": "Looking at the sensor readings from my current position, I'm noticing some inconsistencies in the spatial layout. To the east there's an immediate wall, but to the north I'm seeing what appears to be an open room with a wall about 1.5 meters away and a plant in the corner\u2014yet I hit my head after moving just 0.42 meters, suggesting the wall might be closer than the visual data indicates. The western direction is showing something interesting that I need to investigate further. I hit my head at about 0.4 meters when moving north\u2014probably the doorframe. The small room to the north with the plant looks like a dead-end with no visible exits, so the hallway west with red buckets seems like the better path forward. From what I can see in the 180\u00b0 view, that corridor runs west from here, though I might need to shift slightly north first to clear the divider wall blocking the entrance. I should mark this junction and note the hallway leading west before continuing. The corridor opening is visible in the 180-degree view, positioned slightly right of center, so I should head in that direction rather than risk hitting the divider wall. I already have the view I need, so my next move is to turn west and navigate toward the corridor, aiming for roughly 190-200 degrees to account for the angle. So when facing west (heading 180), bearings to the left of center appear on the left side of the image, and bearings to the right appear on the right\u2014which means south (bearing 270) is left and north (bearing 90) is right. Now I'm trying to reconcile this with the corridor position: if it's right-of-center in the image, that should correspond to a bearing less than 180, somewhere between north and west, but I'm getting confused about whether that's actually 160\u2013135 or something else entirely. I'll turn to heading 180 and move forward a meter to test the path, keeping an eye out for the divider on my left. Once I've confirmed the route is clear, I'll record the map information.\nI found a hallway heading west with red buckets and a small room to the north with a plant. I'll map this area and head west down the corridor.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Hall",
+              "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner."
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Hall"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Bedroom",
+              "direction_deg": 90,
+              "status": "leads_to:Hall"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hall",
+              "direction_deg": 180,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hall",
+              "direction_deg": 90,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "Mode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 180
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.0
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 9,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 180 deg, 3.6 policy-s, collision reported (bump); move: moved 0.45 m, 2.5 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 6.06,
+        "pose_trace": [
+          [
+            4.241187572479248,
+            2.607311964035034
+          ],
+          [
+            4.240660190582275,
+            2.6084558963775635
+          ],
+          [
+            4.209775447845459,
+            2.6138508319854736
+          ],
+          [
+            4.231546878814697,
+            2.6045961380004883
+          ],
+          [
+            4.223753452301025,
+            2.5990116596221924
+          ],
+          [
+            4.196407318115234,
+            2.585588216781616
+          ],
+          [
+            4.225273609161377,
+            2.587165594100952
+          ],
+          [
+            4.203616142272949,
+            2.5768511295318604
+          ],
+          [
+            4.18796968460083,
+            2.57205867767334
+          ],
+          [
+            4.1940484046936035,
+            2.571096658706665
+          ],
+          [
+            4.164783477783203,
+            2.5446884632110596
+          ],
+          [
+            4.168087959289551,
+            2.552262306213379
+          ],
+          [
+            4.181975841522217,
+            2.572805404663086
+          ],
+          [
+            4.156303882598877,
+            2.53499698638916
+          ],
+          [
+            4.165444374084473,
+            2.5552828311920166
+          ],
+          [
+            4.163121223449707,
+            2.5598185062408447
+          ],
+          [
+            4.151431560516357,
+            2.525329351425171
+          ],
+          [
+            4.152706623077393,
+            2.5601911544799805
+          ],
+          [
+            4.149137496948242,
+            2.5384230613708496
+          ],
+          [
+            4.143967628479004,
+            2.5240180492401123
+          ],
+          [
+            4.143967628479004,
+            2.5240180492401123
+          ],
+          [
+            4.1440653800964355,
+            2.526543378829956
+          ],
+          [
+            4.1221795082092285,
+            2.559314012527466
+          ],
+          [
+            4.076728343963623,
+            2.523996353149414
+          ],
+          [
+            4.042821407318115,
+            2.544455051422119
+          ],
+          [
+            4.003131866455078,
+            2.558692455291748
+          ],
+          [
+            3.9568819999694824,
+            2.526629686355591
+          ],
+          [
+            3.917069435119629,
+            2.5635218620300293
+          ],
+          [
+            3.8789079189300537,
+            2.5500869750976562
+          ],
+          [
+            3.837399482727051,
+            2.5328688621520996
+          ],
+          [
+            3.828183174133301,
+            2.5398941040039062
+          ],
+          [
+            3.8118441104888916,
+            2.558283567428589
+          ],
+          [
+            3.797797441482544,
+            2.5580496788024902
+          ],
+          [
+            3.7996063232421875,
+            2.5548598766326904
+          ]
+        ],
+        "motion_calls": 2,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 3.600000000000001,
+            "pose_trace": [
+              [
+                4.241187572479248,
+                2.607311964035034
+              ],
+              [
+                4.240660190582275,
+                2.6084558963775635
+              ],
+              [
+                4.209775447845459,
+                2.6138508319854736
+              ],
+              [
+                4.231546878814697,
+                2.6045961380004883
+              ],
+              [
+                4.223753452301025,
+                2.5990116596221924
+              ],
+              [
+                4.196407318115234,
+                2.585588216781616
+              ],
+              [
+                4.225273609161377,
+                2.587165594100952
+              ],
+              [
+                4.203616142272949,
+                2.5768511295318604
+              ],
+              [
+                4.18796968460083,
+                2.57205867767334
+              ],
+              [
+                4.1940484046936035,
+                2.571096658706665
+              ],
+              [
+                4.164783477783203,
+                2.5446884632110596
+              ],
+              [
+                4.168087959289551,
+                2.552262306213379
+              ],
+              [
+                4.181975841522217,
+                2.572805404663086
+              ],
+              [
+                4.156303882598877,
+                2.53499698638916
+              ],
+              [
+                4.165444374084473,
+                2.5552828311920166
+              ],
+              [
+                4.163121223449707,
+                2.5598185062408447
+              ],
+              [
+                4.151431560516357,
+                2.525329351425171
+              ],
+              [
+                4.152706623077393,
+                2.5601911544799805
+              ],
+              [
+                4.149137496948242,
+                2.5384230613708496
+              ],
+              [
+                4.143967628479004,
+                2.5240180492401123
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.240660190582275,
+                2.6084558963775635
+              ],
+              [
+                4.209775447845459,
+                2.6138508319854736
+              ],
+              [
+                4.231546878814697,
+                2.6045961380004883
+              ],
+              [
+                4.223753452301025,
+                2.5990116596221924
+              ],
+              [
+                4.196407318115234,
+                2.585588216781616
+              ],
+              [
+                4.225273609161377,
+                2.587165594100952
+              ],
+              [
+                4.203616142272949,
+                2.5768511295318604
+              ],
+              [
+                4.18796968460083,
+                2.57205867767334
+              ],
+              [
+                4.1940484046936035,
+                2.571096658706665
+              ],
+              [
+                4.164783477783203,
+                2.5446884632110596
+              ],
+              [
+                4.168087959289551,
+                2.552262306213379
+              ],
+              [
+                4.181975841522217,
+                2.572805404663086
+              ],
+              [
+                4.156303882598877,
+                2.53499698638916
+              ],
+              [
+                4.165444374084473,
+                2.5552828311920166
+              ],
+              [
+                4.163121223449707,
+                2.5598185062408447
+              ],
+              [
+                4.151431560516357,
+                2.525329351425171
+              ],
+              [
+                4.152706623077393,
+                2.5601911544799805
+              ],
+              [
+                4.149137496948242,
+                2.5384230613708496
+              ]
+            ],
+            "true_pose": [
+              4.143967628479004,
+              2.5240180492401123,
+              177.26768755200916
+            ],
+            "true_displacement_m": 0.12802184873401223,
+            "distance_moved_m": 0.0,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          },
+          {
+            "tool": "move",
+            "policy_seconds_used": 2.4600000000000004,
+            "pose_trace": [
+              [
+                4.143967628479004,
+                2.5240180492401123
+              ],
+              [
+                4.1440653800964355,
+                2.526543378829956
+              ],
+              [
+                4.1221795082092285,
+                2.559314012527466
+              ],
+              [
+                4.076728343963623,
+                2.523996353149414
+              ],
+              [
+                4.042821407318115,
+                2.544455051422119
+              ],
+              [
+                4.003131866455078,
+                2.558692455291748
+              ],
+              [
+                3.9568819999694824,
+                2.526629686355591
+              ],
+              [
+                3.917069435119629,
+                2.5635218620300293
+              ],
+              [
+                3.8789079189300537,
+                2.5500869750976562
+              ],
+              [
+                3.837399482727051,
+                2.5328688621520996
+              ],
+              [
+                3.828183174133301,
+                2.5398941040039062
+              ],
+              [
+                3.8118441104888916,
+                2.558283567428589
+              ],
+              [
+                3.797797441482544,
+                2.5580496788024902
+              ],
+              [
+                3.7996063232421875,
+                2.5548598766326904
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.1440653800964355,
+                2.526543378829956
+              ],
+              [
+                4.1221795082092285,
+                2.559314012527466
+              ],
+              [
+                4.076728343963623,
+                2.523996353149414
+              ],
+              [
+                4.042821407318115,
+                2.544455051422119
+              ],
+              [
+                4.003131866455078,
+                2.558692455291748
+              ],
+              [
+                3.9568819999694824,
+                2.526629686355591
+              ],
+              [
+                3.917069435119629,
+                2.5635218620300293
+              ],
+              [
+                3.8789079189300537,
+                2.5500869750976562
+              ],
+              [
+                3.837399482727051,
+                2.5328688621520996
+              ],
+              [
+                3.828183174133301,
+                2.5398941040039062
+              ],
+              [
+                3.8118441104888916,
+                2.558283567428589
+              ],
+              [
+                3.797797441482544,
+                2.5580496788024902
+              ]
+            ],
+            "true_pose": [
+              3.7996063232421875,
+              2.5548598766326904,
+              183.59954528058236
+            ],
+            "true_displacement_m": 0.345739680773436,
+            "distance_moved_m": 0.4520000000000002,
+            "bumped": true,
+            "contact_groups": [
+              "right_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.7996,
+        "y": 2.5549,
+        "heading_deg": 183.6
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall"
+        ],
+        "current_room": "Hall",
+        "plan": "Mode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 90 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.29, y=2.62  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 93 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93)\nBudget: turns 4/40, policy-seconds 7.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Start in Bedroom (x~4.3,y~2.2). Only candidate exit: north (90deg) past grey chair-like obstacle. Turn to 90, observe, then advance through opening. Watch for tile/counters/appliances -> switch to contextual search."
+      },
+      "budget": {
+        "stage_turns_used": 5,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 13.94,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6971,
+        "output_tokens": 3141,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.230815
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 6,
+      "global_turn_idx": 6,
+      "timestamp": "2026-07-27T08:36:43Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t006_0.jpg",
+          "frames/fable5_seed102/t006_1.jpg",
+          "frames/fable5_seed102/t006_2.jpg",
+          "frames/fable5_seed102/t006_3.jpg"
+        ],
+        "compass_deg": 183.6,
+        "position_estimate": {
+          "x": 3.84,
+          "y": 2.64
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.452
+        }
+      },
+      "model_output": {
+        "thought": "I moved west and bumped my right leg into something, which means I hit an object on the north side. The view is now dominated by a large dark grey shape up close on the upper left, with a light grey wall or column visible on the right\u2014I'm too close to whatever I collided with. I'm trying to figure out the geometry of what I just hit based on the direction I was facing and which part of my body made contact. look_around doesn't consume motion budget, only turn count, so I'll use it to reorient and figure out what I'm actually looking at.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 3.7996,
+        "y": 2.5549,
+        "heading_deg": 183.6
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall"
+        ],
+        "current_room": "Hall",
+        "plan": "Mode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.84, y=2.64  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 184 deg\nCurrent room (your assertion): Hall\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93) (4.29,2.62,177) (3.84,2.64,184)\nBudget: turns 5/40, policy-seconds 13.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west."
+      },
+      "budget": {
+        "stage_turns_used": 6,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 13.94,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 11563,
+        "output_tokens": 676,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.153485
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 7,
+      "global_turn_idx": 7,
+      "timestamp": "2026-07-27T08:37:15Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t007_0.jpg"
+        ],
+        "compass_deg": 183.6,
+        "position_estimate": {
+          "x": 3.84,
+          "y": 2.64
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.452
+        }
+      },
+      "model_output": {
+        "thought": "I'm wedged against a large dark grey object that's blocking most of my view in every direction. I need to back away from it \u2014 the object appears to be to my east or northeast, and I bumped into it with my right leg after walking west. I'm trying to figure out its exact position based on what I can see at different angles.\n\nMy plan is to reverse course by moving east about 0.4 meters to get clear of this obstruction, then reassess. Once I'm free, I'll head back toward the corridor's clear path, which runs roughly north of center at a bearing around 160 degrees, hugging the north wall to avoid getting tangled with this dark object again.\nI'm backed against a large dark object blocking the corridor, so I'll reverse east and then re-approach from the north side where the floor is clear.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "send_velocity",
+            "args": {
+              "vx": -0.14,
+              "vy": 0,
+              "wz": 0,
+              "duration_s": 3.0
+            }
+          },
+          {
+            "name": "add_landmark",
+            "args": {
+              "room": "Hall",
+              "description": "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 3,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "send_velocity: drove 0.42 m, 3.0 policy-s, collision reported (bump)",
+        "policy_seconds_used": 3.0,
+        "pose_trace": [
+          [
+            3.7996063232421875,
+            2.5548598766326904
+          ],
+          [
+            3.801898956298828,
+            2.5377209186553955
+          ],
+          [
+            3.825953722000122,
+            2.5550363063812256
+          ],
+          [
+            3.847902536392212,
+            2.5363833904266357
+          ],
+          [
+            3.870255708694458,
+            2.5536274909973145
+          ],
+          [
+            3.8866560459136963,
+            2.558635711669922
+          ],
+          [
+            3.89595103263855,
+            2.5303637981414795
+          ],
+          [
+            3.912292718887329,
+            2.5474040508270264
+          ],
+          [
+            3.934556007385254,
+            2.5722079277038574
+          ],
+          [
+            3.9537851810455322,
+            2.532841682434082
+          ],
+          [
+            3.975858449935913,
+            2.5593652725219727
+          ],
+          [
+            3.993224620819092,
+            2.563249349594116
+          ],
+          [
+            4.011414051055908,
+            2.5349464416503906
+          ],
+          [
+            4.036805152893066,
+            2.5733604431152344
+          ],
+          [
+            4.053713798522949,
+            2.550910472869873
+          ],
+          [
+            4.071018218994141,
+            2.54256272315979
+          ],
+          [
+            4.0771260261535645,
+            2.5513930320739746
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "send_velocity",
+            "policy_seconds_used": 3.0000000000000018,
+            "pose_trace": [
+              [
+                3.7996063232421875,
+                2.5548598766326904
+              ],
+              [
+                3.801898956298828,
+                2.5377209186553955
+              ],
+              [
+                3.825953722000122,
+                2.5550363063812256
+              ],
+              [
+                3.847902536392212,
+                2.5363833904266357
+              ],
+              [
+                3.870255708694458,
+                2.5536274909973145
+              ],
+              [
+                3.8866560459136963,
+                2.558635711669922
+              ],
+              [
+                3.89595103263855,
+                2.5303637981414795
+              ],
+              [
+                3.912292718887329,
+                2.5474040508270264
+              ],
+              [
+                3.934556007385254,
+                2.5722079277038574
+              ],
+              [
+                3.9537851810455322,
+                2.532841682434082
+              ],
+              [
+                3.975858449935913,
+                2.5593652725219727
+              ],
+              [
+                3.993224620819092,
+                2.563249349594116
+              ],
+              [
+                4.011414051055908,
+                2.5349464416503906
+              ],
+              [
+                4.036805152893066,
+                2.5733604431152344
+              ],
+              [
+                4.053713798522949,
+                2.550910472869873
+              ],
+              [
+                4.071018218994141,
+                2.54256272315979
+              ],
+              [
+                4.0771260261535645,
+                2.5513930320739746
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.801898956298828,
+                2.5377209186553955
+              ],
+              [
+                3.825953722000122,
+                2.5550363063812256
+              ],
+              [
+                3.847902536392212,
+                2.5363833904266357
+              ],
+              [
+                3.870255708694458,
+                2.5536274909973145
+              ],
+              [
+                3.8866560459136963,
+                2.558635711669922
+              ],
+              [
+                3.89595103263855,
+                2.5303637981414795
+              ],
+              [
+                3.912292718887329,
+                2.5474040508270264
+              ],
+              [
+                3.934556007385254,
+                2.5722079277038574
+              ],
+              [
+                3.9537851810455322,
+                2.532841682434082
+              ],
+              [
+                3.975858449935913,
+                2.5593652725219727
+              ],
+              [
+                3.993224620819092,
+                2.563249349594116
+              ],
+              [
+                4.011414051055908,
+                2.5349464416503906
+              ],
+              [
+                4.036805152893066,
+                2.5733604431152344
+              ],
+              [
+                4.053713798522949,
+                2.550910472869873
+              ],
+              [
+                4.071018218994141,
+                2.54256272315979
+              ]
+            ],
+            "true_pose": [
+              4.0771260261535645,
+              2.5513930320739746,
+              177.31420801228066
+            ],
+            "true_displacement_m": 0.2775413564051549,
+            "distance_moved_m": 0.42000000000000026,
+            "bumped": true,
+            "contact_groups": [
+              "right_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.0771,
+        "y": 2.5514,
+        "heading_deg": 177.31
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall"
+        ],
+        "current_room": "Hall",
+        "plan": "Mode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.84, y=2.64  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 184 deg\nCurrent room (your assertion): Hall\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93) (4.29,2.62,177) (3.84,2.64,184)\nBudget: turns 6/40, policy-seconds 13.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west."
+      },
+      "budget": {
+        "stage_turns_used": 7,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 16.94,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 13918,
+        "output_tokens": 772,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.181835
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 8,
+      "global_turn_idx": 8,
+      "timestamp": "2026-07-27T08:37:50Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t008_0.jpg",
+          "frames/fable5_seed102/t008_1.jpg",
+          "frames/fable5_seed102/t008_2.jpg",
+          "frames/fable5_seed102/t008_3.jpg"
+        ],
+        "compass_deg": 177.3,
+        "position_estimate": {
+          "x": 4.26,
+          "y": 2.66
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.42
+        }
+      },
+      "model_output": {
+        "thought": "I'm analyzing my position after backing up\u2014I'm at (4.26, 2.66) facing west, and I see a wall corner ahead with brown flooring visible at the lower left. The corridor entrance seems to be to my left-front, but I'm trying to reconcile the spatial layout since the brown floor suggests an opening to the southwest, which doesn't quite align with where I expect the corridor to be based on my earlier position at the junction. So the corridor must be on the north side of that divider, and I was standing at the doorway seeing both the bedroom to the south and the corridor to the north. When I turned to face 180 and moved west, I probably hit the divider corner with my right leg. But I'm getting confused about which side the dark object is on\u2014the landmark data suggests it's south, yet the wedged views seem to contradict that positioning.\n\nLet me step back and take a fresh observation at a heading around 150 to locate the corridor opening more clearly. Looking at my current image facing 177, there's a wall ahead about 1-1.5 meters with the ceiling visible, the right wall is very close, and the floor is open at the lower-left. The corridor might actually be to my left around bearing 200-210, which would mean I misread the earlier image orientation. I need to verify my bearing convention\u2014in a right-handed frame with z pointing up, yaw increases counterclockwise, and the camera looks along the yaw direction, so image left corresponds to the counterclockwise side.\n\nFacing 180, objects appearing left of center have bearing greater than 180 (south side), while right of center have bearing less than 180 (north side). So the corridor appearing right-of-center should be around bearing 160, but the open floor at lower-left in my current image suggests bearing 190-210 instead, with a wall on the north side to my right. This contradicts what I saw at the junction\u2014unless I misidentified the layout there. The dark object at the upper-left of that junction image and the divider edge in the middle might mean I'm now positioned differently than I thought, perhaps with the divider's east face directly in front of me after backing up slightly off the original line.\n\nI'm overthinking this\u2014I should just look around from my current position to clarify what's actually here.",
+        "text": "I need to re-orient \u2014 the view doesn't match my expectation. Let me do a full sweep from this spot before moving.",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.0771,
+        "y": 2.5514,
+        "heading_deg": 177.31
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall"
+        ],
+        "current_room": "Hall",
+        "plan": "Mode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.26, y=2.66  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 177 deg\nCurrent room (your assertion): Hall\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93) (4.29,2.62,177) (3.84,2.64,184) (4.26,2.66,177)\nBudget: turns 7/40, policy-seconds 16.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west."
+      },
+      "budget": {
+        "stage_turns_used": 8,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 16.94,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 15553,
+        "output_tokens": 1607,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.239935
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 9,
+      "global_turn_idx": 9,
+      "timestamp": "2026-07-27T08:38:43Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t009_0.jpg"
+        ],
+        "compass_deg": 177.3,
+        "position_estimate": {
+          "x": 4.26,
+          "y": 2.66
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.42
+        }
+      },
+      "model_output": {
+        "thought": "I'm reorienting myself based on the last look around from my position. Looking east, there's a dark object overhead with brown floor visible on either side and what appears to be a corridor-like path beneath it. To the north, I see a potted plant against the wall, brown flooring, and the dark object visible at the upper right\u2014the space opens up toward the north.\n\nLooking west, there's a wall close ahead, maybe half a meter to a meter away, with a corner visible and floor to the bottom-left; the passage is mostly blocked westward. To the south, I can clearly see the bedroom with a bed and pillow, brown floor extending into the room, and the dark object positioned to my left on the east side.\n\nSo I'm actually positioned at the north end of the bedroom near its northeast corner, with the dark object to my east. The corridor with buckets I saw earlier must be slightly north of my current position\u2014the northward view shows open floor continuing past the plant, suggesting the corridor branches off in that direction.\n\nLet me try heading north through the plant area, around bearing 75-90, and reassess from there; the plant room might connect westward to that bucket corridor I spotted before.\nI've got my bearings in the bedroom's north section \u2014 the dark object is to my east, the bed is south, and an open floor with a potted plant extends north toward the bucket corridor. I'll head north past the plant.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Bedroom",
+              "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening."
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Bedroom"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "Mode: broad search. Objective: kitchen counter. Re-oriented: I never left the Bedroom; dark object is EAST, bed SOUTH, divider wall WEST. Open floor runs NORTH past potted plant (~bearing 80). Plan: move north ~0.8m, look around; expect access west to the corridor with red buckets from there. Then follow corridor west hunting kitchen evidence (tile/counters/appliances)."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 80
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.8
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 6,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 80 deg, 3.2 policy-s; move: moved 0.25 m, 1.4 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 4.64,
+        "pose_trace": [
+          [
+            4.0771260261535645,
+            2.5513930320739746
+          ],
+          [
+            4.092933654785156,
+            2.5740296840667725
+          ],
+          [
+            4.08573055267334,
+            2.538214683532715
+          ],
+          [
+            4.091187477111816,
+            2.556947946548462
+          ],
+          [
+            4.095411777496338,
+            2.5722858905792236
+          ],
+          [
+            4.075051784515381,
+            2.5457773208618164
+          ],
+          [
+            4.096301555633545,
+            2.5757970809936523
+          ],
+          [
+            4.086609840393066,
+            2.5696778297424316
+          ],
+          [
+            4.071821212768555,
+            2.561053514480591
+          ],
+          [
+            4.101751804351807,
+            2.584282875061035
+          ],
+          [
+            4.072535037994385,
+            2.5728280544281006
+          ],
+          [
+            4.080511569976807,
+            2.577098846435547
+          ],
+          [
+            4.103264331817627,
+            2.5850839614868164
+          ],
+          [
+            4.066687107086182,
+            2.5851902961730957
+          ],
+          [
+            4.097848892211914,
+            2.583925247192383
+          ],
+          [
+            4.096304893493652,
+            2.5883688926696777
+          ],
+          [
+            4.073221683502197,
+            2.5945847034454346
+          ],
+          [
+            4.0776848793029785,
+            2.5932507514953613
+          ],
+          [
+            4.0776848793029785,
+            2.5932507514953613
+          ],
+          [
+            4.108116626739502,
+            2.5924432277679443
+          ],
+          [
+            4.082363128662109,
+            2.639850616455078
+          ],
+          [
+            4.091332912445068,
+            2.676575183868408
+          ],
+          [
+            4.11027193069458,
+            2.675530195236206
+          ],
+          [
+            4.090847492218018,
+            2.6752195358276367
+          ],
+          [
+            4.1138482093811035,
+            2.6861369609832764
+          ],
+          [
+            4.109454154968262,
+            2.6847636699676514
+          ],
+          [
+            4.098856449127197,
+            2.684514284133911
+          ]
+        ],
+        "motion_calls": 2,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 3.2000000000000006,
+            "pose_trace": [
+              [
+                4.0771260261535645,
+                2.5513930320739746
+              ],
+              [
+                4.092933654785156,
+                2.5740296840667725
+              ],
+              [
+                4.08573055267334,
+                2.538214683532715
+              ],
+              [
+                4.091187477111816,
+                2.556947946548462
+              ],
+              [
+                4.095411777496338,
+                2.5722858905792236
+              ],
+              [
+                4.075051784515381,
+                2.5457773208618164
+              ],
+              [
+                4.096301555633545,
+                2.5757970809936523
+              ],
+              [
+                4.086609840393066,
+                2.5696778297424316
+              ],
+              [
+                4.071821212768555,
+                2.561053514480591
+              ],
+              [
+                4.101751804351807,
+                2.584282875061035
+              ],
+              [
+                4.072535037994385,
+                2.5728280544281006
+              ],
+              [
+                4.080511569976807,
+                2.577098846435547
+              ],
+              [
+                4.103264331817627,
+                2.5850839614868164
+              ],
+              [
+                4.066687107086182,
+                2.5851902961730957
+              ],
+              [
+                4.097848892211914,
+                2.583925247192383
+              ],
+              [
+                4.096304893493652,
+                2.5883688926696777
+              ],
+              [
+                4.073221683502197,
+                2.5945847034454346
+              ],
+              [
+                4.0776848793029785,
+                2.5932507514953613
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.092933654785156,
+                2.5740296840667725
+              ],
+              [
+                4.08573055267334,
+                2.538214683532715
+              ],
+              [
+                4.091187477111816,
+                2.556947946548462
+              ],
+              [
+                4.095411777496338,
+                2.5722858905792236
+              ],
+              [
+                4.075051784515381,
+                2.5457773208618164
+              ],
+              [
+                4.096301555633545,
+                2.5757970809936523
+              ],
+              [
+                4.086609840393066,
+                2.5696778297424316
+              ],
+              [
+                4.071821212768555,
+                2.561053514480591
+              ],
+              [
+                4.101751804351807,
+                2.584282875061035
+              ],
+              [
+                4.072535037994385,
+                2.5728280544281006
+              ],
+              [
+                4.080511569976807,
+                2.577098846435547
+              ],
+              [
+                4.103264331817627,
+                2.5850839614868164
+              ],
+              [
+                4.066687107086182,
+                2.5851902961730957
+              ],
+              [
+                4.097848892211914,
+                2.583925247192383
+              ],
+              [
+                4.096304893493652,
+                2.5883688926696777
+              ],
+              [
+                4.073221683502197,
+                2.5945847034454346
+              ]
+            ],
+            "true_pose": [
+              4.0776848793029785,
+              2.5932507514953613,
+              81.72550926432524
+            ],
+            "true_displacement_m": 0.04186144995102469,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          },
+          {
+            "tool": "move",
+            "policy_seconds_used": 1.44,
+            "pose_trace": [
+              [
+                4.0776848793029785,
+                2.5932507514953613
+              ],
+              [
+                4.108116626739502,
+                2.5924432277679443
+              ],
+              [
+                4.082363128662109,
+                2.639850616455078
+              ],
+              [
+                4.091332912445068,
+                2.676575183868408
+              ],
+              [
+                4.11027193069458,
+                2.675530195236206
+              ],
+              [
+                4.090847492218018,
+                2.6752195358276367
+              ],
+              [
+                4.1138482093811035,
+                2.6861369609832764
+              ],
+              [
+                4.109454154968262,
+                2.6847636699676514
+              ],
+              [
+                4.098856449127197,
+                2.684514284133911
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.108116626739502,
+                2.5924432277679443
+              ],
+              [
+                4.082363128662109,
+                2.639850616455078
+              ],
+              [
+                4.091332912445068,
+                2.676575183868408
+              ],
+              [
+                4.11027193069458,
+                2.675530195236206
+              ],
+              [
+                4.090847492218018,
+                2.6752195358276367
+              ],
+              [
+                4.1138482093811035,
+                2.6861369609832764
+              ],
+              [
+                4.109454154968262,
+                2.6847636699676514
+              ]
+            ],
+            "true_pose": [
+              4.098856449127197,
+              2.684514284133911,
+              77.9834829560532
+            ],
+            "true_displacement_m": 0.0936870735933694,
+            "distance_moved_m": 0.24800000000000005,
+            "bumped": true,
+            "contact_groups": [
+              "head",
+              "right_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.0989,
+        "y": 2.6845,
+        "heading_deg": 77.98
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Re-oriented: I never left the Bedroom; dark object is EAST, bed SOUTH, divider wall WEST. Open floor runs NORTH past potted plant (~bearing 80). Plan: move north ~0.8m, look around; expect access west to the corridor with red buckets from there. Then follow corridor west hunting kitchen evidence (tile/counters/appliances).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small room, brown/tan floor, lavender-white walls. Black futon/bed with tan pillow at south end. Large dark grey object (furniture, possibly desk/speaker) at north-east corner. Possible opening/passage to the north (dark gap left of a grey chair-like object).\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.26, y=2.66  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 177 deg\nCurrent room (your assertion): Hall\nBreadcrumbs (last 5): (4.30,2.20,91) (4.29,2.62,93) (4.29,2.62,177) (3.84,2.64,184) (4.26,2.66,177)\nBudget: turns 8/40, policy-seconds 16.9/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Bedroom -> Hall junction (~4.3,2.6). Corridor runs WEST (180) with red buckets - best frontier, likely leads to living areas/kitchen. North (90) small plant area, lower priority. Now: turn 180, walk west down corridor in <=1.0m steps, observe for kitchen evidence (tile/counter/appliances). Note: bumped head moving north earlier - keep clear of divider wall on left when heading west."
+      },
+      "budget": {
+        "stage_turns_used": 9,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 21.58,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 18839,
+        "output_tokens": 1730,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.278945
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 10,
+      "global_turn_idx": 10,
+      "timestamp": "2026-07-27T08:39:17Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t010_0.jpg"
+        ],
+        "compass_deg": 78.0,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.91
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head",
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.248
+        }
+      },
+      "model_output": {
+        "thought": "I hit something with my head and right leg after moving 0.25 meters at heading 78 \u2014 my right side was facing roughly southeast while I was heading northeast-ish. The surroundings suggest a north wall about 1.5 meters away on my left, a plant in the corner ahead-right, and what might be the northeast corner, possibly indicating a dead end to the north. I'm trying to figure out what exactly I collided with on my right side.\n\nLooking at the current view facing 78, the left shows a wall at moderate distance (bearing north-northwest), while the right shows the corner with the plant (bearing east-northeast). The wall directly north appears to be about 1.2 meters away. I keep bumping into something \u2014 likely that dark object edge again at head height on my right side. Since the bucket corridor I saw earlier was heading west, there must be a gap in the west divider wall somewhere north of where I've already checked. I should turn northwest and look around to find where that corridor actually goes.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 150
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 150 deg, 3.0 policy-s, collision reported (bump)",
+        "policy_seconds_used": 3.0,
+        "pose_trace": [
+          [
+            4.098856449127197,
+            2.684514284133911
+          ],
+          [
+            4.097611904144287,
+            2.6814124584198
+          ],
+          [
+            4.12040901184082,
+            2.672034502029419
+          ],
+          [
+            4.087294578552246,
+            2.6731767654418945
+          ],
+          [
+            4.084789752960205,
+            2.674983024597168
+          ],
+          [
+            4.091493606567383,
+            2.6708035469055176
+          ],
+          [
+            4.051050662994385,
+            2.661790132522583
+          ],
+          [
+            4.074052333831787,
+            2.670097827911377
+          ],
+          [
+            4.084194660186768,
+            2.678788900375366
+          ],
+          [
+            4.049057483673096,
+            2.661736011505127
+          ],
+          [
+            4.075121879577637,
+            2.6823036670684814
+          ],
+          [
+            4.057676315307617,
+            2.6714155673980713
+          ],
+          [
+            4.040153980255127,
+            2.6569159030914307
+          ],
+          [
+            4.059631824493408,
+            2.6865413188934326
+          ],
+          [
+            4.038741111755371,
+            2.659259080886841
+          ],
+          [
+            4.03991174697876,
+            2.666350841522217
+          ],
+          [
+            4.048030376434326,
+            2.6832666397094727
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 3.0000000000000004,
+            "pose_trace": [
+              [
+                4.098856449127197,
+                2.684514284133911
+              ],
+              [
+                4.097611904144287,
+                2.6814124584198
+              ],
+              [
+                4.12040901184082,
+                2.672034502029419
+              ],
+              [
+                4.087294578552246,
+                2.6731767654418945
+              ],
+              [
+                4.084789752960205,
+                2.674983024597168
+              ],
+              [
+                4.091493606567383,
+                2.6708035469055176
+              ],
+              [
+                4.051050662994385,
+                2.661790132522583
+              ],
+              [
+                4.074052333831787,
+                2.670097827911377
+              ],
+              [
+                4.084194660186768,
+                2.678788900375366
+              ],
+              [
+                4.049057483673096,
+                2.661736011505127
+              ],
+              [
+                4.075121879577637,
+                2.6823036670684814
+              ],
+              [
+                4.057676315307617,
+                2.6714155673980713
+              ],
+              [
+                4.040153980255127,
+                2.6569159030914307
+              ],
+              [
+                4.059631824493408,
+                2.6865413188934326
+              ],
+              [
+                4.038741111755371,
+                2.659259080886841
+              ],
+              [
+                4.03991174697876,
+                2.666350841522217
+              ],
+              [
+                4.048030376434326,
+                2.6832666397094727
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.097611904144287,
+                2.6814124584198
+              ],
+              [
+                4.12040901184082,
+                2.672034502029419
+              ],
+              [
+                4.087294578552246,
+                2.6731767654418945
+              ],
+              [
+                4.084789752960205,
+                2.674983024597168
+              ],
+              [
+                4.091493606567383,
+                2.6708035469055176
+              ],
+              [
+                4.051050662994385,
+                2.661790132522583
+              ],
+              [
+                4.074052333831787,
+                2.670097827911377
+              ],
+              [
+                4.084194660186768,
+                2.678788900375366
+              ],
+              [
+                4.049057483673096,
+                2.661736011505127
+              ],
+              [
+                4.075121879577637,
+                2.6823036670684814
+              ],
+              [
+                4.057676315307617,
+                2.6714155673980713
+              ],
+              [
+                4.040153980255127,
+                2.6569159030914307
+              ],
+              [
+                4.059631824493408,
+                2.6865413188934326
+              ],
+              [
+                4.038741111755371,
+                2.659259080886841
+              ],
+              [
+                4.03991174697876,
+                2.666350841522217
+              ]
+            ],
+            "true_pose": [
+              4.048030376434326,
+              2.6832666397094727,
+              147.23654876625926
+            ],
+            "true_displacement_m": 0.05084138355700845,
+            "distance_moved_m": 0.0,
+            "bumped": true,
+            "contact_groups": [
+              "right_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.048,
+        "y": 2.6833,
+        "heading_deg": 147.24
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Re-oriented: I never left the Bedroom; dark object is EAST, bed SOUTH, divider wall WEST. Open floor runs NORTH past potted plant (~bearing 80). Plan: move north ~0.8m, look around; expect access west to the corridor with red buckets from there. Then follow corridor west hunting kitchen evidence (tile/counters/appliances).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall -> Bedroom\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.91  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 78 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.29,2.62,177) (3.84,2.64,184) (4.26,2.66,177) (4.26,2.66,82) (4.30,2.91,78)\nBudget: turns 9/40, policy-seconds 21.6/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Re-oriented: I never left the Bedroom; dark object is EAST, bed SOUTH, divider wall WEST. Open floor runs NORTH past potted plant (~bearing 80). Plan: move north ~0.8m, look around; expect access west to the corridor with red buckets from there. Then follow corridor west hunting kitchen evidence (tile/counters/appliances)."
+      },
+      "budget": {
+        "stage_turns_used": 10,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 24.58,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 21615,
+        "output_tokens": 720,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.256205
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 11,
+      "global_turn_idx": 11,
+      "timestamp": "2026-07-27T08:39:35Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t011_0.jpg"
+        ],
+        "compass_deg": 147.2,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.91
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "right_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I'm trying to orient myself to the corridor layout\u2014the red buckets are visible at bearing 147, which puts them northwest-ish, and they're receding into the distance along what appears to be the right side of the image. I'm working through the bearing math to figure out which wall they're actually on relative to my heading.\n\nThe path ahead looks clear for several meters, with a lighter wall visible at the far end. The corridor seems to run roughly northwest around bearing 147, maybe slightly adjusted to 140. The left wall is quite close based on what I see at the image edge. I should move forward about 1.5 meters and reassess.",
+        "text": "The bucket corridor is dead ahead at heading ~147. Path looks clear for several meters. Advancing.",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Hall",
+              "description": "Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown."
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hall",
+              "direction_deg": 150,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "Mode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east)."
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.5
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 5,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.08 m, 0.6 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 0.6,
+        "pose_trace": [
+          [
+            4.048030376434326,
+            2.6832666397094727
+          ],
+          [
+            4.039999961853027,
+            2.690399646759033
+          ],
+          [
+            3.981762409210205,
+            2.6817786693573
+          ],
+          [
+            3.976466655731201,
+            2.7156031131744385
+          ],
+          [
+            3.974947452545166,
+            2.7225677967071533
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 0.6000000000000001,
+            "pose_trace": [
+              [
+                4.048030376434326,
+                2.6832666397094727
+              ],
+              [
+                4.039999961853027,
+                2.690399646759033
+              ],
+              [
+                3.981762409210205,
+                2.6817786693573
+              ],
+              [
+                3.976466655731201,
+                2.7156031131744385
+              ],
+              [
+                3.974947452545166,
+                2.7225677967071533
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.039999961853027,
+                2.690399646759033
+              ],
+              [
+                3.981762409210205,
+                2.6817786693573
+              ],
+              [
+                3.976466655731201,
+                2.7156031131744385
+              ]
+            ],
+            "true_pose": [
+              3.974947452545166,
+              2.7225677967071533,
+              154.0577839889449
+            ],
+            "true_displacement_m": 0.08298008619870867,
+            "distance_moved_m": 0.08000000000000002,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.9749,
+        "y": 2.7226,
+        "heading_deg": 154.06
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 150.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.\nPlace 2: Hall -- Corridor running west from Bedroom's north doorway area. White walls, brown floor, two red buckets on floor along north wall, ceiling light. A divider wall separates it from the Bedroom. To the north of the junction is a small area with a potted plant in the corner.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall -> Bedroom\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.91  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 147 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (3.84,2.64,184) (4.26,2.66,177) (4.26,2.66,82) (4.30,2.91,78) (4.30,2.91,147)\nBudget: turns 10/40, policy-seconds 24.6/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Re-oriented: I never left the Bedroom; dark object is EAST, bed SOUTH, divider wall WEST. Open floor runs NORTH past potted plant (~bearing 80). Plan: move north ~0.8m, look around; expect access west to the corridor with red buckets from there. Then follow corridor west hunting kitchen evidence (tile/counters/appliances)."
+      },
+      "budget": {
+        "stage_turns_used": 11,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 25.18,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 23048,
+        "output_tokens": 849,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.276985
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 12,
+      "global_turn_idx": 12,
+      "timestamp": "2026-07-27T08:40:02Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t012_0.jpg"
+        ],
+        "compass_deg": 154.1,
+        "position_estimate": {
+          "x": 4.23,
+          "y": 2.95
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.08
+        }
+      },
+      "model_output": {
+        "thought": "I bumped my head right at the corridor entrance despite it looking clear ahead\u2014probably a low doorframe lintel or overhang at that 154-degree heading. The corridor's quite narrow and I'm hugging the left wall closely, so it might be the left wall corner catching me, though the view ahead seems open.\n\nI'm going to shift right toward the corridor's center, which appears to recede around bearing 135-140 rather than straight ahead. Let me turn to heading 135 and move forward 1.0 meter to get away from that left wall and avoid another head strike.\nI hit my head on the left wall, so I'm adjusting my heading to 135 degrees to follow the corridor more directly.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 135
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.2
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 3,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 135 deg, 1.2 policy-s, collision reported (bump); move: moved 0.12 m, 0.8 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 1.98,
+        "pose_trace": [
+          [
+            3.974947452545166,
+            2.7225677967071533
+          ],
+          [
+            3.9690041542053223,
+            2.7048892974853516
+          ],
+          [
+            3.9725356101989746,
+            2.703622579574585
+          ],
+          [
+            3.9965574741363525,
+            2.722867012023926
+          ],
+          [
+            3.984752655029297,
+            2.6978540420532227
+          ],
+          [
+            3.996784210205078,
+            2.711913585662842
+          ],
+          [
+            4.005245208740234,
+            2.7273004055023193
+          ],
+          [
+            4.00390625,
+            2.724324941635132
+          ],
+          [
+            4.00390625,
+            2.724324941635132
+          ],
+          [
+            3.9908032417297363,
+            2.725633144378662
+          ],
+          [
+            4.005428791046143,
+            2.7610535621643066
+          ],
+          [
+            3.975836992263794,
+            2.7869584560394287
+          ],
+          [
+            3.9712636470794678,
+            2.7929203510284424
+          ],
+          [
+            3.9823994636535645,
+            2.782076358795166
+          ]
+        ],
+        "motion_calls": 2,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 1.2,
+            "pose_trace": [
+              [
+                3.974947452545166,
+                2.7225677967071533
+              ],
+              [
+                3.9690041542053223,
+                2.7048892974853516
+              ],
+              [
+                3.9725356101989746,
+                2.703622579574585
+              ],
+              [
+                3.9965574741363525,
+                2.722867012023926
+              ],
+              [
+                3.984752655029297,
+                2.6978540420532227
+              ],
+              [
+                3.996784210205078,
+                2.711913585662842
+              ],
+              [
+                4.005245208740234,
+                2.7273004055023193
+              ],
+              [
+                4.00390625,
+                2.724324941635132
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.9690041542053223,
+                2.7048892974853516
+              ],
+              [
+                3.9725356101989746,
+                2.703622579574585
+              ],
+              [
+                3.9965574741363525,
+                2.722867012023926
+              ],
+              [
+                3.984752655029297,
+                2.6978540420532227
+              ],
+              [
+                3.996784210205078,
+                2.711913585662842
+              ],
+              [
+                4.005245208740234,
+                2.7273004055023193
+              ]
+            ],
+            "true_pose": [
+              4.00390625,
+              2.724324941635132,
+              136.14291077464117
+            ],
+            "true_displacement_m": 0.029012057981605163,
+            "distance_moved_m": 0.0,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          },
+          {
+            "tool": "move",
+            "policy_seconds_used": 0.78,
+            "pose_trace": [
+              [
+                4.00390625,
+                2.724324941635132
+              ],
+              [
+                3.9908032417297363,
+                2.725633144378662
+              ],
+              [
+                4.005428791046143,
+                2.7610535621643066
+              ],
+              [
+                3.975836992263794,
+                2.7869584560394287
+              ],
+              [
+                3.9712636470794678,
+                2.7929203510284424
+              ],
+              [
+                3.9823994636535645,
+                2.782076358795166
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.9908032417297363,
+                2.725633144378662
+              ],
+              [
+                4.005428791046143,
+                2.7610535621643066
+              ],
+              [
+                3.975836992263794,
+                2.7869584560394287
+              ],
+              [
+                3.9712636470794678,
+                2.7929203510284424
+              ]
+            ],
+            "true_pose": [
+              3.9823994636535645,
+              2.782076358795166,
+              127.98142165755874
+            ],
+            "true_displacement_m": 0.06162603380831446,
+            "distance_moved_m": 0.11600000000000002,
+            "bumped": true,
+            "contact_groups": [
+              "head",
+              "left_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.9824,
+        "y": 2.7821,
+        "heading_deg": 127.98
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 150.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.\nPlace 2: Hall -- Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall -> Bedroom\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 150 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.23, y=2.95  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 154 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.26,2.66,177) (4.26,2.66,82) (4.30,2.91,78) (4.30,2.91,147) (4.23,2.95,154)\nBudget: turns 11/40, policy-seconds 25.2/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east)."
+      },
+      "budget": {
+        "stage_turns_used": 12,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 27.16,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 23208,
+        "output_tokens": 551,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.263685
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 13,
+      "global_turn_idx": 13,
+      "timestamp": "2026-07-27T08:40:59Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed102/t013_0.jpg"
+        ],
+        "compass_deg": 128.0,
+        "position_estimate": {
+          "x": 4.15,
+          "y": 3.03
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head",
+            "left_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.116
+        }
+      },
+      "model_output": {
+        "thought": "I'm hitting the left wall or doorframe when trying to move into the corridor\u2014I've only advanced 0.116m at heading 128 before making contact with my head and left leg. The corridor appears to recede toward the left-center of my view, and I can see buckets stacked along the left wall, which suggests I'm colliding with that side.\n\nThe doorway itself is quite narrow, around 0.35m wide, and I'm clearly not centered in it. Since the corridor's main axis runs at about bearing 147, I need to shift myself rightward to align properly with the opening. My plan is to move laterally right by about 0.27m using a sideways velocity command, then reorient to heading 147 and continue forward to explore the corridor.\nI'm scraping the left side of the corridor entrance, so I'll sidestep right about 0.25m to center myself and then drive down the corridor axis.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "send_velocity",
+            "args": {
+              "vx": 0,
+              "vy": -0.11,
+              "wz": 0,
+              "duration_s": 2.5
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 147
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.2
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 4,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "send_velocity: drove 0.28 m, 2.5 policy-s; turn_to_heading: turned toward 147 deg, 1.2 policy-s; move: moved 0.88 m, 4.6 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 8.28,
+        "pose_trace": [
+          [
+            3.9823994636535645,
+            2.782076358795166
+          ],
+          [
+            3.9991049766540527,
+            2.7793350219726562
+          ],
+          [
+            3.982814073562622,
+            2.7588844299316406
+          ],
+          [
+            4.006294250488281,
+            2.7822065353393555
+          ],
+          [
+            4.042644500732422,
+            2.8106210231781006
+          ],
+          [
+            4.028476715087891,
+            2.8003146648406982
+          ],
+          [
+            4.060263633728027,
+            2.8219234943389893
+          ],
+          [
+            4.089934825897217,
+            2.846072196960449
+          ],
+          [
+            4.079812526702881,
+            2.844203233718872
+          ],
+          [
+            4.1271843910217285,
+            2.876246690750122
+          ],
+          [
+            4.133699893951416,
+            2.8838324546813965
+          ],
+          [
+            4.135618209838867,
+            2.889350652694702
+          ],
+          [
+            4.1845316886901855,
+            2.9253056049346924
+          ],
+          [
+            4.180538177490234,
+            2.9239282608032227
+          ],
+          [
+            4.180538177490234,
+            2.9239282608032227
+          ],
+          [
+            4.1762847900390625,
+            2.922198534011841
+          ],
+          [
+            4.199021339416504,
+            2.9337947368621826
+          ],
+          [
+            4.21250057220459,
+            2.950259208679199
+          ],
+          [
+            4.181345462799072,
+            2.9226388931274414
+          ],
+          [
+            4.197116851806641,
+            2.9450786113739014
+          ],
+          [
+            4.191753387451172,
+            2.941856622695923
+          ],
+          [
+            4.1747589111328125,
+            2.9227445125579834
+          ],
+          [
+            4.1747589111328125,
+            2.9227445125579834
+          ],
+          [
+            4.1750993728637695,
+            2.9242374897003174
+          ],
+          [
+            4.162240982055664,
+            2.980586051940918
+          ],
+          [
+            4.108650207519531,
+            2.9819283485412598
+          ],
+          [
+            4.07680606842041,
+            3.001828193664551
+          ],
+          [
+            4.0569844245910645,
+            3.0505335330963135
+          ],
+          [
+            3.9978408813476562,
+            3.0450057983398438
+          ],
+          [
+            3.978579044342041,
+            3.086653232574463
+          ],
+          [
+            3.9488885402679443,
+            3.1149284839630127
+          ],
+          [
+            3.8947105407714844,
+            3.1143245697021484
+          ],
+          [
+            3.8780198097229004,
+            3.170807123184204
+          ],
+          [
+            3.8334293365478516,
+            3.175236463546753
+          ],
+          [
+            3.795029640197754,
+            3.187835216522217
+          ],
+          [
+            3.7769813537597656,
+            3.2423629760742188
+          ],
+          [
+            3.719641923904419,
+            3.237774133682251
+          ],
+          [
+            3.6968014240264893,
+            3.271869421005249
+          ],
+          [
+            3.6698148250579834,
+            3.307278871536255
+          ],
+          [
+            3.612574338912964,
+            3.303208827972412
+          ],
+          [
+            3.5956692695617676,
+            3.3560240268707275
+          ],
+          [
+            3.5563225746154785,
+            3.36702299118042
+          ],
+          [
+            3.5121145248413086,
+            3.3757236003875732
+          ],
+          [
+            3.4946351051330566,
+            3.432811737060547
+          ],
+          [
+            3.44067120552063,
+            3.4297754764556885
+          ],
+          [
+            3.435096025466919,
+            3.4391019344329834
+          ],
+          [
+            3.43337082862854,
+            3.4529671669006348
+          ]
+        ],
+        "motion_calls": 3,
+        "calls": [
+          {
+            "tool": "send_velocity",
+            "policy_seconds_used": 2.5000000000000013,
+            "pose_trace": [
+              [
+                3.9823994636535645,
+                2.782076358795166
+              ],
+              [
+                3.9991049766540527,
+                2.7793350219726562
+              ],
+              [
+                3.982814073562622,
+                2.7588844299316406
+              ],
+              [
+                4.006294250488281,
+                2.7822065353393555
+              ],
+              [
+                4.042644500732422,
+                2.8106210231781006
+              ],
+              [
+                4.028476715087891,
+                2.8003146648406982
+              ],
+              [
+                4.060263633728027,
+                2.8219234943389893
+              ],
+              [
+                4.089934825897217,
+                2.846072196960449
+              ],
+              [
+                4.079812526702881,
+                2.844203233718872
+              ],
+              [
+                4.1271843910217285,
+                2.876246690750122
+              ],
+              [
+                4.133699893951416,
+                2.8838324546813965
+              ],
+              [
+                4.135618209838867,
+                2.889350652694702
+              ],
+              [
+                4.1845316886901855,
+                2.9253056049346924
+              ],
+              [
+                4.180538177490234,
+                2.9239282608032227
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.9991049766540527,
+                2.7793350219726562
+              ],
+              [
+                3.982814073562622,
+                2.7588844299316406
+              ],
+              [
+                4.006294250488281,
+                2.7822065353393555
+              ],
+              [
+                4.042644500732422,
+                2.8106210231781006
+              ],
+              [
+                4.028476715087891,
+                2.8003146648406982
+              ],
+              [
+                4.060263633728027,
+                2.8219234943389893
+              ],
+              [
+                4.089934825897217,
+                2.846072196960449
+              ],
+              [
+                4.079812526702881,
+                2.844203233718872
+              ],
+              [
+                4.1271843910217285,
+                2.876246690750122
+              ],
+              [
+                4.133699893951416,
+                2.8838324546813965
+              ],
+              [
+                4.135618209838867,
+                2.889350652694702
+              ],
+              [
+                4.1845316886901855,
+                2.9253056049346924
+              ]
+            ],
+            "true_pose": [
+              4.180538177490234,
+              2.9239282608032227,
+              122.51220667272541
+            ],
+            "true_displacement_m": 0.2436819895358561,
+            "distance_moved_m": 0.27500000000000013,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "",
+            "counted_as_bump": false
+          },
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 1.2,
+            "pose_trace": [
+              [
+                4.180538177490234,
+                2.9239282608032227
+              ],
+              [
+                4.1762847900390625,
+                2.922198534011841
+              ],
+              [
+                4.199021339416504,
+                2.9337947368621826
+              ],
+              [
+                4.21250057220459,
+                2.950259208679199
+              ],
+              [
+                4.181345462799072,
+                2.9226388931274414
+              ],
+              [
+                4.197116851806641,
+                2.9450786113739014
+              ],
+              [
+                4.191753387451172,
+                2.941856622695923
+              ],
+              [
+                4.1747589111328125,
+                2.9227445125579834
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.1762847900390625,
+                2.922198534011841
+              ],
+              [
+                4.199021339416504,
+                2.9337947368621826
+              ],
+              [
+                4.21250057220459,
+                2.950259208679199
+              ],
+              [
+                4.181345462799072,
+                2.9226388931274414
+              ],
+              [
+                4.197116851806641,
+                2.9450786113739014
+              ],
+              [
+                4.191753387451172,
+                2.941856622695923
+              ]
+            ],
+            "true_pose": [
+              4.1747589111328125,
+              2.9227445125579834,
+              144.47413899614634
+            ],
+            "true_displacement_m": 0.005899252455873992,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          },
+          {
+            "tool": "move",
+            "policy_seconds_used": 4.580000000000001,
+            "pose_trace": [
+              [
+                4.1747589111328125,
+                2.9227445125579834
+              ],
+              [
+                4.1750993728637695,
+                2.9242374897003174
+              ],
+              [
+                4.162240982055664,
+                2.980586051940918
+              ],
+              [
+                4.108650207519531,
+                2.9819283485412598
+              ],
+              [
+                4.07680606842041,
+                3.001828193664551
+              ],
+              [
+                4.0569844245910645,
+                3.0505335330963135
+              ],
+              [
+                3.9978408813476562,
+                3.0450057983398438
+              ],
+              [
+                3.978579044342041,
+                3.086653232574463
+              ],
+              [
+                3.9488885402679443,
+                3.1149284839630127
+              ],
+              [
+                3.8947105407714844,
+                3.1143245697021484
+              ],
+              [
+                3.8780198097229004,
+                3.170807123184204
+              ],
+              [
+                3.8334293365478516,
+                3.175236463546753
+              ],
+              [
+                3.795029640197754,
+                3.187835216522217
+              ],
+              [
+                3.7769813537597656,
+                3.2423629760742188
+              ],
+              [
+                3.719641923904419,
+                3.237774133682251
+              ],
+              [
+                3.6968014240264893,
+                3.271869421005249
+              ],
+              [
+                3.6698148250579834,
+                3.307278871536255
+              ],
+              [
+                3.612574338912964,
+                3.303208827972412
+              ],
+              [
+                3.5956692695617676,
+                3.3560240268707275
+              ],
+              [
+                3.5563225746154785,
+                3.36702299118042
+              ],
+              [
+                3.5121145248413086,
+                3.3757236003875732
+              ],
+              [
+                3.4946351051330566,
+                3.432811737060547
+              ],
+              [
+                3.44067120552063,
+                3.4297754764556885
+              ],
+              [
+                3.435096025466919,
+                3.4391019344329834
+              ],
+              [
+                3.43337082862854,
+                3.4529671669006348
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.1750993728637695,
+                2.9242374897003174
+              ],
+              [
+                4.162240982055664,
+                2.980586051940918
+              ],
+              [
+                4.108650207519531,
+                2.9819283485412598
+              ],
+              [
+                4.07680606842041,
+                3.001828193664551
+              ],
+              [
+                4.0569844245910645,
+                3.0505335330963135
+              ],
+              [
+                3.9978408813476562,
+                3.0450057983398438
+              ],
+              [
+                3.978579044342041,
+                3.086653232574463
+              ],
+              [
+                3.9488885402679443,
+                3.1149284839630127
+              ],
+              [
+                3.8947105407714844,
+                3.1143245697021484
+              ],
+              [
+                3.8780198097229004,
+                3.170807123184204
+              ],
+              [
+                3.8334293365478516,
+                3.175236463546753
+              ],
+              [
+                3.795029640197754,
+                3.187835216522217
+              ],
+              [
+                3.7769813537597656,
+                3.2423629760742188
+              ],
+              [
+                3.719641923904419,
+                3.237774133682251
+              ],
+              [
+                3.6968014240264893,
+                3.271869421005249
+              ],
+              [
+                3.6698148250579834,
+                3.307278871536255
+              ],
+              [
+                3.612574338912964,
+                3.303208827972412
+              ],
+              [
+                3.5956692695617676,
+                3.3560240268707275
+              ],
+              [
+                3.5563225746154785,
+                3.36702299118042
+              ],
+              [
+                3.5121145248413086,
+                3.3757236003875732
+              ],
+              [
+                3.4946351051330566,
+                3.432811737060547
+              ],
+              [
+                3.44067120552063,
+                3.4297754764556885
+              ],
+              [
+                3.435096025466919,
+                3.4391019344329834
+              ]
+            ],
+            "true_pose": [
+              3.43337082862854,
+              3.4529671669006348,
+              152.5242921868217
+            ],
+            "true_displacement_m": 0.9114781138664432,
+            "distance_moved_m": 0.8760000000000006,
+            "bumped": true,
+            "contact_groups": [
+              "left_leg",
+              "torso"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.4334,
+        "y": 3.453,
+        "heading_deg": 152.52
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 150.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "Mode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.\nPlace 2: Hall -- Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall -> Bedroom\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 150 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.15, y=3.03  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 128 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.91,78) (4.30,2.91,147) (4.23,2.95,154) (4.23,2.95,136) (4.15,3.03,128)\nBudget: turns 12/40, policy-seconds 27.2/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east)."
+      },
+      "budget": {
+        "stage_turns_used": 13,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 35.44,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 22891,
+        "output_tokens": 818,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.273865
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 14,
+      "global_turn_idx": 14,
+      "timestamp": "2026-07-27T08:41:23Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 152.5,
+        "position_estimate": {
+          "x": 3.65,
+          "y": 3.71
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "left_leg",
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.876
+        }
+      },
+      "model_output": {
+        "thought": "I moved down the corridor and made contact with my left leg and torso, but the visual feedback is confusing\u2014the wall I'm now pressing against appears on the right side of my view, filled with white, while the corridor floor and a red bucket are visible on the left. The bearing reading of 152 suggests the close wall is on the north side, and the corridor seems to continue leftward around bearing 170.\n\nLooking at the layout, I think I've drifted right into the north wall when the corridor was supposed to bend around bearing 147. The far wall with the bucket looks about 2 meters away. I'll turn to heading 180 and move 1.2 meters to get back on track, then reassess. I should also clean up some incorrect exit markings (the 90 and 180 entries don't belong) and update my current location to the Hall with dead-reckoning position around (3.65, 3.71).\nI've made it 0.88m down the corridor but drifted into the side wall, so I'm steering to 180 degrees to correct course and continue toward the far bucket near the light end-wall.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Hall"
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 180
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.2
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 180 deg, 0.6 policy-s, FELL \u2014 trial over",
+        "policy_seconds_used": 0.58,
+        "pose_trace": [
+          [
+            3.43337082862854,
+            3.4529671669006348
+          ],
+          [
+            3.4311530590057373,
+            3.4430794715881348
+          ],
+          [
+            3.441333055496216,
+            3.40372633934021
+          ],
+          [
+            3.5294735431671143,
+            3.4130876064300537
+          ],
+          [
+            3.582217216491699,
+            3.405710458755493
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 0.5800000000000001,
+            "pose_trace": [
+              [
+                3.43337082862854,
+                3.4529671669006348
+              ],
+              [
+                3.4311530590057373,
+                3.4430794715881348
+              ],
+              [
+                3.441333055496216,
+                3.40372633934021
+              ],
+              [
+                3.5294735431671143,
+                3.4130876064300537
+              ],
+              [
+                3.582217216491699,
+                3.405710458755493
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.4311530590057373,
+                3.4430794715881348
+              ],
+              [
+                3.441333055496216,
+                3.40372633934021
+              ],
+              [
+                3.5294735431671143,
+                3.4130876064300537
+              ]
+            ],
+            "true_pose": [
+              3.582217216491699,
+              3.405710458755493,
+              149.55759304658162
+            ],
+            "true_displacement_m": 0.15616799814502685,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": true,
+            "fall_diagnostics": {
+              "height_m": 0.1498,
+              "tilt_deg": 59.99,
+              "terms": {
+                "fell_over": true,
+                "fell_low": false
+              },
+              "height_threshold_m": 0.09,
+              "tilt_threshold_deg": 60.0,
+              "commanded": [
+                0.0,
+                0.0,
+                0.5
+              ],
+              "policy_seconds_into_call": 0.58,
+              "values_pre_step": true
+            },
+            "stop_reason": "fell",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.5822,
+        "y": 3.4057,
+        "heading_deg": 149.56
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.",
+            "landmarks": []
+          },
+          "Hall": {
+            "name": "Hall",
+            "description": "Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.",
+            "landmarks": [
+              "Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 90.0,
+            "status": "leads_to:Hall"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 90.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hall",
+            "direction_deg": 150.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom",
+          "Hall",
+          "Bedroom",
+          "Hall"
+        ],
+        "current_room": "Hall",
+        "plan": "Mode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east).",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- L-shaped room, brown/tan floor, lavender-white walls. Black futon/bed with pillows at south end. Large dark grey angular object in the middle-east area (overhangs at head height - avoid). North part opens further north past a potted plant in the NE corner. West side of north part is a wall/divider; the bucket corridor lies beyond it, reached from the north opening.\nPlace 2: Hall -- Corridor running NW (~heading 147) from the Bedroom's north area. White walls, brown floor, two red buckets along the north-side wall, ceiling light. Entrance from Bedroom is at roughly (4.3,2.9). Far end has a lighter wall - destination unknown.\n  landmarks: Large dark grey angular object intrudes into the corridor's south side near the Bedroom junction (~x4.0,y2.6); it overhangs at head height. Pass on the NORTH side of the corridor.\nConnections: Bedroom <-> Hall\nTrajectory: Bedroom -> Hall -> Bedroom\nUnexplored exits:\n  - Hall: exit at 90 deg (unexplored)\n  - Hall: exit at 150 deg (unexplored)\n  - Hall: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.65, y=3.71  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 153 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.23,2.95,136) (4.15,3.03,128) (4.36,3.20,123) (4.36,3.20,144) (3.65,3.71,153)\nBudget: turns 13/40, policy-seconds 35.4/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMode: broad search. Objective: kitchen counter. Found bucket corridor: runs NW (~147) from Bedroom north area (4.3,2.9). Now walking it in 1.5m steps, watching for kitchen evidence (tile/counter/appliances) and side exits. Old Hall exits at 90/180 were mis-estimates from confusion - trust the 150 heading. Avoid dark object behind me (east)."
+      },
+      "budget": {
+        "stage_turns_used": 14,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 36.02,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 23859,
+        "output_tokens": 788,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.282045
+      },
+      "end_reason": "fall"
+    }
+  ],
+  "video_path": "results/videos/fable5_seed102.mp4",
+  "final": {
+    "outcome": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "end_reason": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "fall",
+        "outcome": "fall",
+        "success": false,
+        "turns_used": 14,
+        "policy_seconds_used": 36.02,
+        "score": {
+          "success": false,
+          "distance_m": 2.8493,
+          "radius_m": 0.35,
+          "goal_xy": [
+            2.55,
+            0.75
+          ],
+          "true_xy": [
+            3.5822,
+            3.4057
+          ]
+        },
+        "true_pose": {
+          "x": 3.5822,
+          "y": 3.4057,
+          "heading_deg": 149.56
+        }
+      },
+      "return_home": {
+        "stage": "return_home",
+        "end_reason": "not_run",
+        "outcome": "not_run",
+        "success": false,
+        "turns_used": 0,
+        "policy_seconds_used": 0.0,
+        "score": null,
+        "true_pose": null
+      }
+    },
+    "bumps": 7,
+    "metrics": {},
+    "tokens": {
+      "input_tokens": 193699,
+      "output_tokens": 13642,
+      "cache_read_tokens": 56770,
+      "cache_write_tokens": 0,
+      "cost_usd_estimate": 2.67586
+    },
+    "tokens_breakdown": {
+      "episode": {
+        "input_tokens": 192699,
+        "output_tokens": 13114,
+        "cache_read_tokens": 56770,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 2.63946
+      },
+      "qa": {
+        "input_tokens": 1000,
+        "output_tokens": 528,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0364
+      }
+    },
+    "qa": [
+      {
+        "number": 1,
+        "question": "Which room connects the bedroom to the kitchen?",
+        "answer": "I can't say. My map only records two places \u2014 the Bedroom and the Hall \u2014 and the run ended before I found a kitchen. The Hall runs northwest from the Bedroom with unexplored exits at its far end; if a kitchen exists, it likely lies through one of those, but I never confirmed it.",
+        "score": null
+      },
+      {
+        "number": 2,
+        "question": "Starting at the front of the sofa, give turn-by-turn directions to the fridge.",
+        "answer": "I can't give those directions. Neither a sofa nor a fridge appears anywhere in my map. The closest analogue to a sofa is the black futon/bed at the south end of the Bedroom, but I never located a fridge, so any route I gave would be invented.",
+        "score": null
+      },
+      {
+        "number": 3,
+        "question": "How many rooms did you visit? Name them.",
+        "answer": "Two rooms: the Bedroom and the Hall. My trajectory was Bedroom \u2192 Hall \u2192 Bedroom \u2192 Hall, so I entered each twice, but there were only two distinct places.",
+        "score": null
+      },
+      {
+        "number": 4,
+        "question": "Which direction (compass) is the kitchen from your spawn point?",
+        "answer": "Unknown. I never reached the kitchen, so I can't state its bearing from spawn. The only lead I have is that the unexplored corridor runs northwest (heading ~147\u2013150\u00b0... which is actually southeast on a compass; my notes call it \"NW\" but the recorded headings are ~150\u00b0, i.e., roughly south-southeast). Given that ambiguity in my own notes, the honest answer is that the kitchen's direction was never established.",
+        "score": null
+      },
+      {
+        "number": 5,
+        "question": "Name one landmark in each room you visited.",
+        "answer": "Bedroom: the black futon/bed with pillows at the south end (also notable: the large dark grey angular object in the middle-east area and the potted plant in the NE corner). Hall: the two red buckets along the north-side wall (with a ceiling light overhead).",
+        "score": null
+      }
+    ],
+    "qa_raw": "1. I can't say. My map only records two places \u2014 the Bedroom and the Hall \u2014 and the run ended before I found a kitchen. The Hall runs northwest from the Bedroom with unexplored exits at its far end; if a kitchen exists, it likely lies through one of those, but I never confirmed it.\n\n2. I can't give those directions. Neither a sofa nor a fridge appears anywhere in my map. The closest analogue to a sofa is the black futon/bed at the south end of the Bedroom, but I never located a fridge, so any route I gave would be invented.\n\n3. Two rooms: the Bedroom and the Hall. My trajectory was Bedroom \u2192 Hall \u2192 Bedroom \u2192 Hall, so I entered each twice, but there were only two distinct places.\n\n4. Unknown. I never reached the kitchen, so I can't state its bearing from spawn. The only lead I have is that the unexplored corridor runs northwest (heading ~147\u2013150\u00b0... which is actually southeast on a compass; my notes call it \"NW\" but the recorded headings are ~150\u00b0, i.e., roughly south-southeast). Given that ambiguity in my own notes, the honest answer is that the kitchen's direction was never established.\n\n5. Bedroom: the black futon/bed with pillows at the south end (also notable: the large dark grey angular object in the middle-east area and the potted plant in the NE corner). Hall: the two red buckets along the north-side wall (with a ceiling light overhead).",
+    "qa_parse_failed": false
+  }
+}

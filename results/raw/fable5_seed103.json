@@ -1,0 +1,2107 @@
+{
+  "trial_id": "fable5_seed103",
+  "config": {
+    "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+    "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "model": "claude-fable-5",
+    "model_config": "fable5",
+    "seed": 103,
+    "spawn": {
+      "xy": [
+        0.43,
+        3.15
+      ],
+      "heading_deg": 0.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-27T08:41:49Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed103/t001_0.jpg",
+          "frames/fable5_seed103/t001_1.jpg",
+          "frames/fable5_seed103/t001_2.jpg",
+          "frames/fable5_seed103/t001_3.jpg"
+        ],
+        "compass_deg": 358.1,
+        "position_estimate": {
+          "x": 0.43,
+          "y": 3.15
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I should start by looking around to get my bearings and understand what's in my immediate surroundings.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 0.4435,
+        "y": 3.1569,
+        "heading_deg": 358.15
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.43, y=3.15  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 358 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 274,
+        "output_tokens": 42,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.008895
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-27T08:42:34Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 358.1,
+        "position_estimate": {
+          "x": 0.43,
+          "y": 3.15
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I'm mapping out a hallway environment where I'm facing east with red buckets scattered on the floor, dark furniture blocking to the south, and a corridor extending west with doors. The eastern view shows a long hallway stretching ahead with a red bin and plant at the far end, plus a dark doorway on the right side, while the western corridor continues with a red chair visible.\n\nMy plan is to search broadly by heading east along the hallway to look for the kitchen.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Hallway",
+              "description": "Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture."
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Hallway"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hallway",
+              "direction_deg": 0,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hallway",
+              "direction_deg": 180,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe."
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.2
+            }
+          }
+        ],
+        "dispatched": 6,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 1.20 m, 6.2 policy-s",
+        "policy_seconds_used": 6.2,
+        "pose_trace": [
+          [
+            0.4434964060783386,
+            3.1569390296936035
+          ],
+          [
+            0.4502312242984772,
+            3.1626503467559814
+          ],
+          [
+            0.49242690205574036,
+            3.1208879947662354
+          ],
+          [
+            0.5325191617012024,
+            3.14058256149292
+          ],
+          [
+            0.5722411274909973,
+            3.1510729789733887
+          ],
+          [
+            0.6174947023391724,
+            3.115776300430298
+          ],
+          [
+            0.6630694270133972,
+            3.149595260620117
+          ],
+          [
+            0.7004985809326172,
+            3.1322758197784424
+          ],
+          [
+            0.7418801784515381,
+            3.1168932914733887
+          ],
+          [
+            0.7886761426925659,
+            3.148658037185669
+          ],
+          [
+            0.8313907384872437,
+            3.1126224994659424
+          ],
+          [
+            0.8700783848762512,
+            3.12583065032959
+          ],
+          [
+            0.9115803241729736,
+            3.1439032554626465
+          ],
+          [
+            0.9579178094863892,
+            3.1060564517974854
+          ],
+          [
+            1.0012507438659668,
+            3.137956142425537
+          ],
+          [
+            1.038367748260498,
+            3.130728006362915
+          ],
+          [
+            1.0815520286560059,
+            3.10776686668396
+          ],
+          [
+            1.1279561519622803,
+            3.1444764137268066
+          ],
+          [
+            1.1692761182785034,
+            3.115445613861084
+          ],
+          [
+            1.2086025476455688,
+            3.119741439819336
+          ],
+          [
+            1.2515696287155151,
+            3.144789934158325
+          ],
+          [
+            1.298108458518982,
+            3.107022285461426
+          ],
+          [
+            1.3391402959823608,
+            3.134162425994873
+          ],
+          [
+            1.3767691850662231,
+            3.135855197906494
+          ],
+          [
+            1.4196213483810425,
+            3.104808807373047
+          ],
+          [
+            1.4663580656051636,
+            3.139991044998169
+          ],
+          [
+            1.5048117637634277,
+            3.1150238513946533
+          ],
+          [
+            1.5449239015579224,
+            3.1079695224761963
+          ],
+          [
+            1.5899158716201782,
+            3.1386916637420654
+          ],
+          [
+            1.6346731185913086,
+            3.1004927158355713
+          ],
+          [
+            1.6746643781661987,
+            3.119267463684082
+          ],
+          [
+            1.7066421508789062,
+            3.128488302230835
+          ],
+          [
+            1.705390453338623,
+            3.1068363189697266
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 6.200000000000003,
+            "pose_trace": [
+              [
+                0.4434964060783386,
+                3.1569390296936035
+              ],
+              [
+                0.4502312242984772,
+                3.1626503467559814
+              ],
+              [
+                0.49242690205574036,
+                3.1208879947662354
+              ],
+              [
+                0.5325191617012024,
+                3.14058256149292
+              ],
+              [
+                0.5722411274909973,
+                3.1510729789733887
+              ],
+              [
+                0.6174947023391724,
+                3.115776300430298
+              ],
+              [
+                0.6630694270133972,
+                3.149595260620117
+              ],
+              [
+                0.7004985809326172,
+                3.1322758197784424
+              ],
+              [
+                0.7418801784515381,
+                3.1168932914733887
+              ],
+              [
+                0.7886761426925659,
+                3.148658037185669
+              ],
+              [
+                0.8313907384872437,
+                3.1126224994659424
+              ],
+              [
+                0.8700783848762512,
+                3.12583065032959
+              ],
+              [
+                0.9115803241729736,
+                3.1439032554626465
+              ],
+              [
+                0.9579178094863892,
+                3.1060564517974854
+              ],
+              [
+                1.0012507438659668,
+                3.137956142425537
+              ],
+              [
+                1.038367748260498,
+                3.130728006362915
+              ],
+              [
+                1.0815520286560059,
+                3.10776686668396
+              ],
+              [
+                1.1279561519622803,
+                3.1444764137268066
+              ],
+              [
+                1.1692761182785034,
+                3.115445613861084
+              ],
+              [
+                1.2086025476455688,
+                3.119741439819336
+              ],
+              [
+                1.2515696287155151,
+                3.144789934158325
+              ],
+              [
+                1.298108458518982,
+                3.107022285461426
+              ],
+              [
+                1.3391402959823608,
+                3.134162425994873
+              ],
+              [
+                1.3767691850662231,
+                3.135855197906494
+              ],
+              [
+                1.4196213483810425,
+                3.104808807373047
+              ],
+              [
+                1.4663580656051636,
+                3.139991044998169
+              ],
+              [
+                1.5048117637634277,
+                3.1150238513946533
+              ],
+              [
+                1.5449239015579224,
+                3.1079695224761963
+              ],
+              [
+                1.5899158716201782,
+                3.1386916637420654
+              ],
+              [
+                1.6346731185913086,
+                3.1004927158355713
+              ],
+              [
+                1.6746643781661987,
+                3.119267463684082
+              ],
+              [
+                1.7066421508789062,
+                3.128488302230835
+              ],
+              [
+                1.705390453338623,
+                3.1068363189697266
+              ]
+            ],
+            "sampled_xy": [
+              [
+                0.4502312242984772,
+                3.1626503467559814
+              ],
+              [
+                0.49242690205574036,
+                3.1208879947662354
+              ],
+              [
+                0.5325191617012024,
+                3.14058256149292
+              ],
+              [
+                0.5722411274909973,
+                3.1510729789733887
+              ],
+              [
+                0.6174947023391724,
+                3.115776300430298
+              ],
+              [
+                0.6630694270133972,
+                3.149595260620117
+              ],
+              [
+                0.7004985809326172,
+                3.1322758197784424
+              ],
+              [
+                0.7418801784515381,
+                3.1168932914733887
+              ],
+              [
+                0.7886761426925659,
+                3.148658037185669
+              ],
+              [
+                0.8313907384872437,
+                3.1126224994659424
+              ],
+              [
+                0.8700783848762512,
+                3.12583065032959
+              ],
+              [
+                0.9115803241729736,
+                3.1439032554626465
+              ],
+              [
+                0.9579178094863892,
+                3.1060564517974854
+              ],
+              [
+                1.0012507438659668,
+                3.137956142425537
+              ],
+              [
+                1.038367748260498,
+                3.130728006362915
+              ],
+              [
+                1.0815520286560059,
+                3.10776686668396
+              ],
+              [
+                1.1279561519622803,
+                3.1444764137268066
+              ],
+              [
+                1.1692761182785034,
+                3.115445613861084
+              ],
+              [
+                1.2086025476455688,
+                3.119741439819336
+              ],
+              [
+                1.2515696287155151,
+                3.144789934158325
+              ],
+              [
+                1.298108458518982,
+                3.107022285461426
+              ],
+              [
+                1.3391402959823608,
+                3.134162425994873
+              ],
+              [
+                1.3767691850662231,
+                3.135855197906494
+              ],
+              [
+                1.4196213483810425,
+                3.104808807373047
+              ],
+              [
+                1.4663580656051636,
+                3.139991044998169
+              ],
+              [
+                1.5048117637634277,
+                3.1150238513946533
+              ],
+              [
+                1.5449239015579224,
+                3.1079695224761963
+              ],
+              [
+                1.5899158716201782,
+                3.1386916637420654
+              ],
+              [
+                1.6346731185913086,
+                3.1004927158355713
+              ],
+              [
+                1.6746643781661987,
+                3.119267463684082
+              ],
+              [
+                1.7066421508789062,
+                3.128488302230835
+              ]
+            ],
+            "true_pose": [
+              1.705390453338623,
+              3.1068363189697266,
+              357.7489358069358
+            ],
+            "true_displacement_m": 1.262888303902139,
+            "distance_moved_m": 1.2000000000000008,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 1.7054,
+        "y": 3.1068,
+        "heading_deg": 357.75
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Hallway": {
+            "name": "Hallway",
+            "description": "Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Hallway",
+            "direction_deg": 0.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hallway",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Hallway"
+        ],
+        "current_room": "Hallway",
+        "plan": "MODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.43, y=3.15  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 358 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 6.2,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 2010,
+        "output_tokens": 840,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.066155
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 3,
+      "global_turn_idx": 3,
+      "timestamp": "2026-07-27T08:43:16Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed103/t003_0.jpg"
+        ],
+        "compass_deg": 357.7,
+        "position_estimate": {
+          "x": 1.63,
+          "y": 3.11
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 1.2
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.5
+            }
+          },
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 1.52 m, 7.8 policy-s",
+        "policy_seconds_used": 7.8,
+        "pose_trace": [
+          [
+            1.705390453338623,
+            3.1068363189697266
+          ],
+          [
+            1.7103445529937744,
+            3.0977447032928467
+          ],
+          [
+            1.7522251605987549,
+            3.135721206665039
+          ],
+          [
+            1.7909278869628906,
+            3.121290445327759
+          ],
+          [
+            1.8330405950546265,
+            3.1068272590637207
+          ],
+          [
+            1.8789469003677368,
+            3.13983416557312
+          ],
+          [
+            1.9220013618469238,
+            3.103879451751709
+          ],
+          [
+            1.9609448909759521,
+            3.1157987117767334
+          ],
+          [
+            2.00319242477417,
+            3.132995128631592
+          ],
+          [
+            2.0487477779388428,
+            3.094794750213623
+          ],
+          [
+            2.0924932956695557,
+            3.125944137573242
+          ],
+          [
+            2.129289388656616,
+            3.117405891418457
+          ],
+          [
+            2.170994758605957,
+            3.0931713581085205
+          ],
+          [
+            2.217956781387329,
+            3.129146099090576
+          ],
+          [
+            2.259036064147949,
+            3.0992867946624756
+          ],
+          [
+            2.2986135482788086,
+            3.1022262573242188
+          ],
+          [
+            2.3424248695373535,
+            3.1245455741882324
+          ],
+          [
+            2.3875057697296143,
+            3.084209680557251
+          ],
+          [
+            2.429366111755371,
+            3.1089913845062256
+          ],
+          [
+            2.467534065246582,
+            3.109694242477417
+          ],
+          [
+            2.510545253753662,
+            3.0782198905944824
+          ],
+          [
+            2.5574429035186768,
+            3.1131644248962402
+          ],
+          [
+            2.5961694717407227,
+            3.088498115539551
+          ],
+          [
+            2.6363954544067383,
+            3.0811798572540283
+          ],
+          [
+            2.6817808151245117,
+            3.1113715171813965
+          ],
+          [
+            2.726360559463501,
+            3.0727498531341553
+          ],
+          [
+            2.76659893989563,
+            3.091596841812134
+          ],
+          [
+            2.8064701557159424,
+            3.100919723510742
+          ],
+          [
+            2.8512444496154785,
+            3.065009832382202
+          ],
+          [
+            2.8966715335845947,
+            3.099982738494873
+          ],
+          [
+            2.9336564540863037,
+            3.082791805267334
+          ],
+          [
+            2.9746670722961426,
+            3.066981315612793
+          ],
+          [
+            3.0212838649749756,
+            3.10017991065979
+          ],
+          [
+            3.0636470317840576,
+            3.0641486644744873
+          ],
+          [
+            3.1025872230529785,
+            3.0751681327819824
+          ],
+          [
+            3.1449825763702393,
+            3.0905044078826904
+          ],
+          [
+            3.190080165863037,
+            3.051372766494751
+          ],
+          [
+            3.2338569164276123,
+            3.0813629627227783
+          ],
+          [
+            3.2708475589752197,
+            3.0725467205047607
+          ],
+          [
+            3.304910659790039,
+            3.048250675201416
+          ],
+          [
+            3.3084051609039307,
+            3.066887855529785
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 7.800000000000004,
+            "pose_trace": [
+              [
+                1.705390453338623,
+                3.1068363189697266
+              ],
+              [
+                1.7103445529937744,
+                3.0977447032928467
+              ],
+              [
+                1.7522251605987549,
+                3.135721206665039
+              ],
+              [
+                1.7909278869628906,
+                3.121290445327759
+              ],
+              [
+                1.8330405950546265,
+                3.1068272590637207
+              ],
+              [
+                1.8789469003677368,
+                3.13983416557312
+              ],
+              [
+                1.9220013618469238,
+                3.103879451751709
+              ],
+              [
+                1.9609448909759521,
+                3.1157987117767334
+              ],
+              [
+                2.00319242477417,
+                3.132995128631592
+              ],
+              [
+                2.0487477779388428,
+                3.094794750213623
+              ],
+              [
+                2.0924932956695557,
+                3.125944137573242
+              ],
+              [
+                2.129289388656616,
+                3.117405891418457
+              ],
+              [
+                2.170994758605957,
+                3.0931713581085205
+              ],
+              [
+                2.217956781387329,
+                3.129146099090576
+              ],
+              [
+                2.259036064147949,
+                3.0992867946624756
+              ],
+              [
+                2.2986135482788086,
+                3.1022262573242188
+              ],
+              [
+                2.3424248695373535,
+                3.1245455741882324
+              ],
+              [
+                2.3875057697296143,
+                3.084209680557251
+              ],
+              [
+                2.429366111755371,
+                3.1089913845062256
+              ],
+              [
+                2.467534065246582,
+                3.109694242477417
+              ],
+              [
+                2.510545253753662,
+                3.0782198905944824
+              ],
+              [
+                2.5574429035186768,
+                3.1131644248962402
+              ],
+              [
+                2.5961694717407227,
+                3.088498115539551
+              ],
+              [
+                2.6363954544067383,
+                3.0811798572540283
+              ],
+              [
+                2.6817808151245117,
+                3.1113715171813965
+              ],
+              [
+                2.726360559463501,
+                3.0727498531341553
+              ],
+              [
+                2.76659893989563,
+                3.091596841812134
+              ],
+              [
+                2.8064701557159424,
+                3.100919723510742
+              ],
+              [
+                2.8512444496154785,
+                3.065009832382202
+              ],
+              [
+                2.8966715335845947,
+                3.099982738494873
+              ],
+              [
+                2.9336564540863037,
+                3.082791805267334
+              ],
+              [
+                2.9746670722961426,
+                3.066981315612793
+              ],
+              [
+                3.0212838649749756,
+                3.10017991065979
+              ],
+              [
+                3.0636470317840576,
+                3.0641486644744873
+              ],
+              [
+                3.1025872230529785,
+                3.0751681327819824
+              ],
+              [
+                3.1449825763702393,
+                3.0905044078826904
+              ],
+              [
+                3.190080165863037,
+                3.051372766494751
+              ],
+              [
+                3.2338569164276123,
+                3.0813629627227783
+              ],
+              [
+                3.2708475589752197,
+                3.0725467205047607
+              ],
+              [
+                3.304910659790039,
+                3.048250675201416
+              ],
+              [
+                3.3084051609039307,
+                3.066887855529785
+              ]
+            ],
+            "sampled_xy": [
+              [
+                1.7103445529937744,
+                3.0977447032928467
+              ],
+              [
+                1.7522251605987549,
+                3.135721206665039
+              ],
+              [
+                1.7909278869628906,
+                3.121290445327759
+              ],
+              [
+                1.8330405950546265,
+                3.1068272590637207
+              ],
+              [
+                1.8789469003677368,
+                3.13983416557312
+              ],
+              [
+                1.9220013618469238,
+                3.103879451751709
+              ],
+              [
+                1.9609448909759521,
+                3.1157987117767334
+              ],
+              [
+                2.00319242477417,
+                3.132995128631592
+              ],
+              [
+                2.0487477779388428,
+                3.094794750213623
+              ],
+              [
+                2.0924932956695557,
+                3.125944137573242
+              ],
+              [
+                2.129289388656616,
+                3.117405891418457
+              ],
+              [
+                2.170994758605957,
+                3.0931713581085205
+              ],
+              [
+                2.217956781387329,
+                3.129146099090576
+              ],
+              [
+                2.259036064147949,
+                3.0992867946624756
+              ],
+              [
+                2.2986135482788086,
+                3.1022262573242188
+              ],
+              [
+                2.3424248695373535,
+                3.1245455741882324
+              ],
+              [
+                2.3875057697296143,
+                3.084209680557251
+              ],
+              [
+                2.429366111755371,
+                3.1089913845062256
+              ],
+              [
+                2.467534065246582,
+                3.109694242477417
+              ],
+              [
+                2.510545253753662,
+                3.0782198905944824
+              ],
+              [
+                2.5574429035186768,
+                3.1131644248962402
+              ],
+              [
+                2.5961694717407227,
+                3.088498115539551
+              ],
+              [
+                2.6363954544067383,
+                3.0811798572540283
+              ],
+              [
+                2.6817808151245117,
+                3.1113715171813965
+              ],
+              [
+                2.726360559463501,
+                3.0727498531341553
+              ],
+              [
+                2.76659893989563,
+                3.091596841812134
+              ],
+              [
+                2.8064701557159424,
+                3.100919723510742
+              ],
+              [
+                2.8512444496154785,
+                3.065009832382202
+              ],
+              [
+                2.8966715335845947,
+                3.099982738494873
+              ],
+              [
+                2.9336564540863037,
+                3.082791805267334
+              ],
+              [
+                2.9746670722961426,
+                3.066981315612793
+              ],
+              [
+                3.0212838649749756,
+                3.10017991065979
+              ],
+              [
+                3.0636470317840576,
+                3.0641486644744873
+              ],
+              [
+                3.1025872230529785,
+                3.0751681327819824
+              ],
+              [
+                3.1449825763702393,
+                3.0905044078826904
+              ],
+              [
+                3.190080165863037,
+                3.051372766494751
+              ],
+              [
+                3.2338569164276123,
+                3.0813629627227783
+              ],
+              [
+                3.2708475589752197,
+                3.0725467205047607
+              ],
+              [
+                3.304910659790039,
+                3.048250675201416
+              ]
+            ],
+            "true_pose": [
+              3.3084051609039307,
+              3.066887855529785,
+              355.62163734099187
+            ],
+            "true_displacement_m": 1.6035124048169695,
+            "distance_moved_m": 1.5200000000000011,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.3084,
+        "y": 3.0669,
+        "heading_deg": 355.62
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Hallway": {
+            "name": "Hallway",
+            "description": "Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Hallway",
+            "direction_deg": 0.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hallway",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Hallway"
+        ],
+        "current_room": "Hallway",
+        "plan": "MODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Hallway -- Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.\nTrajectory: Hallway\nUnexplored exits:\n  - Hallway: exit at 0 deg (unexplored)\n  - Hallway: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.63, y=3.11  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 358 deg\nCurrent room (your assertion): Hallway\nBreadcrumbs (last 5): (1.63,3.11,358)\nBudget: turns 2/40, policy-seconds 6.2/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe."
+      },
+      "budget": {
+        "stage_turns_used": 3,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 14.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 3589,
+        "output_tokens": 74,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.043645
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 4,
+      "global_turn_idx": 4,
+      "timestamp": "2026-07-27T08:43:58Z",
+      "obs": {
+        "frame_paths": [
+          "frames/fable5_seed103/t004_0.jpg",
+          "frames/fable5_seed103/t004_1.jpg",
+          "frames/fable5_seed103/t004_2.jpg",
+          "frames/fable5_seed103/t004_3.jpg"
+        ],
+        "compass_deg": 355.6,
+        "position_estimate": {
+          "x": 3.15,
+          "y": 3.05
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 1.52
+        }
+      },
+      "model_output": {
+        "thought": "I'm moving forward about a meter and a half to get a better sense of the space, noting the plant ahead, the wooden floor continuing to the right, and what looks like a pinkish room further along that side.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.5
+            }
+          },
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 1.39 m, 7.1 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 7.14,
+        "pose_trace": [
+          [
+            3.3084051609039307,
+            3.066887855529785
+          ],
+          [
+            3.313427686691284,
+            3.0828144550323486
+          ],
+          [
+            3.3510138988494873,
+            3.047891139984131
+          ],
+          [
+            3.391127824783325,
+            3.0503268241882324
+          ],
+          [
+            3.4345622062683105,
+            3.0731606483459473
+          ],
+          [
+            3.478895425796509,
+            3.0321311950683594
+          ],
+          [
+            3.5208611488342285,
+            3.0577077865600586
+          ],
+          [
+            3.558328151702881,
+            3.058169364929199
+          ],
+          [
+            3.6004743576049805,
+            3.027094602584839
+          ],
+          [
+            3.647714614868164,
+            3.0617640018463135
+          ],
+          [
+            3.6844229698181152,
+            3.03501033782959
+          ],
+          [
+            3.724020481109619,
+            3.0273497104644775
+          ],
+          [
+            3.7694590091705322,
+            3.055772066116333
+          ],
+          [
+            3.8112800121307373,
+            3.014544725418091
+          ],
+          [
+            3.8519113063812256,
+            3.0310773849487305
+          ],
+          [
+            3.8919684886932373,
+            3.0380570888519287
+          ],
+          [
+            3.933979034423828,
+            2.999925374984741
+          ],
+          [
+            3.9810426235198975,
+            3.0310442447662354
+          ],
+          [
+            4.017477989196777,
+            3.0110018253326416
+          ],
+          [
+            4.057664394378662,
+            2.992905616760254
+          ],
+          [
+            4.106030464172363,
+            3.0227622985839844
+          ],
+          [
+            4.146797180175781,
+            2.984745502471924
+          ],
+          [
+            4.186042785644531,
+            2.994338035583496
+          ],
+          [
+            4.229059219360352,
+            3.0078186988830566
+          ],
+          [
+            4.272365570068359,
+            2.966728448867798
+          ],
+          [
+            4.317245006561279,
+            2.9950003623962402
+          ],
+          [
+            4.353909015655518,
+            2.9848453998565674
+          ],
+          [
+            4.395275115966797,
+            2.9592268466949463
+          ],
+          [
+            4.443873882293701,
+            2.991751194000244
+          ],
+          [
+            4.483157634735107,
+            2.959120512008667
+          ],
+          [
+            4.522388458251953,
+            2.959843397140503
+          ],
+          [
+            4.567269325256348,
+            2.98042893409729
+          ],
+          [
+            4.611207485198975,
+            2.9392130374908447
+          ],
+          [
+            4.653848648071289,
+            2.964120626449585
+          ],
+          [
+            4.7175517082214355,
+            2.944465160369873
+          ],
+          [
+            4.710412979125977,
+            2.966883420944214
+          ],
+          [
+            4.707059383392334,
+            2.9625632762908936
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 7.140000000000002,
+            "pose_trace": [
+              [
+                3.3084051609039307,
+                3.066887855529785
+              ],
+              [
+                3.313427686691284,
+                3.0828144550323486
+              ],
+              [
+                3.3510138988494873,
+                3.047891139984131
+              ],
+              [
+                3.391127824783325,
+                3.0503268241882324
+              ],
+              [
+                3.4345622062683105,
+                3.0731606483459473
+              ],
+              [
+                3.478895425796509,
+                3.0321311950683594
+              ],
+              [
+                3.5208611488342285,
+                3.0577077865600586
+              ],
+              [
+                3.558328151702881,
+                3.058169364929199
+              ],
+              [
+                3.6004743576049805,
+                3.027094602584839
+              ],
+              [
+                3.647714614868164,
+                3.0617640018463135
+              ],
+              [
+                3.6844229698181152,
+                3.03501033782959
+              ],
+              [
+                3.724020481109619,
+                3.0273497104644775
+              ],
+              [
+                3.7694590091705322,
+                3.055772066116333
+              ],
+              [
+                3.8112800121307373,
+                3.014544725418091
+              ],
+              [
+                3.8519113063812256,
+                3.0310773849487305
+              ],
+              [
+                3.8919684886932373,
+                3.0380570888519287
+              ],
+              [
+                3.933979034423828,
+                2.999925374984741
+              ],
+              [
+                3.9810426235198975,
+                3.0310442447662354
+              ],
+              [
+                4.017477989196777,
+                3.0110018253326416
+              ],
+              [
+                4.057664394378662,
+                2.992905616760254
+              ],
+              [
+                4.106030464172363,
+                3.0227622985839844
+              ],
+              [
+                4.146797180175781,
+                2.984745502471924
+              ],
+              [
+                4.186042785644531,
+                2.994338035583496
+              ],
+              [
+                4.229059219360352,
+                3.0078186988830566
+              ],
+              [
+                4.272365570068359,
+                2.966728448867798
+              ],
+              [
+                4.317245006561279,
+                2.9950003623962402
+              ],
+              [
+                4.353909015655518,
+                2.9848453998565674
+              ],
+              [
+                4.395275115966797,
+                2.9592268466949463
+              ],
+              [
+                4.443873882293701,
+                2.991751194000244
+              ],
+              [
+                4.483157634735107,
+                2.959120512008667
+              ],
+              [
+                4.522388458251953,
+                2.959843397140503
+              ],
+              [
+                4.567269325256348,
+                2.98042893409729
+              ],
+              [
+                4.611207485198975,
+                2.9392130374908447
+              ],
+              [
+                4.653848648071289,
+                2.964120626449585
+              ],
+              [
+                4.7175517082214355,
+                2.944465160369873
+              ],
+              [
+                4.710412979125977,
+                2.966883420944214
+              ],
+              [
+                4.707059383392334,
+                2.9625632762908936
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.313427686691284,
+                3.0828144550323486
+              ],
+              [
+                3.3510138988494873,
+                3.047891139984131
+              ],
+              [
+                3.391127824783325,
+                3.0503268241882324
+              ],
+              [
+                3.4345622062683105,
+                3.0731606483459473
+              ],
+              [
+                3.478895425796509,
+                3.0321311950683594
+              ],
+              [
+                3.5208611488342285,
+                3.0577077865600586
+              ],
+              [
+                3.558328151702881,
+                3.058169364929199
+              ],
+              [
+                3.6004743576049805,
+                3.027094602584839
+              ],
+              [
+                3.647714614868164,
+                3.0617640018463135
+              ],
+              [
+                3.6844229698181152,
+                3.03501033782959
+              ],
+              [
+                3.724020481109619,
+                3.0273497104644775
+              ],
+              [
+                3.7694590091705322,
+                3.055772066116333
+              ],
+              [
+                3.8112800121307373,
+                3.014544725418091
+              ],
+              [
+                3.8519113063812256,
+                3.0310773849487305
+              ],
+              [
+                3.8919684886932373,
+                3.0380570888519287
+              ],
+              [
+                3.933979034423828,
+                2.999925374984741
+              ],
+              [
+                3.9810426235198975,
+                3.0310442447662354
+              ],
+              [
+                4.017477989196777,
+                3.0110018253326416
+              ],
+              [
+                4.057664394378662,
+                2.992905616760254
+              ],
+              [
+                4.106030464172363,
+                3.0227622985839844
+              ],
+              [
+                4.146797180175781,
+                2.984745502471924
+              ],
+              [
+                4.186042785644531,
+                2.994338035583496
+              ],
+              [
+                4.229059219360352,
+                3.0078186988830566
+              ],
+              [
+                4.272365570068359,
+                2.966728448867798
+              ],
+              [
+                4.317245006561279,
+                2.9950003623962402
+              ],
+              [
+                4.353909015655518,
+                2.9848453998565674
+              ],
+              [
+                4.395275115966797,
+                2.9592268466949463
+              ],
+              [
+                4.443873882293701,
+                2.991751194000244
+              ],
+              [
+                4.483157634735107,
+                2.959120512008667
+              ],
+              [
+                4.522388458251953,
+                2.959843397140503
+              ],
+              [
+                4.567269325256348,
+                2.98042893409729
+              ],
+              [
+                4.611207485198975,
+                2.9392130374908447
+              ],
+              [
+                4.653848648071289,
+                2.964120626449585
+              ],
+              [
+                4.7175517082214355,
+                2.944465160369873
+              ],
+              [
+                4.710412979125977,
+                2.966883420944214
+              ]
+            ],
+            "true_pose": [
+              4.707059383392334,
+              2.9625632762908936,
+              0.2137140142800226
+            ],
+            "true_displacement_m": 1.402539572318019,
+            "distance_moved_m": 1.388000000000001,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.7071,
+        "y": 2.9626,
+        "heading_deg": 0.21
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Hallway": {
+            "name": "Hallway",
+            "description": "Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Hallway",
+            "direction_deg": 0.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Hallway",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Hallway"
+        ],
+        "current_room": "Hallway",
+        "plan": "MODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Hallway -- Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.\nTrajectory: Hallway\nUnexplored exits:\n  - Hallway: exit at 0 deg (unexplored)\n  - Hallway: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.15, y=3.05  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 356 deg\nCurrent room (your assertion): Hallway\nBreadcrumbs (last 5): (1.63,3.11,358) (3.15,3.05,356)\nBudget: turns 3/40, policy-seconds 14.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe."
+      },
+      "budget": {
+        "stage_turns_used": 4,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 21.14,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4346,
+        "output_tokens": 162,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.055615
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 5,
+      "global_turn_idx": 5,
+      "timestamp": "2026-07-27T08:44:14Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 0.2,
+        "position_estimate": {
+          "x": 4.53,
+          "y": 2.95
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 1.388
+        }
+      },
+      "model_output": {
+        "thought": "I've stepped outside the apartment boundary at the eastern edge of the building\u2014the view shows a dark void floor with grid lines where the simulator ends, and I can see the grey exterior wall behind me. I'm standing in what seems to be a doorway at the building's edge, around x=4.53, with walls visible to my left and right but void space ahead.\n\nI should turn back toward 180\u00b0 to re-enter the hallway, then explore the other exits I spotted\u2014the dark doorway on the south wall or that pinkish room with the wood floor opening on the right side at the far east end. Let me head back into the hallway first and get my bearings.\nI've hit a dead end at the east exterior, so I'm heading back to explore the pinkish room with the wood floor on the south side.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Hallway",
+              "direction_deg": 0,
+              "status": "leads_to:Outside-void"
+            }
+          },
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Outside-void",
+              "description": "Building exterior / skybox void east of the hallway. Not a real room \u2014 dead end, do not go here."
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Objective: kitchen counter. East hallway exit = building exterior (void), dead end. Now: turn to 180, walk ~1.5m back west into hallway, then check the opening on the SOUTH side near hallway's east end (saw pinkish room + wood floor through a gap at ~x=3.5-4). Fallback frontiers: hallway 180 exit, west end doors."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 180
+            }
+          }
+        ],
+        "dispatched": 4,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 180 deg, 0.6 policy-s, FELL \u2014 trial over",
+        "policy_seconds_used": 0.56,
+        "pose_trace": [
+          [
+            4.707059383392334,
+            2.9625632762908936
+          ],
+          [
+            4.676570415496826,
+            2.9281680583953857
+          ],
+          [
+            4.615935802459717,
+            2.9420547485351562
+          ],
+          [
+            4.525696754455566,
+            2.945222854614258
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 0.56,
+            "pose_trace": [
+              [
+                4.707059383392334,
+                2.9625632762908936
+              ],
+              [
+                4.676570415496826,
+                2.9281680583953857
+              ],
+              [
+                4.615935802459717,
+                2.9420547485351562
+              ],
+              [
+                4.525696754455566,
+                2.945222854614258
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.676570415496826,
+                2.9281680583953857
+              ],
+              [
+                4.615935802459717,
+                2.9420547485351562
+              ]
+            ],
+            "true_pose": [
+              4.525696754455566,
+              2.945222854614258,
+              354.2528097165689
+            ],
+            "true_displacement_m": 0.182189718147812,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": true,
+            "fall_diagnostics": {
+              "height_m": 0.1485,
+              "tilt_deg": 58.3,
+              "terms": {
+                "fell_over": true,
+                "fell_low": false
+              },
+              "height_threshold_m": 0.09,
+              "tilt_threshold_deg": 60.0,
+              "commanded": [
+                0.0,
+                0.0,
+                -0.5
+              ],
+              "policy_seconds_into_call": 0.56,
+              "values_pre_step": true
+            },
+            "stop_reason": "fell",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.5257,
+        "y": 2.9452,
+        "heading_deg": 354.25
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Hallway": {
+            "name": "Hallway",
+            "description": "Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.",
+            "landmarks": []
+          },
+          "Outside-void": {
+            "name": "Outside-void",
+            "description": "Building exterior / skybox void east of the hallway. Not a real room \u2014 dead end, do not go here.",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "Hallway",
+            "direction_deg": 0.0,
+            "status": "leads_to:Outside-void"
+          },
+          {
+            "room": "Hallway",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Hallway"
+        ],
+        "current_room": "Hallway",
+        "plan": "MODE: broad search. Objective: kitchen counter. East hallway exit = building exterior (void), dead end. Now: turn to 180, walk ~1.5m back west into hallway, then check the opening on the SOUTH side near hallway's east end (saw pinkish room + wood floor through a gap at ~x=3.5-4). Fallback frontiers: hallway 180 exit, west end doors.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Hallway -- Long white-walled corridor with brown wood floor running east-west. Red bin/bucket on floor to the east, small plant at far east end, dark vertical strip (door frame?) on south wall toward east. West end has grey doors and a small red chair. North side blocked by large dark object; south side very close wall/furniture.\nTrajectory: Hallway\nUnexplored exits:\n  - Hallway: exit at 0 deg (unexplored)\n  - Hallway: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.53, y=2.95  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 0 deg\nCurrent room (your assertion): Hallway\nBreadcrumbs (last 5): (1.63,3.11,358) (3.15,3.05,356) (4.53,2.95,0)\nBudget: turns 4/40, policy-seconds 21.1/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Objective: kitchen counter. I'm in an E-W hallway. Choice: walk EAST (heading 0) down the hallway \u2014 it's long and opens up; look for kitchen evidence (tile, counters, appliances). West end (doors, red chair) is fallback frontier. Move in ~1.2 m steps, observe."
+      },
+      "budget": {
+        "stage_turns_used": 5,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 21.7,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6374,
+        "output_tokens": 827,
+        "cache_read_tokens": 4055,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.109145
+      },
+      "end_reason": "fall"
+    }
+  ],
+  "video_path": "results/videos/fable5_seed103.mp4",
+  "final": {
+    "outcome": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "end_reason": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "fall",
+        "outcome": "fall",
+        "success": false,
+        "turns_used": 5,
+        "policy_seconds_used": 21.7,
+        "score": {
+          "success": false,
+          "distance_m": 2.9534,
+          "radius_m": 0.35,
+          "goal_xy": [
+            2.55,
+            0.75
+          ],
+          "true_xy": [
+            4.5257,
+            2.9452
+          ]
+        },
+        "true_pose": {
+          "x": 4.5257,
+          "y": 2.9452,
+          "heading_deg": 354.25
+        }
+      },
+      "return_home": {
+        "stage": "return_home",
+        "end_reason": "not_run",
+        "outcome": "not_run",
+        "success": false,
+        "turns_used": 0,
+        "policy_seconds_used": 0.0,
+        "score": null,
+        "true_pose": null
+      }
+    },
+    "bumps": 1,
+    "metrics": {},
+    "tokens": {
+      "input_tokens": 17362,
+      "output_tokens": 2379,
+      "cache_read_tokens": 20275,
+      "cache_write_tokens": 0,
+      "cost_usd_estimate": 0.312845
+    },
+    "tokens_breakdown": {
+      "episode": {
+        "input_tokens": 16593,
+        "output_tokens": 1945,
+        "cache_read_tokens": 20275,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.283455
+      },
+      "qa": {
+        "input_tokens": 769,
+        "output_tokens": 434,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.02939
+      }
+    },
+    "qa": [
+      {
+        "number": 1,
+        "question": "Which room connects the bedroom to the kitchen?",
+        "answer": "I can't answer that. My map contains no bedroom and no kitchen \u2014 I only mapped a hallway and an exterior void before the run ended. I never observed a connection between those rooms.",
+        "score": null
+      },
+      {
+        "number": 2,
+        "question": "Starting at the front of the sofa, give turn-by-turn directions to the fridge.",
+        "answer": "I can't give those directions. I never saw a sofa or a fridge during the run; neither appears anywhere in my map or notes, so any turn-by-turn route would be invented.",
+        "score": null
+      },
+      {
+        "number": 3,
+        "question": "How many rooms did you visit? Name them.",
+        "answer": "I visited one real room: the Hallway. I also stepped into what I labeled \"Outside-void,\" but that was the building exterior/skybox, not an actual room \u2014 I marked it as a dead end, not a place.",
+        "score": null
+      },
+      {
+        "number": 4,
+        "question": "Which direction (compass) is the kitchen from your spawn point?",
+        "answer": "Unknown. The run ended (only 5 of 40 turns used) before I ever located the kitchen. My plan noted an unexplored opening on the south side of the hallway with a pinkish room visible through a gap, which was my next candidate to check, but I never confirmed a kitchen or its bearing from spawn.",
+        "score": null
+      },
+      {
+        "number": 5,
+        "question": "Name one landmark in each room you visited.",
+        "answer": "For the Hallway: the red bin/bucket on the floor at the east end (other options: the small plant at the far east end, or the small red chair by the grey doors at the west end). The Outside-void had no landmarks \u2014 it was just building exterior \u2014 and it wasn't a room I'd count as visited.",
+        "score": null
+      }
+    ],
+    "qa_raw": "1. I can't answer that. My map contains no bedroom and no kitchen \u2014 I only mapped a hallway and an exterior void before the run ended. I never observed a connection between those rooms.\n\n2. I can't give those directions. I never saw a sofa or a fridge during the run; neither appears anywhere in my map or notes, so any turn-by-turn route would be invented.\n\n3. I visited one real room: the Hallway. I also stepped into what I labeled \"Outside-void,\" but that was the building exterior/skybox, not an actual room \u2014 I marked it as a dead end, not a place.\n\n4. Unknown. The run ended (only 5 of 40 turns used) before I ever located the kitchen. My plan noted an unexplored opening on the south side of the hallway with a pinkish room visible through a gap, which was my next candidate to check, but I never confirmed a kitchen or its bearing from spawn.\n\n5. For the Hallway: the red bin/bucket on the floor at the east end (other options: the small plant at the far east end, or the small red chair by the grey doors at the west end). The Outside-void had no landmarks \u2014 it was just building exterior \u2014 and it wasn't a room I'd count as visited.",
+    "qa_parse_failed": false
+  }
+}

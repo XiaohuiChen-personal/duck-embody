@@ -1,0 +1,2729 @@
+{
+  "trial_id": "gpt56sol_seed102",
+  "config": {
+    "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+    "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "model": "gpt-5.6-sol",
+    "model_config": "gpt56sol",
+    "seed": 102,
+    "spawn": {
+      "xy": [
+        4.3,
+        2.2
+      ],
+      "heading_deg": 270.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-27T09:22:12Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed102/t001_0.jpg",
+          "frames/gpt56sol_seed102/t001_1.jpg",
+          "frames/gpt56sol_seed102/t001_2.jpg",
+          "frames/gpt56sol_seed102/t001_3.jpg"
+        ],
+        "compass_deg": 267.7,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.306,
+        "y": 2.1863,
+        "heading_deg": 267.67
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 268 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 2364,
+        "output_tokens": 28,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.013777
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-27T09:22:24Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 267.7,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Bedroom",
+              "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start."
+            }
+          },
+          {
+            "name": "add_landmark",
+            "args": {
+              "room": "Bedroom",
+              "description": "Low black bed with beige pillows centered toward south wall."
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Bedroom"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Bedroom",
+              "direction_deg": 270,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 270
+            }
+          }
+        ],
+        "dispatched": 6,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 270 deg, 0.2 policy-s",
+        "policy_seconds_used": 0.2,
+        "pose_trace": [
+          [
+            4.306026935577393,
+            2.1863346099853516
+          ],
+          [
+            4.311123847961426,
+            2.184572458267212
+          ],
+          [
+            4.29497766494751,
+            2.18621563911438
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 0.2,
+            "pose_trace": [
+              [
+                4.306026935577393,
+                2.1863346099853516
+              ],
+              [
+                4.311123847961426,
+                2.184572458267212
+              ],
+              [
+                4.29497766494751,
+                2.18621563911438
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.311123847961426,
+                2.184572458267212
+              ]
+            ],
+            "true_pose": [
+              4.29497766494751,
+              2.18621563911438,
+              267.00600876786945
+            ],
+            "true_displacement_m": 0.011049911109168737,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.295,
+        "y": 2.1862,
+        "heading_deg": 267.01
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 268 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.2,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 3773,
+        "output_tokens": 465,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.033932
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 3,
+      "global_turn_idx": 3,
+      "timestamp": "2026-07-27T09:22:46Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 267.0,
+        "position_estimate": {
+          "x": 4.3,
+          "y": 2.2
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.7
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.72 m, 3.8 policy-s, collision reported (bump)",
+        "policy_seconds_used": 3.78,
+        "pose_trace": [
+          [
+            4.29497766494751,
+            2.18621563911438
+          ],
+          [
+            4.274623870849609,
+            2.184387683868408
+          ],
+          [
+            4.302773475646973,
+            2.152940511703491
+          ],
+          [
+            4.307698726654053,
+            2.116231679916382
+          ],
+          [
+            4.2717156410217285,
+            2.0730388164520264
+          ],
+          [
+            4.305394172668457,
+            2.0276145935058594
+          ],
+          [
+            4.286223411560059,
+            1.991465449333191
+          ],
+          [
+            4.268926620483398,
+            1.951168179512024
+          ],
+          [
+            4.299529552459717,
+            1.903825283050537
+          ],
+          [
+            4.261948585510254,
+            1.863518476486206
+          ],
+          [
+            4.274209499359131,
+            1.8249622583389282
+          ],
+          [
+            4.290764331817627,
+            1.7832127809524536
+          ],
+          [
+            4.252364635467529,
+            1.7389158010482788
+          ],
+          [
+            4.284440994262695,
+            1.6956804990768433
+          ],
+          [
+            4.276112079620361,
+            1.659009337425232
+          ],
+          [
+            4.251636981964111,
+            1.6168591976165771
+          ],
+          [
+            4.286649703979492,
+            1.569494366645813
+          ],
+          [
+            4.255679130554199,
+            1.5291317701339722
+          ],
+          [
+            4.257287979125977,
+            1.4957090616226196
+          ],
+          [
+            4.257906436920166,
+            1.496607780456543
+          ],
+          [
+            4.2421369552612305,
+            1.504294753074646
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 3.780000000000001,
+            "pose_trace": [
+              [
+                4.29497766494751,
+                2.18621563911438
+              ],
+              [
+                4.274623870849609,
+                2.184387683868408
+              ],
+              [
+                4.302773475646973,
+                2.152940511703491
+              ],
+              [
+                4.307698726654053,
+                2.116231679916382
+              ],
+              [
+                4.2717156410217285,
+                2.0730388164520264
+              ],
+              [
+                4.305394172668457,
+                2.0276145935058594
+              ],
+              [
+                4.286223411560059,
+                1.991465449333191
+              ],
+              [
+                4.268926620483398,
+                1.951168179512024
+              ],
+              [
+                4.299529552459717,
+                1.903825283050537
+              ],
+              [
+                4.261948585510254,
+                1.863518476486206
+              ],
+              [
+                4.274209499359131,
+                1.8249622583389282
+              ],
+              [
+                4.290764331817627,
+                1.7832127809524536
+              ],
+              [
+                4.252364635467529,
+                1.7389158010482788
+              ],
+              [
+                4.284440994262695,
+                1.6956804990768433
+              ],
+              [
+                4.276112079620361,
+                1.659009337425232
+              ],
+              [
+                4.251636981964111,
+                1.6168591976165771
+              ],
+              [
+                4.286649703979492,
+                1.569494366645813
+              ],
+              [
+                4.255679130554199,
+                1.5291317701339722
+              ],
+              [
+                4.257287979125977,
+                1.4957090616226196
+              ],
+              [
+                4.257906436920166,
+                1.496607780456543
+              ],
+              [
+                4.2421369552612305,
+                1.504294753074646
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.274623870849609,
+                2.184387683868408
+              ],
+              [
+                4.302773475646973,
+                2.152940511703491
+              ],
+              [
+                4.307698726654053,
+                2.116231679916382
+              ],
+              [
+                4.2717156410217285,
+                2.0730388164520264
+              ],
+              [
+                4.305394172668457,
+                2.0276145935058594
+              ],
+              [
+                4.286223411560059,
+                1.991465449333191
+              ],
+              [
+                4.268926620483398,
+                1.951168179512024
+              ],
+              [
+                4.299529552459717,
+                1.903825283050537
+              ],
+              [
+                4.261948585510254,
+                1.863518476486206
+              ],
+              [
+                4.274209499359131,
+                1.8249622583389282
+              ],
+              [
+                4.290764331817627,
+                1.7832127809524536
+              ],
+              [
+                4.252364635467529,
+                1.7389158010482788
+              ],
+              [
+                4.284440994262695,
+                1.6956804990768433
+              ],
+              [
+                4.276112079620361,
+                1.659009337425232
+              ],
+              [
+                4.251636981964111,
+                1.6168591976165771
+              ],
+              [
+                4.286649703979492,
+                1.569494366645813
+              ],
+              [
+                4.255679130554199,
+                1.5291317701339722
+              ],
+              [
+                4.257287979125977,
+                1.4957090616226196
+              ],
+              [
+                4.257906436920166,
+                1.496607780456543
+              ]
+            ],
+            "true_pose": [
+              4.2421369552612305,
+              1.504294753074646,
+              266.87140849261226
+            ],
+            "true_displacement_m": 0.6839650834782177,
+            "distance_moved_m": 0.7160000000000004,
+            "bumped": true,
+            "contact_groups": [
+              "torso"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.2421,
+        "y": 1.5043,
+        "heading_deg": 266.87
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.30, y=2.20  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 267 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267)\nBudget: turns 2/40, policy-seconds 0.2/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit."
+      },
+      "budget": {
+        "stage_turns_used": 3,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 3.98,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4642,
+        "output_tokens": 20,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.024927
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 4,
+      "global_turn_idx": 4,
+      "timestamp": "2026-07-27T09:22:48Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed102/t004_0.jpg",
+          "frames/gpt56sol_seed102/t004_1.jpg",
+          "frames/gpt56sol_seed102/t004_2.jpg",
+          "frames/gpt56sol_seed102/t004_3.jpg"
+        ],
+        "compass_deg": 266.9,
+        "position_estimate": {
+          "x": 4.26,
+          "y": 1.48
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.716
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.2421,
+        "y": 1.5043,
+        "heading_deg": 266.87
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.26, y=1.48  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 267 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267)\nBudget: turns 3/40, policy-seconds 4.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit."
+      },
+      "budget": {
+        "stage_turns_used": 4,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 3.98,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4786,
+        "output_tokens": 36,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.026127
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 5,
+      "global_turn_idx": 5,
+      "timestamp": "2026-07-27T09:23:13Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 266.9,
+        "position_estimate": {
+          "x": 4.26,
+          "y": 1.48
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.716
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 180
+            }
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 180 deg, 3.4 policy-s, collision reported (bump)",
+        "policy_seconds_used": 3.4,
+        "pose_trace": [
+          [
+            4.2421369552612305,
+            1.504294753074646
+          ],
+          [
+            4.230474472045898,
+            1.5019093751907349
+          ],
+          [
+            4.262451648712158,
+            1.4984818696975708
+          ],
+          [
+            4.253417015075684,
+            1.5019906759262085
+          ],
+          [
+            4.221588134765625,
+            1.5083709955215454
+          ],
+          [
+            4.247551918029785,
+            1.5124361515045166
+          ],
+          [
+            4.2130303382873535,
+            1.5305274724960327
+          ],
+          [
+            4.207066059112549,
+            1.533808946609497
+          ],
+          [
+            4.216285228729248,
+            1.5455331802368164
+          ],
+          [
+            4.184309959411621,
+            1.5745539665222168
+          ],
+          [
+            4.19619083404541,
+            1.5556753873825073
+          ],
+          [
+            4.194023132324219,
+            1.5817521810531616
+          ],
+          [
+            4.1836042404174805,
+            1.5968245267868042
+          ],
+          [
+            4.190537452697754,
+            1.5636909008026123
+          ],
+          [
+            4.187707901000977,
+            1.6000378131866455
+          ],
+          [
+            4.1808977127075195,
+            1.6045305728912354
+          ],
+          [
+            4.17913818359375,
+            1.5700984001159668
+          ],
+          [
+            4.179042816162109,
+            1.6039456129074097
+          ],
+          [
+            4.176116943359375,
+            1.6091912984848022
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 3.400000000000001,
+            "pose_trace": [
+              [
+                4.2421369552612305,
+                1.504294753074646
+              ],
+              [
+                4.230474472045898,
+                1.5019093751907349
+              ],
+              [
+                4.262451648712158,
+                1.4984818696975708
+              ],
+              [
+                4.253417015075684,
+                1.5019906759262085
+              ],
+              [
+                4.221588134765625,
+                1.5083709955215454
+              ],
+              [
+                4.247551918029785,
+                1.5124361515045166
+              ],
+              [
+                4.2130303382873535,
+                1.5305274724960327
+              ],
+              [
+                4.207066059112549,
+                1.533808946609497
+              ],
+              [
+                4.216285228729248,
+                1.5455331802368164
+              ],
+              [
+                4.184309959411621,
+                1.5745539665222168
+              ],
+              [
+                4.19619083404541,
+                1.5556753873825073
+              ],
+              [
+                4.194023132324219,
+                1.5817521810531616
+              ],
+              [
+                4.1836042404174805,
+                1.5968245267868042
+              ],
+              [
+                4.190537452697754,
+                1.5636909008026123
+              ],
+              [
+                4.187707901000977,
+                1.6000378131866455
+              ],
+              [
+                4.1808977127075195,
+                1.6045305728912354
+              ],
+              [
+                4.17913818359375,
+                1.5700984001159668
+              ],
+              [
+                4.179042816162109,
+                1.6039456129074097
+              ],
+              [
+                4.176116943359375,
+                1.6091912984848022
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.230474472045898,
+                1.5019093751907349
+              ],
+              [
+                4.262451648712158,
+                1.4984818696975708
+              ],
+              [
+                4.253417015075684,
+                1.5019906759262085
+              ],
+              [
+                4.221588134765625,
+                1.5083709955215454
+              ],
+              [
+                4.247551918029785,
+                1.5124361515045166
+              ],
+              [
+                4.2130303382873535,
+                1.5305274724960327
+              ],
+              [
+                4.207066059112549,
+                1.533808946609497
+              ],
+              [
+                4.216285228729248,
+                1.5455331802368164
+              ],
+              [
+                4.184309959411621,
+                1.5745539665222168
+              ],
+              [
+                4.19619083404541,
+                1.5556753873825073
+              ],
+              [
+                4.194023132324219,
+                1.5817521810531616
+              ],
+              [
+                4.1836042404174805,
+                1.5968245267868042
+              ],
+              [
+                4.190537452697754,
+                1.5636909008026123
+              ],
+              [
+                4.187707901000977,
+                1.6000378131866455
+              ],
+              [
+                4.1808977127075195,
+                1.6045305728912354
+              ],
+              [
+                4.17913818359375,
+                1.5700984001159668
+              ],
+              [
+                4.179042816162109,
+                1.6039456129074097
+              ]
+            ],
+            "true_pose": [
+              4.176116943359375,
+              1.6091912984848022,
+              181.93481336220472
+            ],
+            "true_displacement_m": 0.12394324189122258,
+            "distance_moved_m": 0.0,
+            "bumped": true,
+            "contact_groups": [
+              "left_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.1761,
+        "y": 1.6092,
+        "heading_deg": 181.93
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.26, y=1.48  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 267 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267)\nBudget: turns 4/40, policy-seconds 4.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Explore Bedroom perimeter to locate an actual doorway; tentative south frontier rated low kitchen-likelihood (bedroom interior, no tile/appliances), but it is the only open navigable direction currently. Move toward bed cautiously, then inspect side gaps for exit."
+      },
+      "budget": {
+        "stage_turns_used": 5,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 7.38,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6208,
+        "output_tokens": 209,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.038427
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 6,
+      "global_turn_idx": 6,
+      "timestamp": "2026-07-27T09:23:29Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 181.9,
+        "position_estimate": {
+          "x": 4.26,
+          "y": 1.48
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "left_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.8
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.48 m, 2.6 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 2.6,
+        "pose_trace": [
+          [
+            4.176116943359375,
+            1.6091912984848022
+          ],
+          [
+            4.163322448730469,
+            1.5909955501556396
+          ],
+          [
+            4.123259544372559,
+            1.5804978609085083
+          ],
+          [
+            4.078342437744141,
+            1.614540934562683
+          ],
+          [
+            4.042915344238281,
+            1.579048991203308
+          ],
+          [
+            4.006993770599365,
+            1.5880509614944458
+          ],
+          [
+            3.9635872840881348,
+            1.6066771745681763
+          ],
+          [
+            3.921494960784912,
+            1.5717217922210693
+          ],
+          [
+            3.8881430625915527,
+            1.6110478639602661
+          ],
+          [
+            3.8539435863494873,
+            1.6007208824157715
+          ],
+          [
+            3.81492018699646,
+            1.5773637294769287
+          ],
+          [
+            3.768784761428833,
+            1.6154005527496338
+          ],
+          [
+            3.728877067565918,
+            1.5887243747711182
+          ],
+          [
+            3.7333037853240967,
+            1.602128505706787
+          ],
+          [
+            3.733548402786255,
+            1.6170791387557983
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 2.6,
+            "pose_trace": [
+              [
+                4.176116943359375,
+                1.6091912984848022
+              ],
+              [
+                4.163322448730469,
+                1.5909955501556396
+              ],
+              [
+                4.123259544372559,
+                1.5804978609085083
+              ],
+              [
+                4.078342437744141,
+                1.614540934562683
+              ],
+              [
+                4.042915344238281,
+                1.579048991203308
+              ],
+              [
+                4.006993770599365,
+                1.5880509614944458
+              ],
+              [
+                3.9635872840881348,
+                1.6066771745681763
+              ],
+              [
+                3.921494960784912,
+                1.5717217922210693
+              ],
+              [
+                3.8881430625915527,
+                1.6110478639602661
+              ],
+              [
+                3.8539435863494873,
+                1.6007208824157715
+              ],
+              [
+                3.81492018699646,
+                1.5773637294769287
+              ],
+              [
+                3.768784761428833,
+                1.6154005527496338
+              ],
+              [
+                3.728877067565918,
+                1.5887243747711182
+              ],
+              [
+                3.7333037853240967,
+                1.602128505706787
+              ],
+              [
+                3.733548402786255,
+                1.6170791387557983
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.163322448730469,
+                1.5909955501556396
+              ],
+              [
+                4.123259544372559,
+                1.5804978609085083
+              ],
+              [
+                4.078342437744141,
+                1.614540934562683
+              ],
+              [
+                4.042915344238281,
+                1.579048991203308
+              ],
+              [
+                4.006993770599365,
+                1.5880509614944458
+              ],
+              [
+                3.9635872840881348,
+                1.6066771745681763
+              ],
+              [
+                3.921494960784912,
+                1.5717217922210693
+              ],
+              [
+                3.8881430625915527,
+                1.6110478639602661
+              ],
+              [
+                3.8539435863494873,
+                1.6007208824157715
+              ],
+              [
+                3.81492018699646,
+                1.5773637294769287
+              ],
+              [
+                3.768784761428833,
+                1.6154005527496338
+              ],
+              [
+                3.728877067565918,
+                1.5887243747711182
+              ],
+              [
+                3.7333037853240967,
+                1.602128505706787
+              ]
+            ],
+            "true_pose": [
+              3.733548402786255,
+              1.6170791387557983,
+              173.70094794942048
+            ],
+            "true_displacement_m": 0.44263882695620166,
+            "distance_moved_m": 0.48000000000000015,
+            "bumped": true,
+            "contact_groups": [
+              "torso"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.7335,
+        "y": 1.6171,
+        "heading_deg": 173.7
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.26, y=1.48  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 182 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267) (4.26,1.48,182)\nBudget: turns 5/40, policy-seconds 7.4/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture."
+      },
+      "budget": {
+        "stage_turns_used": 6,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 9.98,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6580,
+        "output_tokens": 20,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.034617
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 7,
+      "global_turn_idx": 7,
+      "timestamp": "2026-07-27T09:23:33Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed102/t007_0.jpg"
+        ],
+        "compass_deg": 173.7,
+        "position_estimate": {
+          "x": 3.78,
+          "y": 1.47
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.48
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; get_observation",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 3.7335,
+        "y": 1.6171,
+        "heading_deg": 173.7
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.78, y=1.47  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 174 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267) (4.26,1.48,182) (3.78,1.47,174)\nBudget: turns 6/40, policy-seconds 10.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture."
+      },
+      "budget": {
+        "stage_turns_used": 7,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 9.98,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6724,
+        "output_tokens": 66,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.036717
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 8,
+      "global_turn_idx": 8,
+      "timestamp": "2026-07-27T09:24:09Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 173.7,
+        "position_estimate": {
+          "x": 3.78,
+          "y": 1.47
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.48
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 0
+            }
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 0 deg, 5.8 policy-s, collision reported (bump)",
+        "policy_seconds_used": 5.8,
+        "pose_trace": [
+          [
+            3.733548402786255,
+            1.6170791387557983
+          ],
+          [
+            3.7317888736724854,
+            1.6196916103363037
+          ],
+          [
+            3.7338364124298096,
+            1.5902528762817383
+          ],
+          [
+            3.746631622314453,
+            1.6259983777999878
+          ],
+          [
+            3.7512638568878174,
+            1.6313563585281372
+          ],
+          [
+            3.7587876319885254,
+            1.6199232339859009
+          ],
+          [
+            3.779423952102661,
+            1.6575431823730469
+          ],
+          [
+            3.7771353721618652,
+            1.6485190391540527
+          ],
+          [
+            3.8022758960723877,
+            1.6549458503723145
+          ],
+          [
+            3.81844425201416,
+            1.675504446029663
+          ],
+          [
+            3.792316436767578,
+            1.659208059310913
+          ],
+          [
+            3.827072858810425,
+            1.6662676334381104
+          ],
+          [
+            3.8270063400268555,
+            1.6740753650665283
+          ],
+          [
+            3.8050789833068848,
+            1.6716424226760864
+          ],
+          [
+            3.8479413986206055,
+            1.665407657623291
+          ],
+          [
+            3.831843376159668,
+            1.6697533130645752
+          ],
+          [
+            3.8156819343566895,
+            1.6754380464553833
+          ],
+          [
+            3.8520333766937256,
+            1.6661893129348755
+          ],
+          [
+            3.826500654220581,
+            1.6808583736419678
+          ],
+          [
+            3.8480565547943115,
+            1.67324697971344
+          ],
+          [
+            3.869004249572754,
+            1.6606099605560303
+          ],
+          [
+            3.8467586040496826,
+            1.6860522031784058
+          ],
+          [
+            3.8687422275543213,
+            1.661828637123108
+          ],
+          [
+            3.8691821098327637,
+            1.665555477142334
+          ],
+          [
+            3.8606598377227783,
+            1.6879334449768066
+          ],
+          [
+            3.8774423599243164,
+            1.6522786617279053
+          ],
+          [
+            3.87275767326355,
+            1.6777846813201904
+          ],
+          [
+            3.87264347076416,
+            1.6796114444732666
+          ],
+          [
+            3.8771748542785645,
+            1.651286005973816
+          ],
+          [
+            3.881192922592163,
+            1.687349557876587
+          ],
+          [
+            3.881620168685913,
+            1.686659574508667
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 5.8000000000000025,
+            "pose_trace": [
+              [
+                3.733548402786255,
+                1.6170791387557983
+              ],
+              [
+                3.7317888736724854,
+                1.6196916103363037
+              ],
+              [
+                3.7338364124298096,
+                1.5902528762817383
+              ],
+              [
+                3.746631622314453,
+                1.6259983777999878
+              ],
+              [
+                3.7512638568878174,
+                1.6313563585281372
+              ],
+              [
+                3.7587876319885254,
+                1.6199232339859009
+              ],
+              [
+                3.779423952102661,
+                1.6575431823730469
+              ],
+              [
+                3.7771353721618652,
+                1.6485190391540527
+              ],
+              [
+                3.8022758960723877,
+                1.6549458503723145
+              ],
+              [
+                3.81844425201416,
+                1.675504446029663
+              ],
+              [
+                3.792316436767578,
+                1.659208059310913
+              ],
+              [
+                3.827072858810425,
+                1.6662676334381104
+              ],
+              [
+                3.8270063400268555,
+                1.6740753650665283
+              ],
+              [
+                3.8050789833068848,
+                1.6716424226760864
+              ],
+              [
+                3.8479413986206055,
+                1.665407657623291
+              ],
+              [
+                3.831843376159668,
+                1.6697533130645752
+              ],
+              [
+                3.8156819343566895,
+                1.6754380464553833
+              ],
+              [
+                3.8520333766937256,
+                1.6661893129348755
+              ],
+              [
+                3.826500654220581,
+                1.6808583736419678
+              ],
+              [
+                3.8480565547943115,
+                1.67324697971344
+              ],
+              [
+                3.869004249572754,
+                1.6606099605560303
+              ],
+              [
+                3.8467586040496826,
+                1.6860522031784058
+              ],
+              [
+                3.8687422275543213,
+                1.661828637123108
+              ],
+              [
+                3.8691821098327637,
+                1.665555477142334
+              ],
+              [
+                3.8606598377227783,
+                1.6879334449768066
+              ],
+              [
+                3.8774423599243164,
+                1.6522786617279053
+              ],
+              [
+                3.87275767326355,
+                1.6777846813201904
+              ],
+              [
+                3.87264347076416,
+                1.6796114444732666
+              ],
+              [
+                3.8771748542785645,
+                1.651286005973816
+              ],
+              [
+                3.881192922592163,
+                1.687349557876587
+              ],
+              [
+                3.881620168685913,
+                1.686659574508667
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.7317888736724854,
+                1.6196916103363037
+              ],
+              [
+                3.7338364124298096,
+                1.5902528762817383
+              ],
+              [
+                3.746631622314453,
+                1.6259983777999878
+              ],
+              [
+                3.7512638568878174,
+                1.6313563585281372
+              ],
+              [
+                3.7587876319885254,
+                1.6199232339859009
+              ],
+              [
+                3.779423952102661,
+                1.6575431823730469
+              ],
+              [
+                3.7771353721618652,
+                1.6485190391540527
+              ],
+              [
+                3.8022758960723877,
+                1.6549458503723145
+              ],
+              [
+                3.81844425201416,
+                1.675504446029663
+              ],
+              [
+                3.792316436767578,
+                1.659208059310913
+              ],
+              [
+                3.827072858810425,
+                1.6662676334381104
+              ],
+              [
+                3.8270063400268555,
+                1.6740753650665283
+              ],
+              [
+                3.8050789833068848,
+                1.6716424226760864
+              ],
+              [
+                3.8479413986206055,
+                1.665407657623291
+              ],
+              [
+                3.831843376159668,
+                1.6697533130645752
+              ],
+              [
+                3.8156819343566895,
+                1.6754380464553833
+              ],
+              [
+                3.8520333766937256,
+                1.6661893129348755
+              ],
+              [
+                3.826500654220581,
+                1.6808583736419678
+              ],
+              [
+                3.8480565547943115,
+                1.67324697971344
+              ],
+              [
+                3.869004249572754,
+                1.6606099605560303
+              ],
+              [
+                3.8467586040496826,
+                1.6860522031784058
+              ],
+              [
+                3.8687422275543213,
+                1.661828637123108
+              ],
+              [
+                3.8691821098327637,
+                1.665555477142334
+              ],
+              [
+                3.8606598377227783,
+                1.6879334449768066
+              ],
+              [
+                3.8774423599243164,
+                1.6522786617279053
+              ],
+              [
+                3.87275767326355,
+                1.6777846813201904
+              ],
+              [
+                3.87264347076416,
+                1.6796114444732666
+              ],
+              [
+                3.8771748542785645,
+                1.651286005973816
+              ],
+              [
+                3.881192922592163,
+                1.687349557876587
+              ]
+            ],
+            "true_pose": [
+              3.881620168685913,
+              1.686659574508667,
+              2.38390686282187
+            ],
+            "true_displacement_m": 0.1636052716027276,
+            "distance_moved_m": 0.0,
+            "bumped": true,
+            "contact_groups": [
+              "torso",
+              "left_leg"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 3.8816,
+        "y": 1.6867,
+        "heading_deg": 2.38
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.78, y=1.47  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 174 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267) (4.26,1.48,182) (3.78,1.47,174)\nBudget: turns 7/40, policy-seconds 10.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Bedroom has no kitchen cues. The south 'frontier' is blocked by the low bed; west side of bed is visibly open and is now the chosen route to sweep the perimeter and find a doorway. Other directions are walls/large furniture."
+      },
+      "budget": {
+        "stage_turns_used": 8,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 15.78,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 7225,
+        "output_tokens": 161,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.042072
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 9,
+      "global_turn_idx": 9,
+      "timestamp": "2026-07-27T09:24:34Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 2.4,
+        "position_estimate": {
+          "x": 3.78,
+          "y": 1.47
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso",
+            "left_leg"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.0
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.81 m, 4.2 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 4.24,
+        "pose_trace": [
+          [
+            3.881620168685913,
+            1.686659574508667
+          ],
+          [
+            3.889096736907959,
+            1.6621263027191162
+          ],
+          [
+            3.9285919666290283,
+            1.6651811599731445
+          ],
+          [
+            3.9715182781219482,
+            1.6948636770248413
+          ],
+          [
+            4.015972137451172,
+            1.6585558652877808
+          ],
+          [
+            4.053316593170166,
+            1.6828914880752563
+          ],
+          [
+            4.091960430145264,
+            1.6949341297149658
+          ],
+          [
+            4.138186931610107,
+            1.6633340120315552
+          ],
+          [
+            4.180423736572266,
+            1.7026628255844116
+          ],
+          [
+            4.218867301940918,
+            1.688498854637146
+          ],
+          [
+            4.261350631713867,
+            1.6757704019546509
+          ],
+          [
+            4.305724620819092,
+            1.7105971574783325
+          ],
+          [
+            4.350551128387451,
+            1.6774307489395142
+          ],
+          [
+            4.388301849365234,
+            1.6913063526153564
+          ],
+          [
+            4.429309844970703,
+            1.7116570472717285
+          ],
+          [
+            4.477725982666016,
+            1.6783041954040527
+          ],
+          [
+            4.5182204246521,
+            1.7138954401016235
+          ],
+          [
+            4.555298805236816,
+            1.7085007429122925
+          ],
+          [
+            4.598706245422363,
+            1.6880288124084473
+          ],
+          [
+            4.642566680908203,
+            1.727482795715332
+          ],
+          [
+            4.685590744018555,
+            1.70038640499115
+          ],
+          [
+            4.706850528717041,
+            1.7070372104644775
+          ],
+          [
+            4.7115797996521,
+            1.722008466720581
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 4.24,
+            "pose_trace": [
+              [
+                3.881620168685913,
+                1.686659574508667
+              ],
+              [
+                3.889096736907959,
+                1.6621263027191162
+              ],
+              [
+                3.9285919666290283,
+                1.6651811599731445
+              ],
+              [
+                3.9715182781219482,
+                1.6948636770248413
+              ],
+              [
+                4.015972137451172,
+                1.6585558652877808
+              ],
+              [
+                4.053316593170166,
+                1.6828914880752563
+              ],
+              [
+                4.091960430145264,
+                1.6949341297149658
+              ],
+              [
+                4.138186931610107,
+                1.6633340120315552
+              ],
+              [
+                4.180423736572266,
+                1.7026628255844116
+              ],
+              [
+                4.218867301940918,
+                1.688498854637146
+              ],
+              [
+                4.261350631713867,
+                1.6757704019546509
+              ],
+              [
+                4.305724620819092,
+                1.7105971574783325
+              ],
+              [
+                4.350551128387451,
+                1.6774307489395142
+              ],
+              [
+                4.388301849365234,
+                1.6913063526153564
+              ],
+              [
+                4.429309844970703,
+                1.7116570472717285
+              ],
+              [
+                4.477725982666016,
+                1.6783041954040527
+              ],
+              [
+                4.5182204246521,
+                1.7138954401016235
+              ],
+              [
+                4.555298805236816,
+                1.7085007429122925
+              ],
+              [
+                4.598706245422363,
+                1.6880288124084473
+              ],
+              [
+                4.642566680908203,
+                1.727482795715332
+              ],
+              [
+                4.685590744018555,
+                1.70038640499115
+              ],
+              [
+                4.706850528717041,
+                1.7070372104644775
+              ],
+              [
+                4.7115797996521,
+                1.722008466720581
+              ]
+            ],
+            "sampled_xy": [
+              [
+                3.889096736907959,
+                1.6621263027191162
+              ],
+              [
+                3.9285919666290283,
+                1.6651811599731445
+              ],
+              [
+                3.9715182781219482,
+                1.6948636770248413
+              ],
+              [
+                4.015972137451172,
+                1.6585558652877808
+              ],
+              [
+                4.053316593170166,
+                1.6828914880752563
+              ],
+              [
+                4.091960430145264,
+                1.6949341297149658
+              ],
+              [
+                4.138186931610107,
+                1.6633340120315552
+              ],
+              [
+                4.180423736572266,
+                1.7026628255844116
+              ],
+              [
+                4.218867301940918,
+                1.688498854637146
+              ],
+              [
+                4.261350631713867,
+                1.6757704019546509
+              ],
+              [
+                4.305724620819092,
+                1.7105971574783325
+              ],
+              [
+                4.350551128387451,
+                1.6774307489395142
+              ],
+              [
+                4.388301849365234,
+                1.6913063526153564
+              ],
+              [
+                4.429309844970703,
+                1.7116570472717285
+              ],
+              [
+                4.477725982666016,
+                1.6783041954040527
+              ],
+              [
+                4.5182204246521,
+                1.7138954401016235
+              ],
+              [
+                4.555298805236816,
+                1.7085007429122925
+              ],
+              [
+                4.598706245422363,
+                1.6880288124084473
+              ],
+              [
+                4.642566680908203,
+                1.727482795715332
+              ],
+              [
+                4.685590744018555,
+                1.70038640499115
+              ],
+              [
+                4.706850528717041,
+                1.7070372104644775
+              ]
+            ],
+            "true_pose": [
+              4.7115797996521,
+              1.722008466720581,
+              357.0222489969566
+            ],
+            "true_displacement_m": 0.8307120639632832,
+            "distance_moved_m": 0.8080000000000005,
+            "bumped": true,
+            "contact_groups": [
+              "head"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.7116,
+        "y": 1.722,
+        "heading_deg": 357.02
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=3.78, y=1.47  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 2 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.30,2.20,267) (4.26,1.48,267) (4.26,1.48,182) (3.78,1.47,174) (3.78,1.47,2)\nBudget: turns 8/40, policy-seconds 15.8/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found."
+      },
+      "budget": {
+        "stage_turns_used": 9,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 20.02,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 7546,
+        "output_tokens": 20,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.039447
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 10,
+      "global_turn_idx": 10,
+      "timestamp": "2026-07-27T09:24:36Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed102/t010_0.jpg",
+          "frames/gpt56sol_seed102/t010_1.jpg",
+          "frames/gpt56sol_seed102/t010_2.jpg",
+          "frames/gpt56sol_seed102/t010_3.jpg"
+        ],
+        "compass_deg": 357.0,
+        "position_estimate": {
+          "x": 4.59,
+          "y": 1.5
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.808
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 4.7116,
+        "y": 1.722,
+        "heading_deg": 357.02
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.59, y=1.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 357 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.26,1.48,267) (4.26,1.48,182) (3.78,1.47,174) (3.78,1.47,2) (4.59,1.50,357)\nBudget: turns 9/40, policy-seconds 20.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found."
+      },
+      "budget": {
+        "stage_turns_used": 10,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 20.02,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 7678,
+        "output_tokens": 71,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.041637
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 11,
+      "global_turn_idx": 11,
+      "timestamp": "2026-07-27T09:24:51Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 357.0,
+        "position_estimate": {
+          "x": 4.59,
+          "y": 1.5
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "head"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.808
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Bedroom",
+              "direction_deg": 0,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Eastward sweep reached an opening/boundary showing black grid-like floor and blue background, not kitchen evidence; rate east frontier medium only because it is the first apparent passage, while south is blocked by bed and west is wall. Proceed east cautiously to determine whether this is a corridor/adjacent space."
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.5
+            }
+          }
+        ],
+        "dispatched": 3,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.16 m, 0.8 policy-s, FELL \u2014 trial over",
+        "policy_seconds_used": 0.8,
+        "pose_trace": [
+          [
+            4.7115797996521,
+            1.722008466720581
+          ],
+          [
+            4.712108612060547,
+            1.7145525217056274
+          ],
+          [
+            4.720979690551758,
+            1.6705436706542969
+          ],
+          [
+            4.693699359893799,
+            1.717987060546875
+          ],
+          [
+            4.638010501861572,
+            1.7002973556518555
+          ],
+          [
+            4.579306125640869,
+            1.6515754461288452
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 0.8,
+            "pose_trace": [
+              [
+                4.7115797996521,
+                1.722008466720581
+              ],
+              [
+                4.712108612060547,
+                1.7145525217056274
+              ],
+              [
+                4.720979690551758,
+                1.6705436706542969
+              ],
+              [
+                4.693699359893799,
+                1.717987060546875
+              ],
+              [
+                4.638010501861572,
+                1.7002973556518555
+              ],
+              [
+                4.579306125640869,
+                1.6515754461288452
+              ]
+            ],
+            "sampled_xy": [
+              [
+                4.712108612060547,
+                1.7145525217056274
+              ],
+              [
+                4.720979690551758,
+                1.6705436706542969
+              ],
+              [
+                4.693699359893799,
+                1.717987060546875
+              ],
+              [
+                4.638010501861572,
+                1.7002973556518555
+              ]
+            ],
+            "true_pose": [
+              4.579306125640869,
+              1.6515754461288452,
+              329.8016647150506
+            ],
+            "true_displacement_m": 0.14985704930401222,
+            "distance_moved_m": 0.16000000000000003,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": true,
+            "fall_diagnostics": {
+              "height_m": 0.1604,
+              "tilt_deg": 59.57,
+              "terms": {
+                "fell_over": true,
+                "fell_low": false
+              },
+              "height_threshold_m": 0.09,
+              "tilt_threshold_deg": 60.0,
+              "commanded": [
+                0.2,
+                0.0,
+                -0.5
+              ],
+              "policy_seconds_into_call": 0.8,
+              "values_pre_step": true
+            },
+            "stop_reason": "fell",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 4.5793,
+        "y": 1.6516,
+        "heading_deg": 329.8
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Bedroom": {
+            "name": "Bedroom",
+            "description": "Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.",
+            "landmarks": [
+              "Low black bed with beige pillows centered toward south wall."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Bedroom",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Bedroom",
+            "direction_deg": 0.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Bedroom"
+        ],
+        "current_room": "Bedroom",
+        "plan": "MODE: broad search. Eastward sweep reached an opening/boundary showing black grid-like floor and blue background, not kitchen evidence; rate east frontier medium only because it is the first apparent passage, while south is blocked by bed and west is wall. Proceed east cautiously to determine whether this is a corridor/adjacent space.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Bedroom -- Small bedroom with tan floor, pale walls, low black bed and beige pillows toward south; large dark furniture/objects close on east/north side of start.\n  landmarks: Low black bed with beige pillows centered toward south wall.\nTrajectory: Bedroom\nUnexplored exits:\n  - Bedroom: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=4.59, y=1.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 357 deg\nCurrent room (your assertion): Bedroom\nBreadcrumbs (last 5): (4.26,1.48,267) (4.26,1.48,182) (3.78,1.47,174) (3.78,1.47,2) (4.59,1.50,357)\nBudget: turns 10/40, policy-seconds 20.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. West side route proved to be a wall after 0.48 m; sweep east across the bed's foot to test the opposite side. Bedroom exits remain low kitchen-likelihood until a doorway is found."
+      },
+      "budget": {
+        "stage_turns_used": 11,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 20.82,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 9133,
+        "output_tokens": 427,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.059592
+      },
+      "end_reason": "fall"
+    }
+  ],
+  "video_path": "results/videos/gpt56sol_seed102.mp4",
+  "final": {
+    "outcome": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "end_reason": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "fall",
+        "outcome": "fall",
+        "success": false,
+        "turns_used": 11,
+        "policy_seconds_used": 20.82,
+        "score": {
+          "success": false,
+          "distance_m": 2.2206,
+          "radius_m": 0.35,
+          "goal_xy": [
+            2.55,
+            0.75
+          ],
+          "true_xy": [
+            4.5793,
+            1.6516
+          ]
+        },
+        "true_pose": {
+          "x": 4.5793,
+          "y": 1.6516,
+          "heading_deg": 329.8
+        }
+      },
+      "return_home": {
+        "stage": "return_home",
+        "end_reason": "not_run",
+        "outcome": "not_run",
+        "success": false,
+        "turns_used": 0,
+        "policy_seconds_used": 0.0,
+        "score": null,
+        "true_pose": null
+      }
+    },
+    "bumps": 3,
+    "metrics": {},
+    "tokens": {
+      "input_tokens": 67112,
+      "output_tokens": 1634,
+      "cache_read_tokens": 24574,
+      "cache_write_tokens": 0,
+      "cost_usd_estimate": 0.396867
+    },
+    "tokens_breakdown": {
+      "episode": {
+        "input_tokens": 66659,
+        "output_tokens": 1523,
+        "cache_read_tokens": 24574,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.391272
+      },
+      "qa": {
+        "input_tokens": 453,
+        "output_tokens": 111,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.005595
+      }
+    },
+    "qa": [
+      {
+        "number": 1,
+        "question": "Which room connects the bedroom to the kitchen?",
+        "answer": "Unknown; no connecting room was identified.",
+        "score": null
+      },
+      {
+        "number": 2,
+        "question": "Starting at the front of the sofa, give turn-by-turn directions to the fridge.",
+        "answer": "Cannot determine; the sofa and fridge were never located.",
+        "score": null
+      },
+      {
+        "number": 3,
+        "question": "How many rooms did you visit? Name them.",
+        "answer": "One room: the bedroom.",
+        "score": null
+      },
+      {
+        "number": 4,
+        "question": "Which direction (compass) is the kitchen from your spawn point?",
+        "answer": "Unknown; the kitchen was not found.",
+        "score": null
+      },
+      {
+        "number": 5,
+        "question": "Name one landmark in each room you visited.",
+        "answer": "Bedroom: a low black bed with beige pillows.",
+        "score": null
+      }
+    ],
+    "qa_raw": "1. Unknown; no connecting room was identified.\n\n2. Cannot determine; the sofa and fridge were never located.\n\n3. One room: the bedroom.\n\n4. Unknown; the kitchen was not found.\n\n5. Bedroom: a low black bed with beige pillows.",
+    "qa_parse_failed": false
+  }
+}

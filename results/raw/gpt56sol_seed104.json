@@ -1,0 +1,1705 @@
+{
+  "trial_id": "gpt56sol_seed104",
+  "config": {
+    "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+    "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "model": "gpt-5.6-sol",
+    "model_config": "gpt56sol",
+    "seed": 104,
+    "spawn": {
+      "xy": [
+        1.37,
+        2.27
+      ],
+      "heading_deg": 180.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-27T09:30:01Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed104/t001_0.jpg",
+          "frames/gpt56sol_seed104/t001_1.jpg",
+          "frames/gpt56sol_seed104/t001_2.jpg",
+          "frames/gpt56sol_seed104/t001_3.jpg"
+        ],
+        "compass_deg": 178.2,
+        "position_estimate": {
+          "x": 1.37,
+          "y": 2.27
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 1.3566,
+        "y": 2.2629,
+        "heading_deg": 178.22
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.37, y=2.27  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 178 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 2364,
+        "output_tokens": 30,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.013837
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-27T09:30:15Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 178.2,
+        "position_estimate": {
+          "x": 1.37,
+          "y": 2.27
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "Living room",
+              "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition."
+            }
+          },
+          {
+            "name": "add_landmark",
+            "args": {
+              "room": "Living room",
+              "description": "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north."
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Living room",
+              "direction_deg": 180,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "Living room"
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 180
+            }
+          }
+        ],
+        "dispatched": 6,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 180 deg, 0.2 policy-s",
+        "policy_seconds_used": 0.2,
+        "pose_trace": [
+          [
+            1.3565715551376343,
+            2.2629339694976807
+          ],
+          [
+            1.3548768758773804,
+            2.2573609352111816
+          ],
+          [
+            1.3564307689666748,
+            2.2732350826263428
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 0.2,
+            "pose_trace": [
+              [
+                1.3565715551376343,
+                2.2629339694976807
+              ],
+              [
+                1.3548768758773804,
+                2.2573609352111816
+              ],
+              [
+                1.3564307689666748,
+                2.2732350826263428
+              ]
+            ],
+            "sampled_xy": [
+              [
+                1.3548768758773804,
+                2.2573609352111816
+              ]
+            ],
+            "true_pose": [
+              1.3564307689666748,
+              2.2732350826263428,
+              177.63289756871268
+            ],
+            "true_displacement_m": 0.010302075151901596,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 1.3564,
+        "y": 2.2732,
+        "heading_deg": 177.63
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.37, y=2.27  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 178 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.2,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 3773,
+        "output_tokens": 425,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.032732
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 3,
+      "global_turn_idx": 3,
+      "timestamp": "2026-07-27T09:30:39Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 177.6,
+        "position_estimate": {
+          "x": 1.37,
+          "y": 2.27
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.8
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.80 m, 4.2 policy-s",
+        "policy_seconds_used": 4.2,
+        "pose_trace": [
+          [
+            1.3564307689666748,
+            2.2732350826263428
+          ],
+          [
+            1.3545173406600952,
+            2.2936716079711914
+          ],
+          [
+            1.3237948417663574,
+            2.2656192779541016
+          ],
+          [
+            1.2869956493377686,
+            2.2603867053985596
+          ],
+          [
+            1.2430267333984375,
+            2.295311450958252
+          ],
+          [
+            1.1981796026229858,
+            2.261183500289917
+          ],
+          [
+            1.1623822450637817,
+            2.2798378467559814
+          ],
+          [
+            1.122038722038269,
+            2.2943739891052246
+          ],
+          [
+            1.076196312904358,
+            2.2609033584594727
+          ],
+          [
+            1.0347840785980225,
+            2.2971436977386475
+          ],
+          [
+            0.9963836669921875,
+            2.2838051319122314
+          ],
+          [
+            0.9553318619728088,
+            2.2664756774902344
+          ],
+          [
+            0.9103862047195435,
+            2.3043224811553955
+          ],
+          [
+            0.8674432635307312,
+            2.272155284881592
+          ],
+          [
+            0.8308957815170288,
+            2.280646562576294
+          ],
+          [
+            0.7891818284988403,
+            2.304812431335449
+          ],
+          [
+            0.7420745491981506,
+            2.2701828479766846
+          ],
+          [
+            0.7017831802368164,
+            2.3015565872192383
+          ],
+          [
+            0.6624977588653564,
+            2.298936367034912
+          ],
+          [
+            0.6189056038856506,
+            2.2748656272888184
+          ],
+          [
+            0.5734307765960693,
+            2.3143551349639893
+          ],
+          [
+            0.5354561805725098,
+            2.289620876312256
+          ],
+          [
+            0.523952066898346,
+            2.2750084400177
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 4.200000000000001,
+            "pose_trace": [
+              [
+                1.3564307689666748,
+                2.2732350826263428
+              ],
+              [
+                1.3545173406600952,
+                2.2936716079711914
+              ],
+              [
+                1.3237948417663574,
+                2.2656192779541016
+              ],
+              [
+                1.2869956493377686,
+                2.2603867053985596
+              ],
+              [
+                1.2430267333984375,
+                2.295311450958252
+              ],
+              [
+                1.1981796026229858,
+                2.261183500289917
+              ],
+              [
+                1.1623822450637817,
+                2.2798378467559814
+              ],
+              [
+                1.122038722038269,
+                2.2943739891052246
+              ],
+              [
+                1.076196312904358,
+                2.2609033584594727
+              ],
+              [
+                1.0347840785980225,
+                2.2971436977386475
+              ],
+              [
+                0.9963836669921875,
+                2.2838051319122314
+              ],
+              [
+                0.9553318619728088,
+                2.2664756774902344
+              ],
+              [
+                0.9103862047195435,
+                2.3043224811553955
+              ],
+              [
+                0.8674432635307312,
+                2.272155284881592
+              ],
+              [
+                0.8308957815170288,
+                2.280646562576294
+              ],
+              [
+                0.7891818284988403,
+                2.304812431335449
+              ],
+              [
+                0.7420745491981506,
+                2.2701828479766846
+              ],
+              [
+                0.7017831802368164,
+                2.3015565872192383
+              ],
+              [
+                0.6624977588653564,
+                2.298936367034912
+              ],
+              [
+                0.6189056038856506,
+                2.2748656272888184
+              ],
+              [
+                0.5734307765960693,
+                2.3143551349639893
+              ],
+              [
+                0.5354561805725098,
+                2.289620876312256
+              ],
+              [
+                0.523952066898346,
+                2.2750084400177
+              ]
+            ],
+            "sampled_xy": [
+              [
+                1.3545173406600952,
+                2.2936716079711914
+              ],
+              [
+                1.3237948417663574,
+                2.2656192779541016
+              ],
+              [
+                1.2869956493377686,
+                2.2603867053985596
+              ],
+              [
+                1.2430267333984375,
+                2.295311450958252
+              ],
+              [
+                1.1981796026229858,
+                2.261183500289917
+              ],
+              [
+                1.1623822450637817,
+                2.2798378467559814
+              ],
+              [
+                1.122038722038269,
+                2.2943739891052246
+              ],
+              [
+                1.076196312904358,
+                2.2609033584594727
+              ],
+              [
+                1.0347840785980225,
+                2.2971436977386475
+              ],
+              [
+                0.9963836669921875,
+                2.2838051319122314
+              ],
+              [
+                0.9553318619728088,
+                2.2664756774902344
+              ],
+              [
+                0.9103862047195435,
+                2.3043224811553955
+              ],
+              [
+                0.8674432635307312,
+                2.272155284881592
+              ],
+              [
+                0.8308957815170288,
+                2.280646562576294
+              ],
+              [
+                0.7891818284988403,
+                2.304812431335449
+              ],
+              [
+                0.7420745491981506,
+                2.2701828479766846
+              ],
+              [
+                0.7017831802368164,
+                2.3015565872192383
+              ],
+              [
+                0.6624977588653564,
+                2.298936367034912
+              ],
+              [
+                0.6189056038856506,
+                2.2748656272888184
+              ],
+              [
+                0.5734307765960693,
+                2.3143551349639893
+              ],
+              [
+                0.5354561805725098,
+                2.289620876312256
+              ]
+            ],
+            "true_pose": [
+              0.523952066898346,
+              2.2750084400177,
+              173.274587417353
+            ],
+            "true_displacement_m": 0.8324805908811369,
+            "distance_moved_m": 0.8000000000000005,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 0.524,
+        "y": 2.275,
+        "heading_deg": 173.27
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.37, y=2.27  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 178 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178)\nBudget: turns 2/40, policy-seconds 0.2/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances."
+      },
+      "budget": {
+        "stage_turns_used": 3,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 4.4,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4625,
+        "output_tokens": 36,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.025322
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 4,
+      "global_turn_idx": 4,
+      "timestamp": "2026-07-27T09:30:41Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed104/t004_0.jpg"
+        ],
+        "compass_deg": 173.3,
+        "position_estimate": {
+          "x": 0.57,
+          "y": 2.3
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.8
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "get_observation",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; get_observation",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 0.524,
+        "y": 2.275,
+        "heading_deg": 173.27
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.57, y=2.30  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 173 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178) (0.57,2.30,173)\nBudget: turns 3/40, policy-seconds 4.4/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances."
+      },
+      "budget": {
+        "stage_turns_used": 4,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 4.4,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 4782,
+        "output_tokens": 23,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.025717
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 5,
+      "global_turn_idx": 5,
+      "timestamp": "2026-07-27T09:30:44Z",
+      "obs": {
+        "frame_paths": [
+          "frames/gpt56sol_seed104/t005_0.jpg",
+          "frames/gpt56sol_seed104/t005_1.jpg",
+          "frames/gpt56sol_seed104/t005_2.jpg",
+          "frames/gpt56sol_seed104/t005_3.jpg"
+        ],
+        "compass_deg": 173.3,
+        "position_estimate": {
+          "x": 0.57,
+          "y": 2.3
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.8
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 0.524,
+        "y": 2.275,
+        "heading_deg": 173.27
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.57, y=2.30  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 173 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178) (0.57,2.30,173)\nBudget: turns 4/40, policy-seconds 4.4/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances."
+      },
+      "budget": {
+        "stage_turns_used": 5,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 4.4,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 5241,
+        "output_tokens": 83,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.029812
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 6,
+      "global_turn_idx": 6,
+      "timestamp": "2026-07-27T09:31:09Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 173.3,
+        "position_estimate": {
+          "x": 0.57,
+          "y": 2.3
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.8
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "Living room",
+              "direction_deg": 270,
+              "status": "unexplored"
+            }
+          },
+          {
+            "name": "add_landmark",
+            "args": {
+              "room": "Living room",
+              "description": "West side is a solid wall/corner; navigable aisle runs south between TV and red sofa."
+            }
+          },
+          {
+            "name": "update_plan",
+            "args": {
+              "text": "MODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues."
+            }
+          },
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 270
+            }
+          }
+        ],
+        "dispatched": 4,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 270 deg, 3.6 policy-s",
+        "policy_seconds_used": 3.6,
+        "pose_trace": [
+          [
+            0.523952066898346,
+            2.2750084400177
+          ],
+          [
+            0.5294049382209778,
+            2.2778751850128174
+          ],
+          [
+            0.5349839329719543,
+            2.3004133701324463
+          ],
+          [
+            0.5320092439651489,
+            2.257850170135498
+          ],
+          [
+            0.5269888639450073,
+            2.2772574424743652
+          ],
+          [
+            0.5220130085945129,
+            2.279590129852295
+          ],
+          [
+            0.5325288772583008,
+            2.2450549602508545
+          ],
+          [
+            0.5133435726165771,
+            2.274839162826538
+          ],
+          [
+            0.52490234375,
+            2.2515342235565186
+          ],
+          [
+            0.5331023335456848,
+            2.2386715412139893
+          ],
+          [
+            0.507084846496582,
+            2.258434295654297
+          ],
+          [
+            0.5380500555038452,
+            2.2302844524383545
+          ],
+          [
+            0.5268951654434204,
+            2.236020803451538
+          ],
+          [
+            0.5142111778259277,
+            2.2369227409362793
+          ],
+          [
+            0.5494905710220337,
+            2.2195827960968018
+          ],
+          [
+            0.5177229046821594,
+            2.2261710166931152
+          ],
+          [
+            0.533031702041626,
+            2.220872402191162
+          ],
+          [
+            0.5529225468635559,
+            2.2158286571502686
+          ],
+          [
+            0.5173892378807068,
+            2.2148797512054443
+          ],
+          [
+            0.525971531867981,
+            2.2142419815063477
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 3.600000000000001,
+            "pose_trace": [
+              [
+                0.523952066898346,
+                2.2750084400177
+              ],
+              [
+                0.5294049382209778,
+                2.2778751850128174
+              ],
+              [
+                0.5349839329719543,
+                2.3004133701324463
+              ],
+              [
+                0.5320092439651489,
+                2.257850170135498
+              ],
+              [
+                0.5269888639450073,
+                2.2772574424743652
+              ],
+              [
+                0.5220130085945129,
+                2.279590129852295
+              ],
+              [
+                0.5325288772583008,
+                2.2450549602508545
+              ],
+              [
+                0.5133435726165771,
+                2.274839162826538
+              ],
+              [
+                0.52490234375,
+                2.2515342235565186
+              ],
+              [
+                0.5331023335456848,
+                2.2386715412139893
+              ],
+              [
+                0.507084846496582,
+                2.258434295654297
+              ],
+              [
+                0.5380500555038452,
+                2.2302844524383545
+              ],
+              [
+                0.5268951654434204,
+                2.236020803451538
+              ],
+              [
+                0.5142111778259277,
+                2.2369227409362793
+              ],
+              [
+                0.5494905710220337,
+                2.2195827960968018
+              ],
+              [
+                0.5177229046821594,
+                2.2261710166931152
+              ],
+              [
+                0.533031702041626,
+                2.220872402191162
+              ],
+              [
+                0.5529225468635559,
+                2.2158286571502686
+              ],
+              [
+                0.5173892378807068,
+                2.2148797512054443
+              ],
+              [
+                0.525971531867981,
+                2.2142419815063477
+              ]
+            ],
+            "sampled_xy": [
+              [
+                0.5294049382209778,
+                2.2778751850128174
+              ],
+              [
+                0.5349839329719543,
+                2.3004133701324463
+              ],
+              [
+                0.5320092439651489,
+                2.257850170135498
+              ],
+              [
+                0.5269888639450073,
+                2.2772574424743652
+              ],
+              [
+                0.5220130085945129,
+                2.279590129852295
+              ],
+              [
+                0.5325288772583008,
+                2.2450549602508545
+              ],
+              [
+                0.5133435726165771,
+                2.274839162826538
+              ],
+              [
+                0.52490234375,
+                2.2515342235565186
+              ],
+              [
+                0.5331023335456848,
+                2.2386715412139893
+              ],
+              [
+                0.507084846496582,
+                2.258434295654297
+              ],
+              [
+                0.5380500555038452,
+                2.2302844524383545
+              ],
+              [
+                0.5268951654434204,
+                2.236020803451538
+              ],
+              [
+                0.5142111778259277,
+                2.2369227409362793
+              ],
+              [
+                0.5494905710220337,
+                2.2195827960968018
+              ],
+              [
+                0.5177229046821594,
+                2.2261710166931152
+              ],
+              [
+                0.533031702041626,
+                2.220872402191162
+              ],
+              [
+                0.5529225468635559,
+                2.2158286571502686
+              ],
+              [
+                0.5173892378807068,
+                2.2148797512054443
+              ]
+            ],
+            "true_pose": [
+              0.525971531867981,
+              2.2142419815063477,
+              267.2749885005459
+            ],
+            "true_displacement_m": 0.060800005910982544,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "reached",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 0.526,
+        "y": 2.2142,
+        "heading_deg": 267.27
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.",
+              "West side is a solid wall/corner; navigable aisle runs south between TV and red sofa."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Living room",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.57, y=2.30  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 173 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178) (0.57,2.30,173)\nBudget: turns 5/40, policy-seconds 4.4/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. Current room is the living room near the TV. Frontier rating: west passage around the pale partition = medium kitchen likelihood (only visible opening); no kitchen cues yet. Chosen frontier: west, exploring carefully past sofa/partition while looking for tile, counters, cabinets, or appliances."
+      },
+      "budget": {
+        "stage_turns_used": 6,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 8.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 6707,
+        "output_tokens": 335,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.044702
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 7,
+      "global_turn_idx": 7,
+      "timestamp": "2026-07-27T09:31:24Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 267.3,
+        "position_estimate": {
+          "x": 0.57,
+          "y": 2.3
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.5
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.12 m, 0.8 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 0.82,
+        "pose_trace": [
+          [
+            0.525971531867981,
+            2.2142419815063477
+          ],
+          [
+            0.5498026609420776,
+            2.2109906673431396
+          ],
+          [
+            0.5322123169898987,
+            2.183483123779297
+          ],
+          [
+            0.5142728090286255,
+            2.1424124240875244
+          ],
+          [
+            0.5338656902313232,
+            2.1399590969085693
+          ],
+          [
+            0.5134786367416382,
+            2.159433603286743
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 0.8200000000000001,
+            "pose_trace": [
+              [
+                0.525971531867981,
+                2.2142419815063477
+              ],
+              [
+                0.5498026609420776,
+                2.2109906673431396
+              ],
+              [
+                0.5322123169898987,
+                2.183483123779297
+              ],
+              [
+                0.5142728090286255,
+                2.1424124240875244
+              ],
+              [
+                0.5338656902313232,
+                2.1399590969085693
+              ],
+              [
+                0.5134786367416382,
+                2.159433603286743
+              ]
+            ],
+            "sampled_xy": [
+              [
+                0.5498026609420776,
+                2.2109906673431396
+              ],
+              [
+                0.5322123169898987,
+                2.183483123779297
+              ],
+              [
+                0.5142728090286255,
+                2.1424124240875244
+              ],
+              [
+                0.5338656902313232,
+                2.1399590969085693
+              ]
+            ],
+            "true_pose": [
+              0.5134786367416382,
+              2.159433603286743,
+              258.581504989093
+            ],
+            "true_displacement_m": 0.05621415081366092,
+            "distance_moved_m": 0.12400000000000001,
+            "bumped": true,
+            "contact_groups": [
+              "torso"
+            ],
+            "fell": false,
+            "fall_diagnostics": null,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 0.5135,
+        "y": 2.1594,
+        "heading_deg": 258.58
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.",
+              "West side is a solid wall/corner; navigable aisle runs south between TV and red sofa."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Living room",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.; West side is a solid wall/corner; navigable aisle runs south between TV and red sofa.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n  - Living room: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.57, y=2.30  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 267 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178) (0.57,2.30,173) (0.57,2.30,267)\nBudget: turns 6/40, policy-seconds 8.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues."
+      },
+      "budget": {
+        "stage_turns_used": 7,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 8.82,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 7307,
+        "output_tokens": 106,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.039715
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 8,
+      "global_turn_idx": 8,
+      "timestamp": "2026-07-27T09:31:34Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 258.6,
+        "position_estimate": {
+          "x": 0.56,
+          "y": 2.18
+        },
+        "status": {
+          "bumped": true,
+          "contact": [
+            "torso"
+          ],
+          "fell": false,
+          "distance_moved_m": 0.124
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "completed",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "turn_to_heading",
+            "args": {
+              "heading_deg": 0
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "turn_to_heading: turned toward 0 deg, 1.0 policy-s, FELL \u2014 trial over",
+        "policy_seconds_used": 1.0,
+        "pose_trace": [
+          [
+            0.5134786367416382,
+            2.159433603286743
+          ],
+          [
+            0.5031723380088806,
+            2.170409917831421
+          ],
+          [
+            0.5397142767906189,
+            2.1825294494628906
+          ],
+          [
+            0.5420820116996765,
+            2.1981518268585205
+          ],
+          [
+            0.5057945251464844,
+            2.2331254482269287
+          ],
+          [
+            0.5455950498580933,
+            2.301112651824951
+          ],
+          [
+            0.5554714798927307,
+            2.356909990310669
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 1.0,
+            "pose_trace": [
+              [
+                0.5134786367416382,
+                2.159433603286743
+              ],
+              [
+                0.5031723380088806,
+                2.170409917831421
+              ],
+              [
+                0.5397142767906189,
+                2.1825294494628906
+              ],
+              [
+                0.5420820116996765,
+                2.1981518268585205
+              ],
+              [
+                0.5057945251464844,
+                2.2331254482269287
+              ],
+              [
+                0.5455950498580933,
+                2.301112651824951
+              ],
+              [
+                0.5554714798927307,
+                2.356909990310669
+              ]
+            ],
+            "sampled_xy": [
+              [
+                0.5031723380088806,
+                2.170409917831421
+              ],
+              [
+                0.5397142767906189,
+                2.1825294494628906
+              ],
+              [
+                0.5420820116996765,
+                2.1981518268585205
+              ],
+              [
+                0.5057945251464844,
+                2.2331254482269287
+              ],
+              [
+                0.5455950498580933,
+                2.301112651824951
+              ]
+            ],
+            "true_pose": [
+              0.5554714798927307,
+              2.356909990310669,
+              278.72257935283375
+            ],
+            "true_displacement_m": 0.20189185795354794,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "contact_groups": [],
+            "fell": true,
+            "fall_diagnostics": {
+              "height_m": 0.149,
+              "tilt_deg": 55.9,
+              "terms": {
+                "fell_over": true,
+                "fell_low": false
+              },
+              "height_threshold_m": 0.09,
+              "tilt_threshold_deg": 60.0,
+              "commanded": [
+                0.0,
+                0.0,
+                0.5
+              ],
+              "policy_seconds_into_call": 1.0,
+              "values_pre_step": true
+            },
+            "stop_reason": "fell",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 0.5555,
+        "y": 2.3569,
+        "heading_deg": 278.72
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "Living room": {
+            "name": "Living room",
+            "description": "Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.",
+            "landmarks": [
+              "Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.",
+              "West side is a solid wall/corner; navigable aisle runs south between TV and red sofa."
+            ]
+          }
+        },
+        "exits": [
+          {
+            "room": "Living room",
+            "direction_deg": 180.0,
+            "status": "unexplored"
+          },
+          {
+            "room": "Living room",
+            "direction_deg": 270.0,
+            "status": "unexplored"
+          }
+        ],
+        "trajectory": [
+          "Living room"
+        ],
+        "current_room": "Living room",
+        "plan": "MODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues.",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: Living room -- Wood floor lounge with large black TV/screen, bright red sofa and red chair, pale walls, and a freestanding pale partition.\n  landmarks: Large black TV immediately east of start; red sofa/chair toward south-west side; pale partition toward west/north.; West side is a solid wall/corner; navigable aisle runs south between TV and red sofa.\nTrajectory: Living room\nUnexplored exits:\n  - Living room: exit at 180 deg (unexplored)\n  - Living room: exit at 270 deg (unexplored)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.56, y=2.18  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 259 deg\nCurrent room (your assertion): Living room\nBreadcrumbs (last 5): (1.37,2.27,178) (0.57,2.30,173) (0.57,2.30,267) (0.56,2.18,259)\nBudget: turns 7/40, policy-seconds 8.8/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\nMODE: broad search. West candidate proved a solid wall/corner (low/closed). Frontier ratings: south aisle between TV and sofa = medium and only navigable route; west = rejected wall. Chosen frontier: follow south aisle toward far end, looking for a doorway and kitchen cues."
+      },
+      "budget": {
+        "stage_turns_used": 8,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 9.82,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 7537,
+        "output_tokens": 184,
+        "cache_read_tokens": 2234,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.044322
+      },
+      "end_reason": "fall"
+    }
+  ],
+  "video_path": "results/videos/gpt56sol_seed104.mp4",
+  "final": {
+    "outcome": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "end_reason": {
+      "find_kitchen": "fall",
+      "return_home": "not_run"
+    },
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "fall",
+        "outcome": "fall",
+        "success": false,
+        "turns_used": 8,
+        "policy_seconds_used": 9.82,
+        "score": {
+          "success": false,
+          "distance_m": 2.5613,
+          "radius_m": 0.35,
+          "goal_xy": [
+            2.55,
+            0.75
+          ],
+          "true_xy": [
+            0.5555,
+            2.3569
+          ]
+        },
+        "true_pose": {
+          "x": 0.5555,
+          "y": 2.3569,
+          "heading_deg": 278.72
+        }
+      },
+      "return_home": {
+        "stage": "return_home",
+        "end_reason": "not_run",
+        "outcome": "not_run",
+        "success": false,
+        "turns_used": 0,
+        "policy_seconds_used": 0.0,
+        "score": null,
+        "true_pose": null
+      }
+    },
+    "bumps": 1,
+    "metrics": {},
+    "tokens": {
+      "input_tokens": 42815,
+      "output_tokens": 1329,
+      "cache_read_tokens": 15638,
+      "cache_write_tokens": 0,
+      "cost_usd_estimate": 0.261764
+    },
+    "tokens_breakdown": {
+      "episode": {
+        "input_tokens": 42336,
+        "output_tokens": 1222,
+        "cache_read_tokens": 15638,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.256159
+      },
+      "qa": {
+        "input_tokens": 479,
+        "output_tokens": 107,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.005605
+      }
+    },
+    "qa": [
+      {
+        "number": 1,
+        "question": "Which room connects the bedroom to the kitchen?",
+        "answer": "Unknown\u2014the bedroom and kitchen were not mapped.",
+        "score": null
+      },
+      {
+        "number": 2,
+        "question": "Starting at the front of the sofa, give turn-by-turn directions to the fridge.",
+        "answer": "Unknown\u2014the route to the fridge was not explored.",
+        "score": null
+      },
+      {
+        "number": 3,
+        "question": "How many rooms did you visit? Name them.",
+        "answer": "One room: the living room.",
+        "score": null
+      },
+      {
+        "number": 4,
+        "question": "Which direction (compass) is the kitchen from your spawn point?",
+        "answer": "Unknown\u2014the kitchen\u2019s location relative to the spawn point was not established.",
+        "score": null
+      },
+      {
+        "number": 5,
+        "question": "Name one landmark in each room you visited.",
+        "answer": "Living room: a large black TV.",
+        "score": null
+      }
+    ],
+    "qa_raw": "1. Unknown\u2014the bedroom and kitchen were not mapped.\n\n2. Unknown\u2014the route to the fridge was not explored.\n\n3. One room: the living room.\n\n4. Unknown\u2014the kitchen\u2019s location relative to the spawn point was not established.\n\n5. Living room: a large black TV.",
+    "qa_parse_failed": false
+  }
+}

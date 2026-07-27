@@ -1,0 +1,20 @@
+{
+  "trial_id": "opus5_seed101",
+  "config": {
+    "freeze_commit": "13f438d93e505462a60321005eeb84acdda641c4",
+    "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "model": "claude-opus-5",
+    "model_config": "opus5",
+    "seed": 101,
+    "spawn": {
+      "xy": [
+        0.5,
+        0.5
+      ],
+      "heading_deg": 90.0
+    }
+  },
+  "turns": [],
+  "video_path": null,
+  "infra_failure": "Traceback (most recent call last):\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/runner.py\", line 745, in run_one_trial\n    final = runner.run()\n            ^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1002, in run\n    stage1 = self.run_stage(stage1_spec)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1075, in run_stage\n    result = self._run_turn(spec)\n             ^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1124, in _run_turn\n    turn = self.provider.send(self.system_prompt, messages, self.tool_schemas)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/providers/anthropic.py\", line 226, in send\n    response = self.client.messages.create(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_utils/_utils.py\", line 294, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/resources/messages/messages.py\", line 1050, in create\n    return self._post(\n           ^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_base_client.py\", line 1536, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_base_client.py\", line 1195, in request\n    raise self._make_status_error_from_response(response) from None\nanthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdSH1VvSXFUyxu4NQrHDb'}\n"
+}

@@ -11,3 +11,4 @@ restart from zero).
 
 | trial id | timestamp (UTC) | cause | evidence |
 |---|---|---|---|
+| opus5_seed101 | 2026-07-27T08:51:25Z | infra failure (attempt 1): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdSH1VvSXFUyxu4NQrHDb'} | results/incomplete/opus5_seed101.20260727-085125.json |
