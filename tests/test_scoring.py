@@ -2214,6 +2214,147 @@ class TestStage2Gate:
         with pytest.raises(scoring.ScoringError, match="declare_done"):
             scoring.score_trial(document)
 
+
+def at_counter_trial() -> dict:
+    """``declare_done`` 8 cm from counter_5's west face, inside the kitchen.
+
+    The live loop logged this ``declared_elsewhere`` (the as-run point-disc
+    predicate; the pose is ~0.72 m from the target point) and did NOT offer the
+    return leg — the shape of the real ``gpt56sol_seed103``. Criterion v2
+    publishes it a success.
+    """
+    builder = TrialBuilder()
+    builder.turn(
+        [
+            {
+                "name": "move",
+                "args": {},
+                "execution": motion_execution(
+                    straight_trace((0.5, 0.5), (2.90, 1.30)), policy_seconds=12.0
+                ),
+            },
+            {"name": "declare_done", "args": {}},
+        ],
+        estimate=(2.8, 1.2),
+        end_reason=REASON_DECLARE_DONE,
+    )
+    return builder.finish(stage1_end=REASON_DECLARE_DONE, stage2_end="not_run")
+
+
+class TestSuccessCriterionV2:
+    """The post-batch "any counter face" criterion (module docstring; rerun log).
+
+    These fixtures PIN the v2 semantics: what widened (any kitchen-counter face,
+    same radius, still declare_done-gated), what did not (through-wall
+    proximity, non-declared stages, return_home), and how the as-run verdicts
+    stay published beside the v2 ones.
+    """
+
+    def test_declaring_at_a_counter_face_is_a_v2_success_and_an_as_run_failure(self):
+        metrics = scoring.score_trial(at_counter_trial())
+        stage1 = metrics.stages[STAGE_FIND_KITCHEN]
+        assert room_at(2.90, 1.30) == "kitchen"
+        name, distance = scoring.nearest_counter_face((2.90, 1.30))
+        assert name in ("counter_4", "counter_5") and distance < 0.35
+        assert stage1.success is True
+        assert stage1.outcome == "success"
+        assert stage1.success_preregistered is False
+        assert stage1.outcome_preregistered == "declared_elsewhere"
+        assert stage1.d_nearest_counter_face_m == pytest.approx(distance)
+        # time-to-kitchen is defined on the PUBLISHED success (doc 06 §5.4).
+        assert stage1.time_s == pytest.approx(12.0)
+
+    def test_the_pinned_target_point_itself_stays_a_success_under_the_union(self):
+        """The non-nesting wart the union exists for: the pre-registered target
+        point is FARTHER than the radius from every counter footprint, so a
+        pure any-counter test would fail a robot standing exactly on the old
+        goal. Both halves are asserted so a layout edit that silently nests the
+        regions retires this guard visibly."""
+        spec = find_kitchen_spec()
+        assert scoring.nearest_counter_face(target_point())[1] > spec.success_radius_m
+        assert scoring.position_success_v2(
+            STAGE_FIND_KITCHEN, target_point(), spec
+        ) is True
+
+    def test_counter_proximity_through_a_wall_is_not_a_success(self):
+        """counter_4/5 back onto the bedroom partition: a bedroom pose a few cm
+        east of the wall is within 0.35 m of their rectangles in Euclidean
+        distance but metres of walking away. The in-kitchen condition excludes
+        it."""
+        spec = find_kitchen_spec()
+        probe = (3.34, 1.30)
+        assert room_at(*probe) == "bedroom"
+        assert scoring.nearest_counter_face(probe)[1] < spec.success_radius_m
+        assert scoring.position_success_v2(STAGE_FIND_KITCHEN, probe, spec) is False
+
+    def test_the_counter_branch_boundary_flips_within_a_micron_of_the_radius(self):
+        """Same reason the disc's boundary test probes at the origin: on the
+        real counter geometry ``west_face - 0.35`` is not exactly representable,
+        so "distance == radius" cannot be constructed in floats. What CAN be
+        pinned on the real geometry is that the flip happens within a micron of
+        the radius — a pose 1 µm inside succeeds, 1 µm outside fails — which is
+        the guarantee any trial pose actually depends on."""
+        spec = find_kitchen_spec()
+        west_face = scoring.kitchen_counter_rects()[3][1][0]  # counter_4 x0
+        inside = (west_face - spec.success_radius_m + 1e-6, 1.15)
+        outside = (west_face - spec.success_radius_m - 1e-6, 1.15)
+        assert room_at(*inside) == "kitchen" and room_at(*outside) == "kitchen"
+        assert scoring.position_success_v2(STAGE_FIND_KITCHEN, inside, spec) is True
+        assert scoring.position_success_v2(STAGE_FIND_KITCHEN, outside, spec) is False
+
+    def test_return_home_keeps_the_preregistered_disc(self):
+        """v2 widens stage 1 only — a return_home pose near a counter is not
+        'home'."""
+        spec = return_home_spec((0.5, 0.5))
+        assert scoring.position_success_v2(STAGE_RETURN_HOME, (2.90, 1.30), spec) is False
+        assert scoring.position_success_v2(STAGE_RETURN_HOME, (0.6, 0.6), spec) is True
+
+    def test_declared_elsewhere_away_from_counters_stays_a_failure(self):
+        stage1 = scoring.score_trial(declared_elsewhere_trial()).stages[
+            STAGE_FIND_KITCHEN
+        ]
+        assert stage1.success is False
+        assert stage1.outcome == "declared_elsewhere"
+        assert stage1.success_preregistered is False
+
+    def test_a_v2_only_success_is_excluded_from_the_conditional_return_rate(self):
+        """The live gate ran the pre-registered predicate, so a v2-only success
+        never got its return leg. Counting it in x/k would report a failure for
+        a leg the model never attempted; it is excluded and the exclusion is
+        published, never silent."""
+        v2_only = scoring.score_trial(at_counter_trial())
+        summary = scoring.summarise("gpt56sol", [v2_only], resamples=200, seed=1)
+        assert summary[STAGE_FIND_KITCHEN]["success_rate"]["printed"] == "1/1"
+        conditional = summary[STAGE_RETURN_HOME]["success_rate_given_stage1"]
+        assert conditional["n"] == 0
+        assert conditional["printed"] == NA
+        assert summary[STAGE_RETURN_HOME]["stage1_successes_never_offered_return"] == 1
+
+        # An as-run success that DID run its return leg still counts normally.
+        ok = scoring.score_trial(successful_trial())
+        summary = scoring.summarise("gpt56sol", [ok, v2_only], resamples=200, seed=1)
+        conditional = summary[STAGE_RETURN_HOME]["success_rate_given_stage1"]
+        assert conditional["printed"] == "1/1"
+        assert summary[STAGE_RETURN_HOME]["stage1_successes_never_offered_return"] == 1
+
+    def test_the_counter_selection_is_structural_and_counts_five(self):
+        rects = scoring.kitchen_counter_rects()
+        assert [name for name, _ in rects] == [
+            "counter_1", "counter_2", "counter_3", "counter_4", "counter_5",
+        ]
+
+    def test_the_region_oracle_never_exceeds_the_point_oracle(self):
+        """The v2 region CONTAINS the pre-registered disc, so the shortest path
+        to the region can never be longer than the path to the point at its
+        centre — for every spawn the batch used."""
+        spec = find_kitchen_spec()
+        for seed in (101, 102, 103, 104):
+            xy, _ = spawn_pose(seed)
+            region = scoring.region_oracle_length_m(xy, spec)
+            point = oracle_length(xy, spec.goal_xy)
+            assert region is not None and point is not None
+            assert region <= point + 1e-9, f"seed {seed}"
+
     def test_a_tampered_distance_is_rejected(self):
         document = successful_trial()
         document["final"]["stages"][STAGE_FIND_KITCHEN]["score"]["distance_m"] = 0.01
@@ -2444,16 +2585,20 @@ class TestGoldenTrialEndToEnd:
         assert stage1.progress > 0.98
         assert stage1.time_s == pytest.approx(12.5)
         assert stage1.turns_used == 4
-        # §9.1's "p < l ⇒ ratio capped at 1.0", exercised end to end: the
-        # fixture walks straight lines while the oracle threads a 5 cm grid, so
-        # the true path really is shorter than the oracle here. Pinned to
-        # LITERALS, not restated from the implementation's own outputs: the old
-        # `spl == oracle / max(p, oracle)` assertion was true by construction for
-        # ANY values of l and p, so corrupting either survived it.
-        assert stage1.oracle_path_m == pytest.approx(2.3935, abs=1e-3)
+        # Criterion v2's region oracle ends at the SUCCESS-REGION boundary
+        # (disc ∪ counter band), so a fixture that walks all the way to the
+        # target point now exceeds it: p (2.2985) > l (2.0521), and SPL comes
+        # off the max(p, l) clamp. l is pinned to a LITERAL independently
+        # measured with region_oracle_length_m from spawn 101 (2.0521 =
+        # the old point oracle 2.3935 minus ~the 0.35 m radius along the
+        # approach); spl to l / p by hand. The p < l clamp itself is exercised
+        # by TestSPLEdgeCases, which feeds spl() directly.
+        assert stage1.oracle_path_m == pytest.approx(2.0521, abs=1e-3)
         assert stage1.true_path_m == pytest.approx(2.2985, abs=1e-3)
-        assert stage1.true_path_m < stage1.oracle_path_m
-        assert stage1.spl == 1.0
+        assert stage1.true_path_m > stage1.oracle_path_m
+        assert stage1.spl == pytest.approx(2.0521 / 2.2985, abs=1e-3)
+        assert stage1.success_preregistered is True
+        assert stage1.outcome_preregistered == "success"
         assert stage1.corrections == 1
 
         stage2 = metrics.stages[STAGE_RETURN_HOME]
@@ -2487,16 +2632,19 @@ class TestGoldenTrialEndToEnd:
         assert by_hand == pytest.approx(6.2396, abs=1e-3)
         assert stage1.true_path_m == pytest.approx(by_hand, abs=1e-9)
         assert stage1.true_path_m == pytest.approx(6.2396, abs=1e-3)
-        assert stage1.oracle_path_m == pytest.approx(2.3935, abs=1e-3)
+        assert stage1.oracle_path_m == pytest.approx(2.0521, abs=1e-3)
         assert stage1.oracle_path_m == pytest.approx(
-            oracle_length(spawn_pose(101)[0], target_point()), abs=1e-9
+            scoring.region_oracle_length_m(
+                spawn_pose(101)[0], find_kitchen_spec()
+            ),
+            abs=1e-9,
         )
-        assert stage1.spl == pytest.approx(0.3836, abs=1e-3)
+        assert stage1.spl == pytest.approx(0.3289, abs=1e-3)
         assert stage1.spl < 1.0, "this fixture exists to be off the clamp"
         assert metrics.visited_rooms == ("living_room", "hallway", "kitchen")
         # The PUBLISHED precision, which only an off-the-clamp SPL can pin:
         # rounding to 1 dp is invisible on a trial whose SPL is exactly 1.0.
-        assert metrics.as_dict()["stages"][STAGE_FIND_KITCHEN]["spl"] == 0.3836
+        assert metrics.as_dict()["stages"][STAGE_FIND_KITCHEN]["spl"] == 0.3289
 
     def test_the_metrics_dict_is_json_serialisable_for_final_metrics(self):
         payload = scoring.score_trial(successful_trial()).as_dict()
@@ -2569,7 +2717,13 @@ class TestGoldenTrialEndToEnd:
         )
         for stage in (STAGE_FIND_KITCHEN, STAGE_RETURN_HOME):
             for metric, cell in summary[stage].items():
-                if metric == "success_rate_given_stage1":
+                # Not per-trial estimate columns: the conditional ratio and the
+                # v2 bookkeeping count (successes the live gate never offered a
+                # return leg) are summary-level scalars, not figure feeds.
+                if metric in (
+                    "success_rate_given_stage1",
+                    "stage1_successes_never_offered_return",
+                ):
                     continue
                 key = f"{stage}.{metric}"
                 assert key in estimates, f"{key} is published but not accessible"

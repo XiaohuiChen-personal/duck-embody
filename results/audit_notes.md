@@ -72,3 +72,37 @@ against the model as map precision) or a batch-summary wording issue
 (opus5_seed102 — the raw JSON and the video agree with each other and
 against the earlier headline wording; see the reporting action above).
 The figure spot-check likewise surfaced no metric-vs-video conflicts.
+
+## Addendum 2026-07-27 — scoring criterion v2 (post-dates every audit above)
+
+Every audit note above was written under the pre-registered point-target
+criterion and is preserved verbatim: each remains a true record of what it
+audited **at the time**. After they were written, the published success
+criterion was widened to v2 ("any counter face" — `results/rerun_log.md`,
+`docs/METRICS.md` §2.1). Two things follow, stated completely:
+
+**Superseded verdict wordings.** Reading the notes above under v2:
+- gpt56sol_seed103's "declared_elsewhere is a goal-radius miss (0.83 m …)"
+  describes the pre-registered verdict; under v2 that same declare — which the
+  video audit itself describes as "genuinely inside the kitchen-looking room
+  next to counter fixtures" — is the batch's single success (0.051 m from
+  counter_5's face). The video observation and the v2 verdict agree.
+- The figure spot-check's recorded aggregates — "success 0/4 x3 and SPL 0.00
+  honest", "2 declares at d_f 1.66 m and 0.83 m > 0.35 m radius" — are the
+  pre-registered numbers. Under v2: success 0/4, 0/4, 1/4; gpt56sol's SPL
+  0.4153; the seed-103 declare is inside the v2 region.
+
+**The five figures were REGENERATED after that spot-check.** The spot-check's
+CONSISTENT verdict applies to the pre-v2 figures (recoverable from git
+history), not to the files now in `results/figures/`, which carry the v2
+numbers and draw the v2 success region. The regenerated figures were verified
+separately (2026-07-27, adoption-verification workflow `wf_3a009fd5`): an
+independent re-derivation — own point-to-rect, point-in-room and region-Dijkstra
+code, no `duck_embody` imports — reproduced every per-trial v2 verdict, all
+four region-oracle lengths (2.0521/3.1071/3.1420/1.8399 m), seed103's SPL
+0.4153 = 3.142/7.5661, and every summary_table cell; a second reviewer
+visually inspected all five PNGs (1/12 labeling, counter bands clipped to the
+kitchen, verdict-neutral declare_done legend). `layout_plan.png` and the
+`audit_*.png` filmstrips were deliberately NOT regenerated: the filmstrips are
+as-run rule-11 evidence for the notes above, and `layout_plan.png` is
+pre-batch scene QA that makes no success-region claim.

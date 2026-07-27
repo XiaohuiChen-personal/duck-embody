@@ -423,16 +423,24 @@ results/         raw JSON · figures · videos (committed)
       (`scripts/audit_trial.py`), total cost $9.63, one infra 529 rerun logged in
       `results/rerun_log.md` (the only rerun; model failures never retried).
 - [x] Scoring, figures, README results (T4.4–T4.5, 2026-07-27).
-      **Headline: 0/12 `find_kitchen` — an honest null.** 10 falls (5 spin falls
-      at |wz| = 0.5 exactly, 5 forward-step topples at |wz| 0.02–0.29 — the
-      audit-corrected wording in `results/audit_notes.md`), 2 `declare_done`
-      outside the 0.35 m radius (fable5_seed104 at 1.66 m; gpt56sol_seed103 at
-      0.83 m — entered the real kitchen, declared at the wrong counter);
-      `return_home` never ran; `correct_position` never called by any model.
-      Rule-11 video audits 3/3 CONSISTENT; figure spot-check CONSISTENT.
-      Artifacts: `results/scores.json`, `results/summary_table.md`,
+      **Headline: 1/12 `find_kitchen` under criterion v2 (any counter face);
+      0/12 pre-registered.** 10 falls (5 spin falls at |wz| = 0.5 exactly, 5
+      forward-step topples at |wz| 0.02–0.29 — the audit-corrected wording in
+      `results/audit_notes.md`); gpt56sol_seed103 declared 0.051 m from
+      `counter_5` (the batch's single success — v2; `declared_elsewhere`
+      pre-registered at 0.83 m from the point target); fable5_seed104 declared
+      in the living room (failure under both criteria); `return_home` never ran
+      (live gate = pre-registered predicate); `correct_position` never called
+      by any model. Rule-11 video audits 3/3 CONSISTENT; figure spot-check
+      CONSISTENT (pre-v2 figures; the shipped figures were regenerated under
+      v2 and re-verified by the adoption workflow — see the audit-notes
+      addendum). Artifacts: `results/scores.json`, `results/summary_table.md`,
       `results/figures/`, `results/audit_notes.md`; report in README § Results +
-      `docs/EXPERIMENTS.md`. Owner sign-off GIVEN and pushed 2026-07-27 — **project complete**.
+      `docs/EXPERIMENTS.md`. Owner sign-off GIVEN and pushed 2026-07-27.
+      **Criterion v2 adopted post-batch 2026-07-27 at owner direction** — all
+      12 trials re-scored together, both verdicts published per trial,
+      change log + rationale in `results/rerun_log.md`, criterion definition
+      in `docs/METRICS.md` §2.1 — **project complete**.
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.

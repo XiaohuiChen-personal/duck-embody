@@ -657,15 +657,23 @@ class TestShippedArtifacts:
         opus5_seed101 attempt-1 Anthropic 529). Asserting emptiness after the
         batch would demand deleting evidence to green the suite. Any rows must
         still look like table rows.
+
+        The row check stops at the first ``## `` heading: scoring.py's own
+        header requires post-batch scoring changes to be "logged in
+        results/rerun_log.md", and that record (criterion v2, 2026-07-27) is
+        prose by nature. The runner only ever APPENDS ROWS to the table at the
+        top, which is the region this contract governs.
         """
         shipped = (REPO_ROOT / "results" / "rerun_log.md").read_text(encoding="utf-8")
         assert shipped.startswith(RERUN_LOG_HEADER), (
             "the shipped log does not begin with the runner's header contract"
         )
         for line in shipped[len(RERUN_LOG_HEADER):].splitlines():
+            if line.startswith("## "):
+                break
             if line.strip():
                 assert line.startswith("|") and line.count("|") >= 5, (
-                    f"non-table content in the rerun log: {line!r}"
+                    f"non-table content in the rerun log's runner table: {line!r}"
                 )
 
     def test_run_trial_script_still_wires_after_the_refactor(self):

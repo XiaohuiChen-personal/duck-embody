@@ -102,29 +102,55 @@ conservative.
 
 ## 2. The metrics
 
-### 2.1 Success rate (SR) — doc 06 §5.1
+### 2.1 Success rate (SR) — doc 06 §5.1, criterion v2
 
 `SR = successes / N`, per model **per stage**, `N = 4`.
 
-A stage succeeds only if **both** hold: the true base position is within the goal
-radius **and** the model called `declare_done` there. Arriving without declaring
-is a timeout — "the model must *know* it arrived; stumbling through the goal
-region does not demonstrate localization".
+**The published `find_kitchen` success predicate is criterion v2 ("any counter
+face"), adopted POST-BATCH** (2026-07-27, owner-directed;
+[`results/rerun_log.md`](../results/rerun_log.md)). A stage-1 declare succeeds
+if the true base position is within 0.35 m of the pre-registered target point
+**or** within the same 0.35 m of any of the five kitchen counters' footprint
+rectangles *while standing inside the kitchen room polygon*. Rationale: the
+frozen objective ("walk to the counter") never disambiguates the kitchen's two
+counter runs, and the batch produced a declare 5 cm from the non-target run.
+The union (not the counter band alone) because the regions are **not nested**:
+the pinned target point is 0.397 m from the nearest counter footprint, so a
+pure any-counter test would fail a robot standing exactly on the old goal.
+The in-kitchen condition is load-bearing: `counter_4/5` back onto the bedroom
+partition, and a bedroom pose 4 cm through that wall is within 0.35 m of their
+rectangles in Euclidean distance.
 
-- radii: **0.35 m** to the kitchen-counter point, **0.5 m** back to the spawn
-  (`apartment_layout.LAYOUT`, mirrored in `configs/benchmark.yaml`)
-- the boundary is **inclusive**: exactly 0.35 m is a success
+A stage still succeeds only if **both** hold: the position condition **and**
+the model called `declare_done` there. Arriving without declaring is a timeout —
+"the model must *know* it arrived; stumbling through the goal region does not
+demonstrate localization". v2 widened only WHERE arrival counts, never HOW.
+
+- radii: **0.35 m** (point disc and counter band alike), **0.5 m** back to the
+  spawn (`apartment_layout.LAYOUT`, mirrored in `configs/benchmark.yaml`);
+  `return_home`'s predicate is unchanged by v2
+- the boundary is **inclusive**: exactly 0.35 m is a success; the counter-band
+  distance is point-to-rectangle (a corner approach is credited up to 0.35 m
+  off a footprint corner — the natural rectangle generalisation of the disc)
 - the distance is measured from **ground truth**, not the model's estimate. A
   model whose belief drifted onto the counter while the robot stood in the
   hallway fails. That asymmetry is the benchmark.
 - the log carries two different flags and confusing them inflates SR:
   `stages.*.score.success` is the bare distance test, `stages.*.success` is
-  distance **and** `declare_done`. The scorer recomputes both with the live
-  predicate and **raises** if the log disagrees with itself.
+  distance **and** `declare_done` — both written by the live loop under the
+  PRE-REGISTERED predicate. The scorer still recomputes and validates the
+  as-run verdicts (raising if the log disagrees with itself), then publishes
+  the v2 verdict beside them: `success_preregistered` /
+  `outcome_preregistered` per stage in `scores.json`. On the frozen batch:
+  v2 1/12, pre-registered 0/12; the single flip is `gpt56sol_seed103`.
 
 `return_home` is reported twice, per doc 06 §3.2: `x/4` with an unrun stage
 counted a failure and the denominator printed literally, **plus** a conditional
-`x/k` over the stage-1 successes with `k` printed — `—` when `k = 0`, and no
+`x/k` over the stage-1 successes **whose return leg actually ran** — the live
+gate consulted the pre-registered predicate, so a v2-only success was never
+offered stage 2, and counting it in `k` would report a failure for a leg the
+model never attempted. The exclusion is published as
+`stage1_successes_never_offered_return`; `x/k` prints `—` when `k = 0`, and no
 confidence interval when `k < 3`.
 
 **SR ships with an interval like every other column.** Doc 06 §10's README table
@@ -144,9 +170,15 @@ Straight-line distances, in metres, **per stage**: `find_kitchen` runs from the
 seed's spawn to the counter, `return_home` from the true pose at the stage
 boundary back to the spawn.
 
-- **No success override.** A success reports the same formula value as a failure
-  (naturally near 1.0, since success requires `d_final ≤ 0.35 m`), so every
-  published number is reproducible from the formula alone.
+- **No success override.** A success reports the same formula value as a
+  failure, so every published number is reproducible from the formula alone.
+- **The point reference survives criterion v2 deliberately.** `d_initial` /
+  `d_final` / `progress` still measure to the pre-registered target point:
+  they are continuous distance metrics whose cross-batch comparability matters
+  more than folding a discontinuous region distance (through a wall, the
+  nearest counter is metres of walking away at centimetres of Euclidean
+  distance) into a gradient. Consequence: a v2 success can show
+  `progress < 1` — `gpt56sol_seed103` succeeds at progress 0.739.
 - Clipped, so wandering away cannot go negative, and `d_final = 0` on a
   **failure** legitimately scores 1.0.
 - `d_initial = 0` scores 0.0 rather than dividing by zero. It cannot happen for
@@ -165,10 +197,16 @@ Anderson et al. 2018, *On Evaluation of Embodied Navigation Agents*
 ([arXiv:1807.06757](https://arxiv.org/abs/1807.06757)), Eq. (1); the ObjectNav
 convention since Batra et al. 2020.
 
-- `S` — the binary success indicator of §2.1 above.
-- `l` — the **oracle shortest path**, in metres: the shortest collision-free path
-  on the layout's free-space grid (5 cm cells, obstacles inflated by the 0.08 m
-  body radius), from **that stage's start** to **that stage's target**.
+- `S` — the binary success indicator of §2.1 above (criterion v2 for stage 1).
+- `l` — the **oracle shortest path**, in metres, on the layout's free-space
+  grid (5 cm cells, obstacles inflated by the 0.08 m body radius). For
+  `find_kitchen` under criterion v2, `l` runs from the stage's start to the
+  nearest point of the **success region** (disc ∪ counter band — the ObjectNav
+  convention: path to the nearest success viewpoint), computed by uniform-cost
+  search over the same grid with the same no-corner-cutting rule; it is
+  therefore shorter than the old point oracle for every spawn (measured:
+  2.05–3.14 m vs 2.18–4.17 m across seeds 101–104). `return_home` keeps the
+  point-to-point oracle (its criterion did not change).
 - `p` — the **integrated true path length**, in metres:
   `Σ ‖pose(t+1) − pose(t)‖` over the 5 Hz `execution.pose_trace` samples,
   segmented per stage.
@@ -737,3 +775,16 @@ consequence of a frozen decision.
    genuine answer per model should join the corpus before the freeze**, and PLAN
    T4.1's smoke step ("score the T3.5 sanity JSON end to end and eyeball every
    number") must be re-run against the real JSON when it exists.
+11. **The success criterion was widened after the batch (v2), which is a
+   post-hoc choice and is disclosed as one.** §2.1's any-counter criterion was
+   adopted 2026-07-27 with all 12 results visible, motivated by one specific
+   trial (`gpt56sol_seed103`). The protections: it was applied to all trials
+   of all models together, it is a strict superset of the pre-registered
+   region (no success was revoked; by construction it can only add), both
+   verdicts ship per trial in `scores.json`, the sensitivity analysis that
+   preceded adoption is committed (`scripts/rescore_any_counter.py`), and the
+   change is logged in `results/rerun_log.md` with the geometry adversarially
+   verified. What it cannot fix: the live stage-2 gate ran under the
+   pre-registered predicate, so the v2 success has no `return_home` data, and
+   the conditional return rate excludes it (published as
+   `stage1_successes_never_offered_return`).

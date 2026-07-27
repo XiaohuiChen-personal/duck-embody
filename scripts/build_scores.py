@@ -28,6 +28,7 @@ from pathlib import Path
 from duck_embody.scoring import (
     NA,
     STAGES,
+    SUCCESS_CRITERION,
     Estimate,
     estimate,
     load_trial,
@@ -42,6 +43,13 @@ RAW = REPO / "results" / "raw"
 MODELS = ("fable5", "opus5", "gpt56sol")
 SEEDS = (101, 102, 103, 104)
 STAGE1, STAGE2 = STAGES  # find_kitchen, return_home
+
+#: Short config name -> the API model id the trial JSONs carry.
+_API_IDS = {
+    "fable5": "claude-fable-5",
+    "opus5": "claude-opus-5",
+    "gpt56sol": "gpt-5.6-sol",
+}
 
 
 def median_or_na(values):
@@ -118,7 +126,27 @@ def build():
     first_doc = documents[f"{MODELS[0]}_seed{SEEDS[0]}"]
     batch_last = max(e["last_turn_timestamp"] for e in trial_dicts)
     scores = {
-        "schema": "duck-embody-scores-v1",
+        "schema": "duck-embody-scores-v2",
+        # The published stage-1 success predicate. v2 ("any counter face",
+        # 2026-07-27, owner-directed, post-batch) is the union of the
+        # pre-registered 0.35 m point disc and "within the same radius of any
+        # kitchen counter footprint while inside the kitchen". The change is
+        # logged in results/rerun_log.md; every trial also carries its
+        # pre-registered verdict (success_preregistered / outcome_preregistered)
+        # so the original reading stays reproducible from this same file.
+        "scoring_criterion": {
+            "name": SUCCESS_CRITERION,
+            "changed_post_batch": True,
+            "rerun_log": "results/rerun_log.md",
+            "preregistered_find_kitchen_successes": sum(
+                1
+                for e in trial_dicts
+                if e["stages"][STAGE1]["success_preregistered"]
+            ),
+            "v2_find_kitchen_successes": sum(
+                1 for e in trial_dicts if e["stages"][STAGE1]["success"]
+            ),
+        },
         "config_hash": first_doc["config"]["config_hash"],
         "freeze_commit": first_doc["config"]["freeze_commit"],
         # Read from the trial files (max over the 12 last-turn timestamps),
@@ -191,13 +219,23 @@ def write_table(scores: dict) -> None:
         f"freeze commit `{scores['freeze_commit'][:12]}`, last trial turn at "
         f"{scores['batch_last_turn_timestamp']} (read from the trial logs).",
         "",
-        "**Headline: 0/12 find_kitchen successes — an honest null.** 10 trials ended in a "
-        "fall (all with |wz| at/near the 0.5 rad/s command-hull limit at the tilt-60 "
-        "termination), 2 ended by `declare_done` outside the target radius "
-        "(fable5_seed104, gpt56sol_seed103). `return_home` therefore never ran: its SR is "
-        "0/4 with the unrun stage counted a failure (doc 06 §3.2), and the conditional SR "
-        "over stage-1 successes is — (k=0). Differentiation between models lives in "
-        "progress, map precision/recall, QA, bumps, and drift below.",
+        "**Headline: 1/12 find_kitchen successes under criterion v2 (any counter face); "
+        "0/12 under the pre-registered point-disc criterion.** 10 trials ended in a fall "
+        "(the audit-corrected decomposition, results/audit_notes.md: 5 hull-limit spin "
+        "falls at |wz| = 0.5 exactly, 5 forward-step topples at |wz| 0.02-0.29); 2 "
+        "ended by `declare_done`: gpt56sol_seed103 five cm from an "
+        "east-wall counter face (a v2 success; `declared_elsewhere` as-run) and "
+        "fable5_seed104 in the living room 1.40 m from any counter (a failure under both "
+        "criteria). The scoring criterion was widened POST-BATCH (2026-07-27, "
+        "owner-directed, all 12 trials re-scored together — see results/rerun_log.md): "
+        "the objective text \"walk to the counter\" never disambiguates the two counter "
+        "runs, so success is now the pre-registered 0.35 m disc UNION within 0.35 m of "
+        "any kitchen-counter footprint while inside the kitchen. `return_home` never "
+        "ran: the LIVE stage-2 gate used the pre-registered predicate, so the v2 success "
+        "was never offered its return leg — its SR is 0/4 with the unrun stage counted "
+        "a failure (doc 06 §3.2), and the conditional SR counts only offered legs "
+        "(— , k=0). Differentiation between models lives in progress, map "
+        "precision/recall, QA, bumps, and drift below.",
         "",
         f"Statistics: mean [95% bootstrap CI], percentile method, {boot['resamples']} "
         f"resamples, seed {boot['seed']} (configs/benchmark.yaml `scoring:`); \"—\" = "
@@ -207,7 +245,19 @@ def write_table(scores: dict) -> None:
         "",
         "| Metric | fable5 (claude-fable-5) | opus5 (claude-opus-5) | gpt56sol (gpt-5.6-sol) |",
         "|---|---|---|---|",
-        row("find_kitchen SR", lambda s: _sr(s[STAGE1]["success_rate"])),
+        row("find_kitchen SR (v2: any counter face)", lambda s: _sr(s[STAGE1]["success_rate"])),
+        row(
+            "find_kitchen SR (pre-registered point disc)",
+            lambda s: "{}/{}".format(
+                sum(
+                    1
+                    for e in trials
+                    if e["model"] == _API_IDS[s["model"]]
+                    and e["stages"][STAGE1]["success_preregistered"]
+                ),
+                s["n_trials"],
+            ),
+        ),
         row("return_home SR (unrun = failure)", lambda s: _sr(s[STAGE2]["success_rate"])),
         row(
             "return_home SR given stage-1 success (x/k)",
@@ -244,13 +294,19 @@ def write_table(scores: dict) -> None:
             ),
         ),
         "",
-        "Notes: time-to-kitchen is — for every trial (defined only on success, doc 06 "
-        "§5.4). SPL is 0.0 (not —) on failure by definition (§5.3). return_home rows "
-        "beyond SR are omitted: the stage never ran, so progress = 0.0 and drift = — for "
-        "all 12 by convention (§3.2). Edge accuracy is — when a trial claimed no "
-        "`leads_to:` edge. The two `declare_done` trials are stage-1 failures "
-        "(declared outside the 0.35 m radius), consistent with the videos (rule 11: "
-        "video is authoritative; no metric-vs-video disagreement found).",
+        "Notes: time-to-kitchen is defined only on the published (v2) success (doc 06 "
+        "§5.4). SPL is 0.0 (not —) on failure by definition (§5.3); its stage-1 oracle "
+        "`l` is the shortest path to the v2 SUCCESS REGION (disc ∪ counter band, "
+        "ObjectNav convention), so `l` is shorter than the old point oracle for every "
+        "spawn. progress / d_initial / d_final keep the pre-registered point reference "
+        "for comparability (a success can therefore show progress < 1). return_home "
+        "rows beyond SR are omitted: the stage never ran, so progress = 0.0 and "
+        "drift = — for all 12 by convention (§3.2). Edge accuracy is — when a trial "
+        "claimed no `leads_to:` edge. Of the two `declare_done` trials, "
+        "gpt56sol_seed103 is the single v2 success (0.051 m from counter_5's face, in "
+        "the kitchen; `declared_elsewhere` under the pre-registered criterion) and "
+        "fable5_seed104 is a failure under both criteria — consistent with the videos "
+        "(rule 11: video is authoritative; no metric-vs-video disagreement found).",
         "",
         "## Per-trial results",
         "",
@@ -260,12 +316,12 @@ def write_table(scores: dict) -> None:
         lines += [
             f"### {model}",
             "",
-            "| Trial | Stage-1 end | Progress | SPL | Path (m) | Turns | Bumps | Falls "
+            "| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls "
             "| Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for entry in trials:
-            if entry["model"] != {"fable5": "claude-fable-5", "opus5": "claude-opus-5", "gpt56sol": "gpt-5.6-sol"}[model]:
+            if entry["model"] != _API_IDS[model]:
                 continue
             s1 = entry["stages"][STAGE1]
             acc = entry["map_accuracy"]
@@ -275,7 +331,7 @@ def write_table(scores: dict) -> None:
                 "| {drift} | {corr} | {p} | {r} | {edge} | {qa} | {cost:.3f} | "
                 "[{video}](videos/{video}) |".format(
                     id=entry["trial_id"],
-                    end=s1["end_reason"],
+                    end=s1["outcome"],
                     prog=_num(s1["progress"]),
                     spl=_num(s1["spl"]),
                     path=_num(s1["true_path_m"], 2),

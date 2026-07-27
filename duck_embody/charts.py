@@ -8,7 +8,7 @@ doc 06 §10 enumerates four reporting deliverables; the figures land here:
   trial: the floor plan with (a) the true path, (b) the dead-reckoned belief,
   and (c) the model's claimed rooms. :func:`trajectory_vs_belief`.
 * :func:`turns_survived` — per-trial turns with end-reason colouring (the
-  "how did every trial die" figure the 0/12 null needs).
+  "how did every trial end" figure an 11/12-failure batch needs).
 * :func:`per_trial_table` — doc 06 §6's per-trial markdown table.
 
 Every number a figure draws comes from :mod:`duck_embody.scoring` —
@@ -25,8 +25,9 @@ Honesty conventions (doc 06 §6, kept everywhere):
    zero-width whisker.
 2. **"—" is never plotted as 0.** An excluded cell is annotated, not drawn.
 3. **Axes are honest**: 0–1 metrics get a fixed 0–1 axis; count/metre axes
-   start at 0. The 0/12 success null is drawn (zero-height bars labelled
-   ``0/4``), never dropped from the grid.
+   start at 0. A zero success rate is drawn (zero-height bars labelled
+   ``0/4``), never dropped from the grid — under criterion v2 the batch pools
+   1/12, with two of three models at 0/4.
 
 **Palette** (validated with the dataviz six-checks validator, light surface
 ``#fcfcfb``): the three model hues pass the all-pairs CVD gate (worst pair
@@ -72,6 +73,7 @@ from typing import Sequence
 
 from duck_embody.env.apartment_layout import (
     LAYOUT,
+    room_bounds,
     room_centroid,
     wall_rects,
 )
@@ -83,6 +85,7 @@ from duck_embody.scoring import (
     TrialMetrics,
     _finite,
     claimed_rooms,
+    kitchen_counter_rects,
     room_evidence,
     true_trace,
 )
@@ -117,7 +120,10 @@ END_REASON_COLORS: dict[str, str] = {
 END_REASON_HATCH: dict[str, str] = {"fall": "", "declare_done": "///"}
 END_REASON_LABELS: dict[str, str] = {
     "fall": "fall (tilt-60 termination)",
-    "declare_done": "declare_done outside target (failure)",
+    # Under criterion v2 a declare_done can be either verdict (the batch has
+    # one of each), so the legend names the reason and leaves the verdict to
+    # the per-trial outcome column in summary_table.md.
+    "declare_done": "declare_done (v2 verdict varies)",
     "turn_cap": "turn cap reached",
     "policy_seconds_cap": "policy-seconds cap reached",
 }
@@ -531,8 +537,9 @@ def per_metric_bars(
     ``estimates_by_model`` maps model name →
     :func:`~duck_embody.scoring.metric_estimates` output for that model's
     trials. The success-rate panel prints ``x/N`` per bar and the figure
-    subtitle states the pooled null outright — the 0/12 is the headline, not a
-    footnote.
+    subtitle states the pooled rate outright, under both criteria (1/12 v2,
+    0/12 pre-registered on the frozen batch) — the headline is in the figure,
+    not a footnote.
     """
     plt = _plt()
     from matplotlib.patches import Patch
@@ -567,9 +574,11 @@ def per_metric_bars(
     fig.suptitle(
         "Duck Embody 12-trial benchmark — per-metric comparison "
         "(N=4 seeds/model; mean, 95% percentile-bootstrap CI)\n"
-        f"find_kitchen: {successes}/{total} successes — SPL is 0 for every "
-        "failure by definition; return_home never ran (no stage-1 success). "
-        f"{NA} = undefined, excluded from means, never plotted as 0.",
+        f"find_kitchen: {successes}/{total} successes under criterion v2 "
+        "(any counter face; 0/12 pre-registered) — SPL is 0 for every failure "
+        "by definition; return_home never ran (the live gate used the "
+        f"pre-registered criterion). {NA} = undefined, excluded from means, "
+        "never plotted as 0.",
         fontsize=10.5,
     )
     # The null belongs IN the figure, not only above it: the success-rate
@@ -628,16 +637,52 @@ def _draw_floor_plan(ax) -> None:
             ha="center", va="center", fontsize=8, color=INK_MUTED,
             alpha=0.85, zorder=1.5,
         )
+    # Criterion v2's success region is ONE thing with two kinds of lobe — the
+    # pre-registered target disc and the five counter bands (same radius) — so
+    # every lobe is drawn in the SAME style under ONE legend entry. Drawing the
+    # disc differently from the bands (the first rendering did) reads as "old
+    # criterion still shown", when the disc is a live lobe of v2. The star
+    # keeps its own entry: the point is still what progress/d_initial/d_final
+    # measure to (docs/METRICS.md §2.2).
     target = LAYOUT["target"]
     tx, ty = target["point"]
+    radius = target["radius"]
+    region_style = dict(
+        fill=False, linestyle=":", edgecolor=INK_MUTED, linewidth=0.9, zorder=2.4
+    )
     ax.add_patch(
-        Circle((tx, ty), target["radius"], fill=False, linestyle="--",
-               edgecolor=INK_MUTED, linewidth=1.0, zorder=2.5)
+        Circle(
+            (tx, ty), radius,
+            label=f"success region v2 (target disc ∪ counter bands, {radius} m)",
+            **region_style,
+        )
     )
     ax.plot(
         [tx], [ty], marker="*", markersize=11, color=INK, linestyle="none",
-        zorder=5, label=f"target ({target['radius']} m radius)",
+        zorder=5, label="pre-registered goal point (progress reference)",
     )
+    # The counter lobes: the same radius around each kitchen counter footprint
+    # (Minkowski sum = rounded rectangle), CLIPPED to the kitchen — through-wall
+    # proximity is not success and must not be drawn as if it were. Geometry
+    # comes from the scorer, not re-derived here.
+    from matplotlib.patches import FancyBboxPatch
+    from matplotlib.path import Path as MplPath
+
+    kx0, ky0, kx1, ky1 = room_bounds("kitchen")
+    kitchen_clip = MplPath(
+        [(kx0, ky0), (kx1, ky0), (kx1, ky1), (kx0, ky1), (kx0, ky0)]
+    )
+    for _name, (x0, y0, x1, y1) in kitchen_counter_rects():
+        band = FancyBboxPatch(
+            (x0, y0), x1 - x0, y1 - y0,
+            boxstyle=f"round,pad={radius}",
+            **region_style,
+        )
+        ax.add_patch(band)
+        # Clip AFTER add_patch (adding resets the artist's clip box) and in
+        # explicit data coordinates: an un-added Rectangle as clip_path
+        # silently fails to clip, drawing the through-wall zone as success.
+        band.set_clip_path(kitchen_clip, ax.transData)
 
 
 def _draw_scale_bar(ax, y: float) -> None:
@@ -759,8 +804,11 @@ def trajectory_vs_belief(
         spine.set_visible(False)
 
     s1 = trial.stages[STAGE_FIND_KITCHEN]
+    outcome = s1.outcome
+    if s1.outcome != s1.outcome_preregistered:
+        outcome = f"{s1.outcome} (v2; {s1.outcome_preregistered} pre-registered)"
     caption = (
-        f"stage-1 end: {s1.end_reason} · progress {_cell(s1.progress)} · "
+        f"stage-1 outcome: {outcome} · progress {_cell(s1.progress)} · "
         f"dead-reckoning drift {_cell(s1.drift_m)} m · bumps {trial.bumps} · "
         f"turns {s1.turns_used}"
     )

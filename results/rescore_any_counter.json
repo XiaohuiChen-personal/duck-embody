@@ -1,0 +1,247 @@
+{
+  "analysis": "post_hoc_sensitivity_any_counter_face",
+  "provenance": {
+    "post_hoc": true,
+    "decided_after_results_were_visible": true,
+    "motivation": "gpt56sol_seed103 declared done 0.05 m from counter_5 (east-wall run) and scored declared_elsewhere against the pinned south-run target point; the objective text does not disambiguate the runs",
+    "primary_scoring_unchanged": "results/scores.json",
+    "batch_config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+    "criterion": "end_reason == declare_done AND end position inside the kitchen room polygon AND distance from end position to the nearest of the five kitchen sektion_cabinet footprint rectangles <= 0.35 m (the primary radius, unchanged)",
+    "return_home_note": "not recoverable post hoc: the live stage-2 gate consulted the primary predicate, so a trial that flips here never ran its return leg"
+  },
+  "trials": [
+    {
+      "trial_id": "fable5_seed101",
+      "model": "claude-fable-5",
+      "seed": 101,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        0.5943,
+        0.9452
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_1",
+      "distance_to_nearest_counter_face_m": 1.8212,
+      "distance_to_primary_target_m": 1.9654,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "fable5_seed102",
+      "model": "claude-fable-5",
+      "seed": 102,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        3.5822,
+        3.4057
+      ],
+      "end_room": "hallway",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 1.8466,
+      "distance_to_primary_target_m": 2.8493,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "fable5_seed103",
+      "model": "claude-fable-5",
+      "seed": 103,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        4.5257,
+        2.9452
+      ],
+      "end_room": "hallway",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 1.8435,
+      "distance_to_primary_target_m": 2.9534,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "fable5_seed104",
+      "model": "claude-fable-5",
+      "seed": 104,
+      "primary_outcome": "declared_elsewhere",
+      "primary_success": false,
+      "end_reason": "declare_done",
+      "end_xy": [
+        1.719,
+        2.1877
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 1.3956,
+      "distance_to_primary_target_m": 1.6606,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "gpt56sol_seed101",
+      "model": "gpt-5.6-sol",
+      "seed": 101,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        0.7528,
+        1.1189
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_1",
+      "distance_to_nearest_counter_face_m": 1.7412,
+      "distance_to_primary_target_m": 1.8347,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "gpt56sol_seed102",
+      "model": "gpt-5.6-sol",
+      "seed": 102,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        4.5793,
+        1.6516
+      ],
+      "end_room": "bedroom",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 1.2981,
+      "distance_to_primary_target_m": 2.2206,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "gpt56sol_seed103",
+      "model": "gpt-5.6-sol",
+      "seed": 103,
+      "primary_outcome": "declared_elsewhere",
+      "primary_success": false,
+      "end_reason": "declare_done",
+      "end_xy": [
+        2.9259,
+        1.4947
+      ],
+      "end_room": "kitchen",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 0.0511,
+      "distance_to_primary_target_m": 0.8342,
+      "success_alt": true,
+      "flipped": true
+    },
+    {
+      "trial_id": "gpt56sol_seed104",
+      "model": "gpt-5.6-sol",
+      "seed": 104,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        0.5555,
+        2.3569
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 2.542,
+      "distance_to_primary_target_m": 2.5613,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "model": "claude-opus-5",
+      "seed": 101,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        0.59,
+        0.9326
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_1",
+      "distance_to_nearest_counter_face_m": 1.8212,
+      "distance_to_primary_target_m": 1.9685,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "model": "claude-opus-5",
+      "seed": 102,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        3.8463,
+        2.2744
+      ],
+      "end_room": "bedroom",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 0.8914,
+      "distance_to_primary_target_m": 2.001,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "model": "claude-opus-5",
+      "seed": 103,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        4.3578,
+        3.1219
+      ],
+      "end_room": "hallway",
+      "nearest_counter": "counter_5",
+      "distance_to_nearest_counter_face_m": 1.8767,
+      "distance_to_primary_target_m": 2.9823,
+      "success_alt": false,
+      "flipped": false
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "model": "claude-opus-5",
+      "seed": 104,
+      "primary_outcome": "fall",
+      "primary_success": false,
+      "end_reason": "fall",
+      "end_xy": [
+        1.3802,
+        1.0841
+      ],
+      "end_room": "living_room",
+      "nearest_counter": "counter_1",
+      "distance_to_nearest_counter_face_m": 1.1879,
+      "distance_to_primary_target_m": 1.2166,
+      "success_alt": false,
+      "flipped": false
+    }
+  ],
+  "per_model": {
+    "claude-fable-5": {
+      "trials": 4,
+      "primary_successes": 0,
+      "alt_successes": 0
+    },
+    "gpt-5.6-sol": {
+      "trials": 4,
+      "primary_successes": 0,
+      "alt_successes": 1
+    },
+    "claude-opus-5": {
+      "trials": 4,
+      "primary_successes": 0,
+      "alt_successes": 0
+    }
+  }
+}

@@ -17,7 +17,7 @@ and [doc 06 §1](designs/06-benchmark-evaluation.html); metric definitions:
 | Matrix | models `fable5, opus5, gpt56sol` × seeds `101, 102, 103, 104` | `results/freeze.json` `matrix` |
 | Batch window | first turn 2026-07-27T08:32:58Z → last turn 09:31:34Z (~59 min wall-clock; timestamps read from the trial JSONs — the sim cold start precedes the first turn) | `results/raw/*.json` `turns[].timestamp` |
 | Total cost | **$9.63** ($4.40 + $3.51 + $1.72 per model) | [`results/scores.json`](../results/scores.json) `per_model.*.cost_usd.sum` |
-| Headline | 0/12 `find_kitchen` (10 falls, 2 `declare_done` outside the radius); `return_home` never ran | [`results/summary_table.md`](../results/summary_table.md) |
+| Headline | **1/12** `find_kitchen` under criterion v2 (any counter face; 0/12 pre-registered — the criterion was widened post-batch, all trials re-scored together, both verdicts published per trial); 10 falls, 1 v2 success, 1 `declare_done` failure; `return_home` never ran (the live gate used the pre-registered predicate) | [`results/summary_table.md`](../results/summary_table.md), [`results/rerun_log.md`](../results/rerun_log.md) |
 
 Every trial JSON records `config.freeze_commit` and `config.config_hash`; the
 runner re-checks the freeze before every launch and there is deliberately no
@@ -111,12 +111,14 @@ bash scripts/make_figures.sh                              # -> results/figures/*
 
 ## Per-trial record
 
-Stage-1 end reasons from [`results/summary_table.md`](../results/summary_table.md)
+Stage-1 outcomes from [`results/summary_table.md`](../results/summary_table.md)
 (full metric rows there); every trial links its frozen log and its Rule-11
-video. `declared_elsewhere` = the model called `declare_done` outside the
-0.35 m goal radius.
+video. Outcomes are under the published v2 criterion (any counter face —
+[`results/rerun_log.md`](../results/rerun_log.md)); `declared_elsewhere` = the
+model called `declare_done` outside every success region. Distances in
+parentheses: to the pre-registered goal point.
 
-| Trial | Model ID | Seed | Stage-1 end | Turns | Cost ($) | Log | Video |
+| Trial | Model ID | Seed | Stage-1 outcome (v2) | Turns | Cost ($) | Log | Video |
 |---|---|---|---|---|---|---|---|
 | fable5_seed101 | claude-fable-5 | 101 | fall | 2 | 0.142 | [json](../results/raw/fable5_seed101.json) | [mp4](../results/videos/fable5_seed101.mp4) |
 | fable5_seed102 | claude-fable-5 | 102 | fall | 14 | 2.676 | [json](../results/raw/fable5_seed102.json) | [mp4](../results/videos/fable5_seed102.mp4) |
@@ -128,10 +130,13 @@ video. `declared_elsewhere` = the model called `declare_done` outside the
 | opus5_seed104 | claude-opus-5 | 104 | fall | 3 | 0.070 | [json](../results/raw/opus5_seed104.json) | [mp4](../results/videos/opus5_seed104.mp4) |
 | gpt56sol_seed101 | gpt-5.6-sol | 101 | fall | 6 | 0.161 | [json](../results/raw/gpt56sol_seed101.json) | [mp4](../results/videos/gpt56sol_seed101.mp4) |
 | gpt56sol_seed102 | gpt-5.6-sol | 102 | fall | 11 | 0.397 | [json](../results/raw/gpt56sol_seed102.json) | [mp4](../results/videos/gpt56sol_seed102.mp4) |
-| gpt56sol_seed103 | gpt-5.6-sol | 103 | declared_elsewhere (0.83 m) | 27 | 0.897 | [json](../results/raw/gpt56sol_seed103.json) | [mp4](../results/videos/gpt56sol_seed103.mp4) |
+| gpt56sol_seed103 | gpt-5.6-sol | 103 | **success** (v2: 0.051 m from `counter_5`; pre-registered: declared_elsewhere, 0.83 m) | 27 | 0.897 | [json](../results/raw/gpt56sol_seed103.json) | [mp4](../results/videos/gpt56sol_seed103.mp4) |
 | gpt56sol_seed104 | gpt-5.6-sol | 104 | fall | 8 | 0.262 | [json](../results/raw/gpt56sol_seed104.json) | [mp4](../results/videos/gpt56sol_seed104.mp4) |
 
-`return_home` never ran in any trial (its gate is stage-1 success). Fall
+`return_home` never ran in any trial: its live gate consulted the
+pre-registered stage-1 predicate, under which there were 0 successes — the v2
+success (`gpt56sol_seed103`) was therefore never offered its return leg, and no
+rescoring can create that data. Fall
 diagnostics (`commanded [vx, vy, wz]`, tilt, seconds into the call) are in each
 falling trial's log; the batch-level fall decomposition — 5 spin falls at
 |wz| = 0.5 exactly, 5 forward-step topples at |wz| 0.02–0.29 — is the
@@ -142,11 +147,20 @@ audit-corrected wording recorded in
 
 One trial per model received a frame-by-frame Rule-11 video audit against its
 frozen log (fable5_seed102, opus5_seed102, gpt56sol_seed103 — all
-**CONSISTENT**), and all 5 figures were independently recomputed from
-`results/raw/*.json` (**CONSISTENT**). No metric-vs-video disagreement was
-found anywhere, so Rule-11 resolution (video overrides metric) was never
-needed. Verbatim audit outputs, including the one batch-headline wording
-correction they forced: [`results/audit_notes.md`](../results/audit_notes.md).
+**CONSISTENT**), and the 5 figures *as they stood under the pre-registered
+criterion* were independently recomputed from `results/raw/*.json`
+(**CONSISTENT**). No metric-vs-video disagreement was found anywhere, so
+Rule-11 resolution (video overrides metric) was never needed. Verbatim audit
+outputs, including the one batch-headline wording correction they forced:
+[`results/audit_notes.md`](../results/audit_notes.md).
+
+Those 5 figures were **regenerated after criterion v2 was adopted** (the
+spot-checked pre-v2 versions live in git history), so the original spot-check
+verdict does not extend to the shipped files. The v2 figures and scores were
+verified separately by the adoption-verification workflow — an independent
+re-derivation of every per-trial verdict, every region-oracle length and every
+summary-table cell, plus visual inspection of all five PNGs — recorded in the
+audit-notes addendum and `results/rerun_log.md`.
 
 ## The rerun log — one infra failure, zero silent retries
 

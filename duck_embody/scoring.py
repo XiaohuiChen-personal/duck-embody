@@ -38,11 +38,28 @@ scoring is free, re-running a paid batch is not. What keeps them honest is PLAN
 T4.1's ordering: they are committed, with fixtures, *before* the batch, so the
 vocabulary cannot be tuned after model answers are visible. Any post-batch change
 re-scores **all** models together and is logged in ``results/rerun_log.md``.
+
+**Success criterion v2 (post-batch change, 2026-07-27, owner-directed).** The
+published stage-1 success predicate is no longer the pre-registered point-disc
+test alone: it is the UNION of that disc and "within the same 0.35 m of any of
+the five kitchen counters' footprints, standing inside the kitchen". Decided
+AFTER the batch was visible (the trigger: ``gpt56sol_seed103`` declared done
+0.05 m from an east-wall counter face and scored ``declared_elsewhere`` against
+the south-run target point, while the frozen objective — "walk to the counter"
+— never disambiguates the runs). Recorded per this module's own protocol: all
+12 trials of all three models re-scored together, logged in
+``results/rerun_log.md``, and the pre-registered verdict is still published
+per-trial (``success_preregistered`` / ``outcome_preregistered``) so both
+readings stay reproducible. The live stage-2 gate ran under the pre-registered
+predicate, so a trial that succeeds only under v2 was never offered its return
+leg — the conditional return-home rate therefore counts only trials whose
+return leg actually ran. See :func:`stage_success` / :func:`stage_success_preregistered`.
 """
 
 from __future__ import annotations
 
 import bisect
+import heapq
 import json
 import math
 import random
@@ -62,10 +79,12 @@ from duck_embody.agent.prompts import LAYOUT_QA_QUESTIONS, ROOM_SYNONYMS
 from duck_embody.env.apartment_layout import (
     COMPASS_8,
     LAYOUT,
+    _dist_point_rect,
     adjacency,
     bearing_deg,
     compass_8,
     connecting_rooms,
+    grid,
     oracle_length,
     room_at,
     room_centroid,
@@ -75,7 +94,9 @@ from duck_embody.env.apartment_layout import (
 from duck_embody.tasks.find_kitchen import (
     REASON_DECLARE_DONE,
     REASON_FALL,
+    REASON_NOT_RUN,
     find_kitchen_spec,
+    outcome_for,
     return_home_spec,
     score_stage,
 )
@@ -526,6 +547,144 @@ def stage_end_xy(document: dict, stage: str) -> tuple[float, float]:
 
 
 # ---------------------------------------------------------------------------
+# 5.1 Success criterion v2 — "any counter face" (post-batch change; see the
+# module docstring and results/rerun_log.md)
+# ---------------------------------------------------------------------------
+
+#: Identifier stamped into results/scores.json so a reader of the numbers can
+#: tell which predicate produced them without diffing this file.
+SUCCESS_CRITERION = "v2_any_counter"
+
+#: The asset every kitchen counter is an instance of. The counters are selected
+#: structurally (kitchen + this asset), never by name, so a renamed counter
+#: cannot silently fall out of the success region.
+_COUNTER_ASSET = "sektion_cabinet"
+
+#: How many counters the frozen layout is known to contain. A different count
+#: means the criterion definition no longer matches the scene — raise, don't
+#: guess.
+_COUNTER_COUNT = 5
+
+
+@lru_cache(maxsize=1)
+def kitchen_counter_rects() -> tuple[tuple[str, tuple[float, float, float, float]], ...]:
+    """The five kitchen counters' footprint AABBs, from the frozen layout only.
+
+    ``LAYOUT["furniture"]`` footprints are world-axis full extents (the same
+    reading ``furniture_rects`` uses), so the rectangles are axis-aligned by
+    construction. This reads the furniture list despite its "SCENE SPEC ONLY —
+    scoring never reads this" header: criterion v2 makes the counter footprints
+    scoring ground truth, and that header's rule is amended by the v2 change
+    (module docstring; results/rerun_log.md) rather than silently ignored.
+    """
+    rects: list[tuple[str, tuple[float, float, float, float]]] = []
+    for item in LAYOUT["furniture"]:
+        if item["room"] == "kitchen" and item["asset"] == _COUNTER_ASSET:
+            cx, cy = item["pos"]
+            w, d = item["footprint"]
+            rects.append(
+                (item["name"], (cx - w / 2.0, cy - d / 2.0, cx + w / 2.0, cy + d / 2.0))
+            )
+    if len(rects) != _COUNTER_COUNT:
+        raise ScoringError(
+            f"expected {_COUNTER_COUNT} kitchen {_COUNTER_ASSET} counters in the "
+            f"frozen layout, found {len(rects)} — criterion v2 no longer matches "
+            "the scene"
+        )
+    return tuple(rects)
+
+
+def nearest_counter_face(xy: tuple[float, float]) -> tuple[str, float]:
+    """``(counter name, Euclidean distance to its footprint rectangle)``.
+
+    Distance is to the rectangle (0 inside), via the layout's own
+    ``_dist_point_rect`` so the scorer and the free-space grid share one
+    geometry. A corner approach is credited up to the radius off a footprint
+    corner — the natural rectangle generalisation of the primary disc's
+    semantics, same inclusive boundary, same radius.
+    """
+    name, dist = min(
+        (
+            (name, _dist_point_rect(xy[0], xy[1], rect))
+            for name, rect in kitchen_counter_rects()
+        ),
+        key=lambda pair: pair[1],
+    )
+    return name, dist
+
+
+def position_success_v2(stage: str, xy: tuple[float, float], spec) -> bool:
+    """The position half of criterion v2 for one stage.
+
+    ``find_kitchen``: the pre-registered point disc **OR** within the same
+    radius of any kitchen counter footprint *while standing in the kitchen*.
+    The union, not the counter branch alone, because the two regions are NOT
+    nested: the pinned target point is 0.397 m from the nearest counter
+    footprint, so a pure any-counter test would fail a robot standing exactly
+    on the pre-registered goal (adversarial review, 2026-07-27). The in-kitchen
+    condition is load-bearing: counter_4/5 back onto the bedroom partition, and
+    a bedroom pose 4 cm through that wall is within 0.35 m of their rectangles.
+
+    ``return_home``: unchanged — the pre-registered disc. Its goal has no
+    counter semantics.
+    """
+    if math.dist(xy, spec.goal_xy) <= spec.success_radius_m:
+        return True
+    if stage != STAGE_FIND_KITCHEN:
+        return False
+    if room_at(xy[0], xy[1]) != "kitchen":
+        return False
+    return nearest_counter_face(xy)[1] <= spec.success_radius_m
+
+
+def region_oracle_length_m(start: tuple[float, float], spec) -> float | None:
+    """SPL's ``l`` for stage 1 under v2: shortest path to the SUCCESS REGION.
+
+    The v2 goal is a region (disc ∪ counter band), not a point, so ``l`` is the
+    shortest achievable path from ``start`` to any pose satisfying
+    :func:`position_success_v2` — the ObjectNav convention (Habitat: path to
+    the nearest success viewpoint), where the pre-registered scoring used the
+    PointNav convention (path to the goal point). Computed as a uniform-cost
+    search over the same :class:`FreeSpaceGrid` the point oracle uses — same
+    cells, same body-radius inflation, same no-corner-cutting rule — stopping
+    at the first free cell whose centre satisfies the predicate. ``None`` if no
+    free cell does (unreachable region — a layout defect, not a trial state).
+
+    ``return_home`` keeps ``oracle_length`` (its criterion did not change).
+    """
+    g = grid()
+    origin = g.nearest_free(*start)
+    if origin is None:
+        return None
+    best: dict[tuple[int, int], float] = {origin: 0.0}
+    heap: list[tuple[float, tuple[int, int]]] = [(0.0, origin)]
+    diagonal = math.sqrt(2.0)
+    while heap:
+        cost, node = heapq.heappop(heap)
+        if cost > best.get(node, math.inf):
+            continue
+        if position_success_v2(STAGE_FIND_KITCHEN, g.center(*node), spec):
+            return cost
+        i, j = node
+        for di, dj in (
+            (1, 0), (-1, 0), (0, 1), (0, -1),
+            (1, 1), (1, -1), (-1, 1), (-1, -1),
+        ):
+            ni, nj = i + di, j + dj
+            if not (0 <= ni < g.nx and 0 <= nj < g.ny) or not g.free[nj][ni]:
+                continue
+            # Same rule as FreeSpaceGrid.path: never cut a corner diagonally.
+            if di and dj and not (g.free[j][ni] and g.free[nj][i]):
+                continue
+            step = diagonal if (di and dj) else 1.0
+            new_cost = cost + step * g.cell
+            if new_cost < best.get((ni, nj), math.inf):
+                best[(ni, nj)] = new_cost
+                heapq.heappush(heap, (new_cost, (ni, nj)))
+    return None
+
+
+# ---------------------------------------------------------------------------
 # 5.1/5.2/5.3/5.4/5.5 — per-stage metrics
 # ---------------------------------------------------------------------------
 
@@ -538,6 +697,15 @@ class StageMetrics:
     outcome: str
     end_reason: str
     success: bool
+    #: The AS-RUN verdicts (pre-registered point-disc criterion — what the live
+    #: stage-2 gate consulted). Published beside the v2 fields so both readings
+    #: stay reproducible from one scores.json.
+    success_preregistered: bool
+    outcome_preregistered: str
+    #: Distance from the stage's end pose to the nearest kitchen-counter
+    #: footprint (criterion v2's counter branch). ``NA`` for ``return_home``,
+    #: whose criterion has no counter semantics.
+    d_nearest_counter_face_m: float | str
     d_initial_m: float
     d_final_m: float
     progress: float
@@ -558,6 +726,9 @@ class StageMetrics:
             "outcome": self.outcome,
             "end_reason": self.end_reason,
             "success": self.success,
+            "success_preregistered": self.success_preregistered,
+            "outcome_preregistered": self.outcome_preregistered,
+            "d_nearest_counter_face_m": _round_or_na(self.d_nearest_counter_face_m, 4),
             "d_initial_m": round(self.d_initial_m, 4),
             "d_final_m": round(self.d_final_m, 4),
             "progress": round(self.progress, 4),
@@ -578,8 +749,15 @@ def _round_or_na(value: float | str, digits: int) -> float | str:
     return value if isinstance(value, str) else round(value, digits)
 
 
-def stage_success(document: dict, stage: str) -> bool:
-    """§5.1's success flag, recomputed rather than trusted.
+def stage_success_preregistered(document: dict, stage: str) -> bool:
+    """The AS-RUN §5.1 success flag, recomputed rather than trusted.
+
+    This is the predicate the live loop's gate consulted (point disc AND
+    ``declare_done``) — the pre-registered criterion the batch ran under. It is
+    still recomputed and validated on every scoring pass, for two reasons:
+    the log-consistency guarantees below must survive the v2 change untouched,
+    and the pre-registered verdict is still published per trial
+    (``success_preregistered``) so the original reading stays reproducible.
 
     Two distinct predicates live in the log and confusing them inflates SR:
     ``stages[*].score.success`` is ``score_stage``'s pure distance test, while
@@ -623,6 +801,27 @@ def stage_success(document: dict, stage: str) -> bool:
     return logged
 
 
+def stage_success(document: dict, stage: str) -> bool:
+    """The PUBLISHED §5.1 success flag — criterion v2 (module docstring).
+
+    Runs :func:`stage_success_preregistered` first, unconditionally: every
+    log-consistency check the as-run predicate enforced still raises on a
+    corrupt log, and the v2 verdict is only ever computed on a log that passed
+    them. Then applies the v2 position test to the same logged ``true_xy``.
+    ``declare_done`` is still required — the model must *know* it arrived; v2
+    widens only WHERE arrival counts, never HOW.
+    """
+    preregistered = stage_success_preregistered(document, stage)
+    result = document["final"]["stages"][stage]
+    score = result.get("score")
+    if score is None or result["end_reason"] != REASON_DECLARE_DONE:
+        return False
+    if preregistered:
+        # v2 is a superset of the pre-registered region by construction.
+        return True
+    return position_success_v2(stage, _score_xy(score), stage_spec(document, stage))
+
+
 def check_stage_turns(document: dict, stage: str) -> list[dict]:
     """The stage's turns, cross-checked against ``final.stages[*].turns_used``.
 
@@ -656,9 +855,31 @@ def check_stage_turns(document: dict, stage: str) -> list[dict]:
 
 
 def stage_metrics(document: dict, stage: str) -> StageMetrics:
-    """doc 06 §5.1–§5.5 + §5.8 for one stage."""
+    """doc 06 §5.1–§5.5 + §5.8 for one stage — criterion v2 where it applies.
+
+    v2 touches exactly four things here: ``success`` (the union predicate),
+    ``outcome`` (recomputed from the v2 verdict), ``time_s`` (defined on the
+    published success), and stage 1's ``oracle_path_m``/``spl`` (the region
+    oracle). ``progress`` / ``d_initial_m`` / ``d_final_m`` deliberately keep
+    the pre-registered point reference: they are continuous distance metrics
+    whose comparability across the batch (and with the numbers published before
+    the change) matters more than folding a discontinuous region distance —
+    through a wall the nearest counter is metres of walking away at centimetres
+    of Euclidean distance — into a gradient. The as-run verdicts are published
+    beside the v2 ones, and the logged outcome is cross-checked against the
+    as-run predicate so the log stays internally consistent under BOTH readings.
+    """
     result = document["final"]["stages"][stage]
     success = stage_success(document, stage)
+    preregistered = stage_success_preregistered(document, stage)
+    outcome = outcome_for(result["end_reason"], success)
+    expected_logged = outcome_for(result["end_reason"], preregistered)
+    if result["outcome"] != expected_logged:
+        raise ScoringError(
+            f"{stage}: logged outcome {result['outcome']!r} disagrees with the "
+            f"as-run predicate's {expected_logged!r} (end_reason "
+            f"{result['end_reason']!r}); the log is internally inconsistent"
+        )
     spec = stage_spec(document, stage)
     check_stage_turns(document, stage)
 
@@ -667,7 +888,12 @@ def stage_metrics(document: dict, stage: str) -> StageMetrics:
     d_initial = math.dist(start, spec.goal_xy)
     d_final = math.dist(end, spec.goal_xy)
 
-    oracle = oracle_length(start, spec.goal_xy)
+    if stage == STAGE_FIND_KITCHEN:
+        oracle = region_oracle_length_m(start, spec)
+        d_counter: float | str = nearest_counter_face(end)[1]
+    else:
+        oracle = oracle_length(start, spec.goal_xy)
+        d_counter = NA
     walked = path_length_m(document.get("turns", []), stage)
     floor, chords = chord_floor_m(document, stage)
     tolerance = CHORD_FLOOR_BASE_TOL_M + CHORD_FLOOR_TOL_M * chords
@@ -683,9 +909,12 @@ def stage_metrics(document: dict, stage: str) -> StageMetrics:
 
     return StageMetrics(
         stage=stage,
-        outcome=result["outcome"],
+        outcome=outcome,
         end_reason=result["end_reason"],
         success=success,
+        success_preregistered=preregistered,
+        outcome_preregistered=result["outcome"],
+        d_nearest_counter_face_m=d_counter,
         d_initial_m=d_initial,
         d_final_m=d_final,
         progress=progress(d_initial, d_final),
@@ -2476,12 +2705,23 @@ def summarise(
         return block
 
     stage1_successes = [t for t in trials if t.stages[STAGE_FIND_KITCHEN].success]
+    # Criterion v2 can grant a stage-1 success the LIVE gate (pre-registered
+    # predicate) denied — such a trial was never offered its return leg, and
+    # counting an unrun stage in the conditional denominator would report a
+    # return "failure" for a leg the model never got to attempt. The
+    # conditional is therefore over stage-1 successes whose return leg RAN;
+    # the excluded count is published beside it rather than vanishing.
+    offered = [
+        t
+        for t in stage1_successes
+        if t.stages[STAGE_RETURN_HOME].end_reason != REASON_NOT_RUN
+    ]
     conditional = Ratio(
-        sum(1 for t in stage1_successes if t.stages[STAGE_RETURN_HOME].success),
-        len(stage1_successes),
+        sum(1 for t in offered if t.stages[STAGE_RETURN_HOME].success),
+        len(offered),
     )
     conditional_ci = estimate(
-        [1.0 if t.stages[STAGE_RETURN_HOME].success else 0.0 for t in stage1_successes],
+        [1.0 if t.stages[STAGE_RETURN_HOME].success else 0.0 for t in offered],
         resamples=resamples,
         seed=seed,
     )
@@ -2497,6 +2737,8 @@ def summarise(
                 **conditional.as_dict(),
                 **conditional_ci.as_dict(),
             },
+            "stage1_successes_never_offered_return": len(stage1_successes)
+            - len(offered),
         },
     }
     for metric in ("bumps", "falls", "map_precision", "map_recall", "edge_accuracy", "qa"):
