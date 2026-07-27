@@ -105,7 +105,9 @@ class OpenAIProvider:
                 if isinstance(block, TextBlock):
                     plain_parts.append(self._text_part(block.text))
                 elif isinstance(block, ImageBlock):
-                    if block.label:
+                    # Matched to the Anthropic adapter's rule so a blank
+                    # label behaves identically on both providers.
+                    if block.label and block.label.strip():
                         plain_parts.append(self._text_part(block.label))
                     plain_parts.append(self._image_part(block))
                 elif isinstance(block, ToolResultBlock):
@@ -126,7 +128,7 @@ class OpenAIProvider:
                             )
                         )
                         for img in block.images:
-                            if img.label:
+                            if img.label and img.label.strip():
                                 carried_images.append(self._text_part(img.label))
                             carried_images.append(self._image_part(img))
 
@@ -153,21 +155,36 @@ class OpenAIProvider:
 
     # -- the call -----------------------------------------------------------
 
-    def send(self, system: str, messages: list[Message], tools: list[dict]) -> AssistantTurn:
+    def request_kwargs(self, system: str, messages: list[Message], tools: list[dict]) -> dict:
+        """The exact request body, split out of :meth:`send` so it is testable.
+
+        ``instructions`` and ``tools`` are **omitted when empty**, matching the
+        Anthropic adapter: T3.4's post-episode layout-QA exchange (doc 06 §5.9)
+        is a toolless, system-less call, and it runs once per trial at the very
+        end — after every dollar of that trial has been spent. Sending `[]` /
+        `""` there would be asking the API to interpret an absence rather than
+        stating one. The benchmark path passes both non-empty and is unchanged.
+        """
         kwargs = {
             "model": self.model_id,
-            "instructions": system,
             "input": self.to_native(messages),
-            "tools": self.to_native_tools(tools),
             "max_output_tokens": self.cfg.max_tokens,
         }
+        if system:
+            kwargs["instructions"] = system
+        if tools:
+            kwargs["tools"] = self.to_native_tools(tools)
         # temperature is NOT set: gpt-5.6-sol rejects any non-default value
         # ("does not support 0 with this model. Only the default (1) value is
         # supported" — measured). Anything provider-specific that IS accepted
         # lives in the config so the decision is recorded, not hardcoded.
         kwargs.update(self.cfg.params)
+        return kwargs
 
-        response = self.client.responses.create(**kwargs)
+    def send(self, system: str, messages: list[Message], tools: list[dict]) -> AssistantTurn:
+        response = self.client.responses.create(
+            **self.request_kwargs(system, messages, tools)
+        )
         return self._parse(response)
 
     def _parse(self, response) -> AssistantTurn:

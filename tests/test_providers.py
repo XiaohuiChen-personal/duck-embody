@@ -16,6 +16,7 @@ import json
 
 import pytest
 
+from duck_embody.agent.prompts import DERAILMENT_NUDGE
 from duck_embody.agent.providers.base import (
     AssistantMessage,
     ImageBlock,
@@ -86,6 +87,24 @@ def openai_adapter():
     adapter.cfg = _cfg("openai", "gpt-5.6-sol")
     adapter.name, adapter.model_id = "gpt56sol", "gpt-5.6-sol"
     return adapter
+
+
+def _refusal_response(content):
+    """The shape a pre-output classifier decline actually returns: HTTP 200,
+    ``stop_reason: "refusal"``, and an EMPTY ``content`` array."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        stop_reason="refusal",
+        stop_details=SimpleNamespace(category="cyber"),
+        content=content,
+        usage=SimpleNamespace(
+            input_tokens=120,
+            output_tokens=0,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+        ),
+    )
 
 
 @pytest.fixture
@@ -170,6 +189,85 @@ class TestAnthropicMessageShaping:
     def test_error_results_are_flagged(self, anthropic_adapter):
         msg = UserMessage(blocks=[ToolResultBlock("x", "move", "bad args", is_error=True)])
         assert anthropic_adapter.to_native([msg])[0]["content"][0]["is_error"] is True
+
+    @pytest.mark.parametrize("native", [[], None])
+    def test_an_empty_assistant_turn_is_dropped_not_echoed(
+        self, anthropic_adapter, native
+    ):
+        """A refusal is HTTP 200 with an EMPTY `content` array (doc 05 §7.2), so
+        `AssistantTurn.raw` is `[]` and the loop routes it to §8's DERAILMENT
+        path — scored, never retried.
+
+        This asserts BEHAVIOUR, not a wire requirement. Echoing the empty turn
+        back is NOT rejected: measured 2026-07-26 against the live API with the
+        12 tool schemas and adaptive thinking, `{"role": "assistant",
+        "content": []}` is ACCEPTED. An earlier version of this docstring
+        claimed it was a 400; that was wrong, and the real 400 came from the
+        empty USER message the missing derailment branch appended (covered by
+        `test_the_derailment_nudge_is_never_empty`).
+
+        Dropping is still correct: `content: None` IS rejected (400 "Input
+        should be a valid list"), and an empty turn is a no-op that costs
+        tokens and tells the model nothing."""
+        out = anthropic_adapter.to_native(
+            [
+                AssistantMessage(native=native),
+                UserMessage(blocks=[TextBlock("No tool call received — …")]),
+            ]
+        )
+        assert all(m["content"] for m in out), f"empty message content in {out}"
+        assert [m["role"] for m in out] == ["user"]
+
+    def test_the_derailment_nudge_is_never_empty(self, anthropic_adapter):
+        """THE actual wire requirement a refusal has to satisfy.
+
+        Measured 2026-07-26 against the live API (claude-opus-5): an empty USER
+        message is rejected — both ``content: []`` and ``content: ""`` return
+        400 "user messages must ...". An empty ASSISTANT turn is accepted. So
+        the thing that genuinely broke a refusal was doc 05 §3.1's pseudocode
+        appending an empty user message when it had no derailment branch, and
+        the thing that keeps it fixed is that the nudge carries text.
+
+        A 400 here would be caught at the trial boundary and logged as an infra
+        failure, so doc 06 §9.1's resume check would rerun a trial the model
+        actually failed — selection bias in that model's favour, which doc 05
+        §8 forbids in as many words.
+        """
+        assert DERAILMENT_NUDGE.strip(), "the nudge must carry text or it is a 400"
+
+        out = anthropic_adapter.to_native(
+            [
+                AssistantMessage(native=[]),
+                UserMessage(blocks=[TextBlock(DERAILMENT_NUDGE)]),
+            ]
+        )
+        assert out, "the nudge turn must survive"
+        for message in out:
+            assert message["content"], f"empty content on the wire: {message}"
+            if message["role"] == "user":
+                # An all-whitespace text block is the same 400 as an empty one.
+                assert any(
+                    part.get("text", "").strip()
+                    for part in message["content"]
+                    if part.get("type") == "text"
+                ), f"user message carries no text: {message}"
+
+    def test_a_non_empty_assistant_turn_is_still_echoed(self, anthropic_adapter):
+        """The guard must not swallow a partial refusal that DID return blocks
+        (e.g. thinking only) — those still have to be replayed unchanged."""
+        native = [{"type": "thinking", "thinking": "..."}]
+        out = anthropic_adapter.to_native([AssistantMessage(native=native)])
+        assert out == [{"role": "assistant", "content": native}]
+
+    def test_a_refusal_parses_to_an_empty_list_never_none(self, anthropic_adapter):
+        """`_parse` normalises `raw`, so a `None` content cannot become
+        `"content": null` on the wire either."""
+        for content in ([], None):
+            turn = anthropic_adapter._parse(_refusal_response(content))
+            assert turn.raw == []
+            assert turn.tool_calls == []
+            assert turn.refusal == "refusal (category=cyber)"
+            assert turn.stop_reason == "refusal"
 
     def test_look_around_labels_precede_each_frame(self, anthropic_adapter):
         msg = UserMessage(
@@ -420,3 +518,104 @@ class TestModelConfigs:
 
         contestants = {load_model_config(n).model_id for n in ("fable5", "opus5", "gpt56sol")}
         assert load_model_config("judge").model_id not in contestants
+
+
+class TestRequestBodies:
+    """The exact kwargs each adapter sends (T3.4).
+
+    Split out of ``send`` so the QA exchange's shape is checkable without a
+    network call — which matters because that call happens once per trial, at
+    the very end, after every dollar of the trial has been spent. A 400 there
+    would cost a headline metric (doc 06 §5.9's QA score) on a trial that had
+    already finished.
+    """
+
+    @pytest.fixture
+    def message(self):
+        return UserMessage(blocks=[TextBlock("hello")])
+
+    def test_anthropic_driving_request_carries_system_and_tools(
+        self, anthropic_adapter, message
+    ):
+        kwargs = anthropic_adapter.request_kwargs("SYS", [message], CANONICAL_TOOLS)
+        assert kwargs["system"] == "SYS"
+        assert [t["name"] for t in kwargs["tools"]] == ["get_observation", "move"]
+        assert kwargs["model"] == "claude-fable-5"
+        assert kwargs["max_tokens"] == 16000
+        assert kwargs["thinking"] == {"type": "adaptive", "display": "summarized"}
+
+    def test_openai_driving_request_carries_instructions_and_tools(
+        self, openai_adapter, message
+    ):
+        kwargs = openai_adapter.request_kwargs("SYS", [message], CANONICAL_TOOLS)
+        assert kwargs["instructions"] == "SYS"
+        assert [t["name"] for t in kwargs["tools"]] == ["get_observation", "move"]
+        assert kwargs["max_output_tokens"] == 16000
+
+    @pytest.mark.parametrize("adapter_name", ["anthropic_adapter", "openai_adapter"])
+    def test_the_qa_exchange_omits_empty_system_and_tools(
+        self, adapter_name, message, request
+    ):
+        """doc 06 §5.9's exchange is toolless and system-less: "you have no
+        camera, no robot, and no tools now". Omitting the keys states that,
+        rather than asking the API to interpret ``""`` and ``[]``."""
+        adapter = request.getfixturevalue(adapter_name)
+        kwargs = adapter.request_kwargs("", [message], [])
+        assert "tools" not in kwargs
+        assert "system" not in kwargs and "instructions" not in kwargs
+        # The message itself still goes, under each API's own key.
+        assert kwargs.get("messages") or kwargs.get("input")
+
+    def test_config_params_still_win(self, anthropic_adapter, message):
+        """``cfg.params`` is applied last so a recorded per-provider setting can
+        never be silently overridden by a default above it."""
+        anthropic_adapter.cfg.params = {"max_tokens": 99}
+        assert anthropic_adapter.request_kwargs("SYS", [message], [])["max_tokens"] == 99
+
+
+class TestBlankTextIsRejectedProviderNeutrally:
+    """The cross-provider asymmetry that makes a harness bug a FAIRNESS bug.
+
+    MEASURED 2026-07-26 against both live APIs:
+
+        shape                 Anthropic                      OpenAI
+        user text ""          400 "must be non-empty"        ACCEPTED
+        user text "   "       400 "must contain non-ws"      ACCEPTED
+        user content []       400 "must have non-empty"      ACCEPTED
+
+    So a blank block the harness emitted by mistake would cost the two
+    Anthropic contestants a trial (400 -> caught at the trial boundary ->
+    logged infra_failure -> doc 06 §9.1 reruns it) and cost GPT 5.6 sol
+    nothing. Same defect, different price per model — exactly what AGENTS.md
+    rule 4's "one prompt template, one tool set, frozen" is protecting.
+
+    The guard therefore lives in the provider-NEUTRAL layer, so both providers
+    fail identically and the failure surfaces here rather than mid-batch.
+    """
+
+    @pytest.mark.parametrize("bad", ["", " ", "\n", "\t  \n"])
+    def test_a_blank_text_block_cannot_be_constructed(self, bad):
+        with pytest.raises(ValueError, match="non-empty"):
+            TextBlock(bad)
+
+    def test_real_text_is_unaffected(self):
+        assert TextBlock(" the map so far ").text == " the map so far "
+
+    def test_a_blank_image_label_is_dropped_by_both_adapters(
+        self, anthropic_adapter, openai_adapter
+    ):
+        """A label is optional decoration, so a blank one is dropped rather than
+        raised on — but it must be dropped by BOTH adapters, or the Anthropic
+        request 400s on a payload OpenAI happily accepts."""
+        msg = UserMessage(blocks=[ImageBlock(data_b64=FAKE_JPEG_B64, label="   ")])
+
+        a_content = anthropic_adapter.to_native([msg])[0]["content"]
+        assert all(part["type"] != "text" for part in a_content), a_content
+
+        o_parts = openai_adapter.to_native([msg])[0]["content"]
+        blank = [
+            p
+            for p in o_parts
+            if p.get("type") == "input_text" and not str(p.get("text", "")).strip()
+        ]
+        assert not blank, f"OpenAI adapter emitted a blank text part: {o_parts}"

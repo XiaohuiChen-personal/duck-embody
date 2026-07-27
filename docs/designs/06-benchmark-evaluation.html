@@ -144,6 +144,44 @@ run or resume if the working tree's frozen files differ from that commit (§7). 
 "every number names its source" — a result that cannot be traced to the exact frozen
 configuration is not a result.</div>
 
+<div class="decision"><strong>THE HASHED MANIFEST, named by T3.4's review pass (AGENTS.md rule 5).</strong>
+The rows above name frozen <em>items</em>; <code>config.config_hash</code> hashes
+<em>files</em>, and the two lists were not the same list. The manifest is
+<code>duck_embody/agent/loop.py::FROZEN_FILES</code> (provisional until T4.2 owns
+<code>results/freeze.json</code>), and it must contain the file that <strong>enforces</strong>
+each item, not the file that documents it:
+<ul>
+<li><code>duck_embody/agent/prompts.py</code> — prompt template, QA questions, synonym table</li>
+<li><code>duck_embody/agent/tools.py</code> — the 12-tool schema and its clamps</li>
+<li><code>duck_embody/agent/memory.py</code> — <strong>the caps row</strong>: <code>TURN_CAP = 40</code>,
+<code>POLICY_SECONDS_CAP = 240.0</code>, <code>PLAN_MAX_CHARS</code>,
+<code>EXIT_DIRECTION_QUANTUM_DEG</code>. <code>configs/benchmark.yaml</code> mirrors the caps and is
+checked by a unit test, but <code>Counters</code> is what the loop compares against and what the model
+reads in its budget line</li>
+<li><code>duck_embody/sim/policy_wrapper.py</code> — <code>MOVE_MAX_DISTANCE_M</code>,
+<code>MOVE_SPEED_MPS</code>, the command-hull clamp: the numbers the tool-schema row <em>states to the
+model</em> ("Max 1.5 m per call", "vx in (−0.148, 0.222)")</li>
+<li><code>duck_embody/agent/loop.py</code> — <code>K_CONTEXT_TURNS = 10</code>, which the frozen system
+prompt promises the model verbatim, plus the context policy and the QA exchange</li>
+<li><code>duck_embody/agent/providers/{base,anthropic,openai}.py</code> — these shape every request; a
+change there is a change to what the models were asked</li>
+<li><code>duck_embody/env/camera.py</code>, <code>duck_embody/env/apartment_layout.py</code>,
+<code>duck_embody/tasks/find_kitchen.py</code>, <code>configs/benchmark.yaml</code>,
+<code>configs/models/{fable5,opus5,gpt56sol}.yaml</code></li>
+</ul>
+<p>WHY it matters that this is written down: with the first list, an <em>uncommitted</em> edit to
+<code>memory.py</code> mid-batch left both <code>config.freeze_commit</code> and
+<code>config.config_hash</code> byte-identical across trials that ran different caps — §7's guard would
+see nothing, and the published table would average two incomparable halves. AGENTS.md §5 records that
+this working tree "carries large uncommitted work", so that is the expected state, not a hypothetical.
+<code>tests/test_loop.py</code> now asserts every listed file exists and that editing <em>each</em> one
+moves the hash.</p>
+<p><strong>Consequent deviation from §4's <code>"freeze_commit": "&lt;git sha&gt;"</code>:</strong>
+<code>freeze_commit()</code> returns <code>&lt;sha&gt;-dirty</code> when any frozen file has uncommitted
+changes (<code>git status --porcelain</code> over the manifest), so the JSON shows the discrepancy even
+before T4.2's guard exists. It still never raises — a trial that ran is worth logging from a tree with
+no git, where the value is <code>"unknown"</code>.</p></div>
+
 <h2 id="protocol">3. Trial protocol</h2>
 
 <p>A <strong>trial</strong> is one model attempting the full episode from one seed.
@@ -192,6 +230,37 @@ failures and are <strong>never selectively retried</strong>. WHY: retrying only 
 bad runs is survivorship bias; the only legitimate rerun is an infra failure (§7),
 which is logged as such.</div>
 
+<div class="decision"><strong>RESOLVED BY T3.4 — the stage-2 trigger and stage-2 time
+accounting</strong> (§12's "Stage-2 accounting when stage 1 fails", both halves).
+<p><strong>Trigger.</strong> This table's "episode continues to stage 2 only if stage 1
+succeeded" is confirmed and is now the harness's actual rule. Doc
+<a href="05-agent-harness.html">05</a> §3.1/§3.3/§4.4 previously triggered stage 2 on
+"stage 1 ended via <code>declare_done</code>" with the score not consulted, which
+differed from this row exactly when a model declares done outside the 0.35&nbsp;m target
+region — the case §3.1 above already calls a failure. <strong>Doc 05 was amended to
+match this doc</strong>; the full reasoning and the measured floor that decides it
+(minimum stage-2 <code>d_initial</code> = 1.574&nbsp;m, seed 104, against a 0.5&nbsp;m
+return radius — so a zero-motion <code>return_home</code> success is geometrically
+impossible) are in doc 05 §3.3's decision box. The rule now lives in
+<code>configs/benchmark.yaml: protocol.stage2_requires_stage1_success</code>, inside §2's
+hashed contract; it previously lived in no config at all.</p>
+<p><strong>Accounting.</strong> "Per stage" means the budget <strong>resets</strong> at the
+boundary and the caps are unchanged, so the first stage-2 request renders <code>Budget:
+turns 0/40, policy-seconds 0.0/240</code>. §5.4 (time from <em>stage</em> start), §5.5
+(per-stage turns used) and §5.8 (drift <em>per stage</em>) all already required that
+reading; it is stated outright now because it was only implied.</p>
+<p><strong>An unrun stage 2</strong> is logged with outcome <code>not_run</code>, turns 0
+and policy-seconds 0.0. Reporting convention, ratifying §12's own proposal: the
+return-home SR is <strong><code>x/N</code> with N=4 and the unrun stage counted a
+failure</strong>, denominator printed literally, <em>plus</em> a conditional SR
+<code>x/k</code> over stage-1 successes with <code>k</code> printed (<code>—</code> when
+<code>k = 0</code>, and no CI when <code>k &lt; 3</code> — a bootstrap over one value is
+theatre). Per-cell: progress <code>0.0</code> and SPL <code>0.0</code> (both fall out of
+the canonical formulas — the robot never moved, so <code>d_final = d_initial</code>, and
+SPL short-circuits on <code>S = 0</code> <em>before</em> dividing); time-to-home and
+stage-2 drift stay <code>—</code>, excluded from means and never coerced to a number,
+following §5.7's precedent.</p></div>
+
 <div class="note">The locomotion layer is deliberately not the thing under test: the
 pretrained <code>v4_robust</code> PPO policy has a clean record — 5/5 gait-validity
 gate, 0.00% falls over 3,200 push-free evaluation episodes — so falls in this
@@ -221,7 +290,7 @@ scorer never touches the simulator. Annotated schema:</p>
       "turn_idx": 7,
       "timestamp": "2026-07-27T04:12:31Z",
       "obs": {                            // what the model was shown (summary)
-        "frame_paths": ["frames/t007_0.png"],   // saved camera frame(s)
+        "frame_paths": ["frames/fable5_seed101/t007_0.jpg"],  // saved camera frame(s)
         "compass_deg": 92.4,
         "position_estimate": {"x": 1.31, "y": 0.66},  // dead-reckoned, drifts
         "status": {"bumped": false, "fell": false, "distance_moved_m": 0.48}
@@ -230,27 +299,60 @@ scorer never touches the simulator. Annotated schema:</p>
         "thought": "...",                 // model's visible reasoning text, if any
         "tool_calls": [{"name": "move", "args": {"distance_m": 1.0}}]
       },
-      "execution": {                      // what the harness actually did
-        "result": "moved 0.82 m, auto-stop on collision (bump)",
-        "policy_seconds_used": 4.1,
+      "execution": {                      // what the harness actually did.
+                                          // ALWAYS an object, never null and never
+                                          //   absent — a turn that stepped no physics
+                                          //   has an EMPTY pose_trace (T4.1 raises on a
+                                          //   MISSING one, so the two must not look alike)
+        "result": "move: moved 0.82 m, 4.1 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 4.1,       // SUM over this turn's motion calls
         "pose_trace": [[1.02, 0.55], ...] // true base XY sampled every 10 control
-                                          //   steps (5 Hz) during this turn's motion;
+                                          //   steps (5 Hz) during this turn's motion,
+                                          //   CONCATENATED in call order;
                                           //   scoring-only (never shown to the model),
                                           //   feeds the SPL path integral (§5.3)
+        "motion_calls": 1,                // per-turn motion-tool count (doc 05 §12)
+        "calls": [ { "tool": "move", "policy_seconds_used": 4.1,
+                     "pose_trace": [...], "sampled_xy": [...],
+                     "true_pose": [1.24, 0.71, 90.8], "true_displacement_m": 0.79,
+                     "distance_moved_m": 0.82, "bumped": true, "fell": false,
+                     "stop_reason": "bump", "counted_as_bump": true } ]
+                                          // per-call detail the merge would destroy;
+                                          //   counted_as_bump is the ONLY per-turn
+                                          //   source for §5.6's two-source bump metric
       },
       "true_pose": {"x": 1.24, "y": 0.71, "heading_deg": 90.8},
       // ^ ground truth, logged EVERY turn for scoring — NEVER shown to the model
-      "memory_snapshot": { "rooms": {...}, "exits": [...], "trajectory": "...",
-                           "plan": "..." }   // full memory block as re-injected
+      "budget": {"stage_turns_used": 7, "stage_turn_cap": 40,
+                 "stage_policy_seconds_used": 61.3, "stage_policy_seconds_cap": 240},
+      "usage": { ... },                   // this turn's Usage.as_dict()
+      "end_reason": null,                 // §3.2's stop reason, on the turn that ends the stage
+      "memory_snapshot": { "rooms": {...}, "exits": [...], "trajectory": [...],
+                           "current_room": "...", "plan": "...",
+                           "corrections": [ {"turn": 12, "old_xy": [..], "new_xy": [..],
+                                             "reason": "...", "stage": "find_kitchen"} ],
+                           "stage": "find_kitchen",
+                           "block": "== YOUR MAP ==\\n..." }  // the block as re-injected
     }
   ],
   "final": {
     "outcome": {"find_kitchen": "success", "return_home": "timeout_turns"},
+    "end_reason": {"find_kitchen": "declare_done", "return_home": "turn_cap"},
+    "stages": { "find_kitchen": {"success": true, "turns_used": 21,
+                                 "policy_seconds_used": 133.8,
+                                 "score": {"success": true, "distance_m": 0.21,
+                                           "radius_m": 0.35, "goal_xy": [2.55, 0.75],
+                                           "true_xy": [2.61, 0.55]},
+                                 "true_pose": {...}}, ... },
+    "bumps": 3,                           // TRIAL-scoped (§5.6)
     "metrics": { ... },                   // §5 values, computed post-hoc by scorer
-    "tokens": {"input": 0, "output": 0, "cost_usd_estimate": 0.0},  // per provider
-    "qa": [ {"question": "...", "answer": "...", "score": 1.0}, ... ]  // §5.9
+    "tokens": {"input_tokens": 0, "output_tokens": 0, "cache_read_tokens": 0,
+               "cache_write_tokens": 0, "cost_usd_estimate": 0.0},  // per provider
+    "tokens_breakdown": {"episode": {...}, "qa": {...}},
+    "qa": [ {"number": 1, "question": "...", "answer": "...", "score": null}, ... ], // §5.9
+    "qa_raw": "1. ...\\n2. ..."           // the model's unsplit reply
   },
-  "video_path": "videos/fable-5_seed101.mp4"  // robot-tracking mp4, whole trial
+  "video_path": "results/videos/fable5_seed101.mp4"  // robot-tracking mp4, whole trial
 }</code></pre>
 
 <div class="warning"><strong>Gotcha:</strong> <code>true_pose</code> lives in the
@@ -259,6 +361,86 @@ builds prompts exclusively from <code>obs</code> + <code>memory_snapshot</code>;
 a unit test asserts the rendered prompt contains no <code>true_pose</code>-derived
 values (the memory principle: ground-truth position is NEVER given to the
 model).</div>
+
+<div class="decision"><strong>WIDENED BY T3.4, which is the task that first had to produce this file.</strong>
+The block above is the shipped schema; nine points where the original disagreed with what
+<code>tools.ToolOutcome</code> actually emits, and what each resolved to (AGENTS.md rule 5).
+<ol>
+<li><strong><code>execution</code> cardinality.</strong> §4 had ONE object per turn; doc
+<a href="05-agent-harness.html">05</a> §3.3 explicitly allows several motion tools in one turn, each producing
+its own record. Resolved by <strong>merging</strong> (<code>policy_seconds_used</code> sums,
+<code>pose_trace</code> concatenates in call order — which is exactly what §5.3's path integral wants) while
+keeping every per-call dict under <code>execution.calls</code>. A merge alone would have destroyed
+<code>stop_reason</code> and <code>counted_as_bump</code>, and <code>counted_as_bump</code> is the only
+per-turn source for §5.6's bumps.</li>
+<li><strong><code>execution.result</code> had no producer.</strong> T3.2 deliberately delegated the prose line
+here and pinned no format. Authored as <code>"&lt;tool&gt;: &lt;what happened&gt;, &lt;n&gt; policy-s[,
+&lt;stop condition&gt;]"</code>, joined with "; " across calls, and pinned by
+<code>tests/test_loop.py</code>. It is human-readable only — every number in it is also a typed field of the
+same block, so no scorer parses it.</li>
+<li><strong><code>execution</code> on a non-motion turn.</strong> Always an object, never <code>null</code>,
+never absent, with an empty <code>pose_trace</code> and <code>policy_seconds_used: 0.0</code>. T4.1's scorer
+raises on a <em>missing</em> trace, so "no motion" and "trace dropped" must not look alike.</li>
+<li><strong><code>true_pose</code> shape and place.</strong> T3.2's <code>execution["true_pose"]</code> is a
+3-element list nested inside; §4 wants the object as a sibling. §4 wins (T4.1 reads §4); the loop lifts and
+reshapes it, and on a fall it uses the <em>guarded</em> pre-teleport value rather than the live sensor.</li>
+<li><strong><code>obs.frame_paths</code> had no producer anywhere.</strong> The loop now writes each frame by
+base64-decoding <strong>the exact block that was sent to the model</strong> (re-capturing would render a
+different image under a name that claims otherwise). The extension is <code>.jpg</code>, not the old example's
+<code>.png</code>: the pipeline is JPEG end to end (<code>camera.encode_jpeg</code>, quality 85). Paths are
+relative to the JSON's directory and carry the trial id, so 12 trials can share one results directory.</li>
+<li><strong><code>obs.position_estimate</code>.</strong> <code>tools._state_payload</code> emits a third key
+(<code>note</code>, the frozen model-facing caption). The log keeps §4's <code>{x, y}</code> — the note is
+constant text, not data.</li>
+<li><strong><code>final.tokens</code> key names.</strong> §4 said <code>{input, output,
+cost_usd_estimate}</code>; <code>providers.base.Usage.as_dict()</code> emits
+<code>{input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd_estimate}</code>.
+<strong>Widened to the code's names</strong> rather than remapped: §8 names prompt caching as the main lever on
+Anthropic input cost, and a batch that cannot see whether it hit the cache cannot report what it spent. Using
+the provider's own names also makes a transposed input/output column impossible.</li>
+<li><strong><code>memory_snapshot</code>.</strong> §4's shape named a <code>trajectory</code> field
+<code>Memory</code> does not have (<code>room_sequence</code> is what renders as <code>Trajectory:</code>) and
+omitted <code>corrections</code> entirely — which §5.8 needs <em>per stage</em>, and which nothing else can
+recover after the batch because <code>Correction.turn</code> is stage-local. Both fixed; the rendered
+<code>block</code> string is logged too, since §4 also describes this field as "the full memory block as
+re-injected". Breadcrumbs are deliberately not logged: the series is exactly the per-turn
+<code>obs.position_estimate</code> column, and re-emitting the whole growing list every turn would make the
+file quadratic in episode length for no information.</li>
+<li><strong><code>turn_idx</code> is STAGE-LOCAL</strong> (so it joins <code>Correction.turn</code>, which is
+what §5.8 needs), with a trial-global <code>global_turn_idx</code> alongside — the index the frame filenames
+use, and the only thing that distinguishes two stages' "turn 7".</li>
+<li><strong>Additive diagnostic fields, enumerated here because the docs are authoritative</strong>
+(added by T3.4's review pass — a scorer or reporting script written from the block above alone would not
+know they exist). <code>turns[].model_output</code> carries six keys beyond §4's <code>thought</code> /
+<code>tool_calls</code>: <code>text</code> (visible prose, distinct from <code>thought</code>'s reasoning
+summary), <code>stop_reason</code>, <code>refusal</code>, <code>dispatched</code> (how many calls actually
+ran — the only thing distinguishing "the model emitted 4 calls" from "the harness ran 2 and answered the
+rest <code>not_executed</code>", which is how a <code>declare_done</code> or a fall truncates a turn),
+<code>parse_errors</code>, and <code>nudged</code>. <code>config</code> carries <code>model_config</code>
+(the YAML stem, e.g. <code>fable5</code>, alongside <code>model</code>'s provider ID) and, on a smoke run
+only, <code>turn_cap_override</code>. <code>final.stages[*]</code> carries <code>stage</code>,
+<code>end_reason</code> and <code>outcome</code> beside the fields shown. <code>final</code> carries
+<code>qa_parse_failed</code> — see §5.9.</li>
+<li><strong>Two fields whose vintage is not what the surrounding object implies.</strong>
+(a) <code>obs.frame_paths</code> lists the frames this turn's tool calls <em>produced</em>, which the model
+reads on the <em>next</em> request, while the rest of <code>obs</code> is the state it read <em>before</em>
+deciding this turn. Attaching a frame to the turn that captured it is what makes "show me turn 7's
+<code>look_around</code>" answerable; an audit asking "what was it looking at when it decided" must read the
+PREVIOUS turn's paths. (b) <code>memory_snapshot.block</code> is the pre-dispatch rendering — literally the
+bytes re-injected into this turn's request — while <code>memory_snapshot</code>'s structured fields are
+read post-dispatch and therefore include this turn's writes. Both are the right vintage for their consumer
+(§5.8's correction series needs the writes the turn made; an audit of what the model read needs the block it
+read), so the two halves disagree by exactly one turn's writes, by construction.</li>
+</ol>
+<p>Also added: <code>final.end_reason</code> and <code>final.stages</code>. <strong>Outcome and end reason are
+two different things and conflating them loses a case.</strong> <code>end_reason</code> is doc 05 §3.2's four
+stop conditions (<code>declare_done | fall | turn_cap | motion_cap</code>, plus <code>not_run</code>);
+<code>outcome</code> is reason + score, over the vocabulary <code>success | declared_elsewhere |
+timeout_turns | timeout_motion | fall | not_run</code> (§4 previously showed two of these by example and
+enumerated none). Without <code>declared_elsewhere</code> a model that stopped on purpose in the wrong room is
+indistinguishable from one that ran out of turns. <code>final.stages[*].score</code> carries the decision
+inputs — true pose, distance, radius, goal — so the scorer <strong>recomputes</strong> the verdict instead of
+trusting the live gate, which is the point of "the log is the single source for scoring".</p></div>
 
 <h2 id="metrics">5. Metric definitions</h2>
 
@@ -454,6 +636,54 @@ none of which reproduce, and cited no command (AGENTS.md rule 3). Command:
 printed by a one-off script importing <code>duck_embody.env.apartment_layout</code> under the kit python.</p>
 </div>
 
+<div class="decision"><strong>The PRODUCER, implemented by T3.4 in
+<code>duck_embody/agent/loop.py::EpisodeRunner.run_qa</code>.</strong> Until this task the QA had a scorer
+(T4.1) and a frozen question set (T3.1) but nothing that asked the questions — so a frozen batch would have
+produced 12 JSONs with no <code>qa</code> block and a headline metric unproducible after the money was spent.
+Five things §5.9 left unstated, decided here:
+<ul>
+<li><strong>It runs unconditionally, after the <em>episode</em> ends</strong> — including after a cap-out and
+after a fall, which are both ways for an episode to end. Skipping the failures would drop the metric for
+exactly the trials most worth explaining, and would bias the QA aggregate toward models that finished.</li>
+<li><strong>The exchange is genuinely fresh:</strong> <code>system</code> is <strong>empty</strong> and
+<code>tools</code> is <strong>empty</strong>. <code>LAYOUT_QA_PREAMBLE</code> is the standalone framing and
+<code>render_qa_prompt</code> already embeds it, so re-sending the driving system prompt would tell a model
+with no robot that it is still driving one; a tool-equipped call invites a <code>get_observation</code> instead
+of an answer, which would score 0 on five questions for the harness's reason, not the model's. Both provider
+adapters <strong>omit</strong> those keys when empty rather than sending <code>""</code>/<code>[]</code> —
+this call happens once per trial at the very end, after every dollar of that trial is spent, so it is the worst
+possible place for a 400.</li>
+<li><strong>The single blob is split by the loop.</strong> <code>render_qa_prompt</code> sends all five
+questions in one user message, so the model returns one text. <code>final.qa</code> is a per-question array, so
+something must split it; the loop does (<code>loop.split_qa_answers</code>). A question whose
+marker never appears gets <code>""</code> — the honest record of an unparseable answer, which T4.1 scores 0
+rather than the harness inventing text. <strong>The unsplit reply is logged beside it as
+<code>final.qa_raw</code></strong>, so a scorer that disagrees with the split can always redo it.
+<br><strong>What the matcher actually guarantees</strong> (measured and corrected by T3.4's review pass —
+the earlier wording, "a digit inside prose cannot steal a boundary", overclaimed): markers
+<code>1.</code>&nbsp;…&nbsp;<code>5.</code> are matched <em>in ascending order, each searched after the
+previous one</em>, at a <em>line start</em>, tolerating <code>*</code>/<code>#</code>/<code>&gt;</code>/<code>-</code>
+decoration, <code>)</code>/<code>:</code> in place of the dot, and a <code>Q</code>/<code>Question</code> prefix
+(<code>**Question 1:**</code> and <code>Q1.</code> previously matched <em>nothing</em>, scoring the trial 0/5 for
+a formatting reason). A <strong>column-0 match wins over an indented one</strong>, so a nested numbered list
+inside an answer cannot steal a boundary either — it previously could. A mid-sentence digit still cannot, since
+markers are line-anchored. <strong>Fallback:</strong> if the line-anchored pass finds fewer than two markers, the
+scan is redone allowing a marker anywhere after whitespace, which rescues a reply that answers all five on one
+line (otherwise 1/5 — and formatting habits differ systematically <em>between</em> contestants, making that a
+per-model penalty on a published metric rather than a random one). <strong><code>final.qa_parse_failed</code></strong>
+is <code>true</code> whenever fewer than five answers came out, and <code>scripts/run_trial.py</code> prints a
+warning — so a formatting mismatch is visible <em>before</em> scoring rather than after.</li>
+<li><strong><code>score</code> is written as <code>null</code>.</strong> It is T4.1's output; a number written
+by the producer of the answers would be a rubric applied by the party being measured. Explicit null rather than
+absent, so "not scored yet" is distinguishable from "scored 0".</li>
+<li><strong>Usage is accounted.</strong> PLAN T3.4 asks for "answers + usage" and §4's <code>qa</code> element
+has no slot for it, so the QA call's tokens go into <code>final.tokens</code> (the trial total) and are also
+broken out under <code>final.tokens_breakdown.qa</code>.</li>
+</ul>
+The block the model is shown is rendered by the same <code>render_memory_block</code> the episode used, through
+<code>tools.observed_compass_deg</code> — so a trial that ended in a fall shows the <em>latched</em> pre-fall
+heading rather than the spawn heading Isaac teleported to.</div>
+
 <h2 id="stats">6. Statistics</h2>
 
 <p>Every metric is reported as <strong>mean ± bootstrap 95% confidence
@@ -592,6 +822,16 @@ count and magnitudes recorded; correction after declare_done ⇒ ignored.</td></
 <tr><td>Schema/leak guard</td><td>Rendered prompt fixture contains no
 <code>true_pose</code> values; incomplete trial JSON (no <code>final</code>) is
 rejected by the resume check.</td></tr>
+<tr><td>Stage-2 gate <span class="src">added by T3.4</span></td><td>(i)
+<code>declare_done</code> outside the radius ⇒ stage 1 <code>declared_elsewhere</code>
+<strong>and</strong> stage 2 <code>not_run</code>; (ii) an unrun stage 2 ⇒ SR
+denominator is still N, progress 0.0, SPL 0.0 (short-circuit on <code>S = 0</code>
+<em>before</em> dividing — after a stage-1 failure the end pose is arbitrary, so
+<code>l</code> can be ~0 and <code>max(p, l)</code> can be 0/0), time-to-home
+<code>—</code>, drift <code>—</code>, both excluded from means; (iii) the boundary at
+exactly 0.35&nbsp;m is a <strong>success</strong> ("within" is inclusive), and the same
+predicate — <code>tasks/find_kitchen.py::score_stage</code> — is the one the live loop
+consulted, so the scorer and the gate cannot disagree.</td></tr>
 </table>
 
 <h3>9.2 <code>tests/test_layout.py</code></h3>
@@ -710,16 +950,28 @@ does not match.</li>
 requires parsing free-text directions into a room/turn sequence; the parse rules
 (accepted direction vocabulary, how to handle relative vs compass directions) need
 fixture-driven pinning in <code>test_scoring.py</code> before freeze.</li>
-<li><strong>Stage-2 accounting when stage 1 fails.</strong> Current protocol: stage
-2 only runs if stage 1 succeeded (§3.1); the alternative (teleport-free "attempt
-return anyway") was rejected but the results table needs an explicit "—" convention
-for the unrun stage so return-home SR denominators are unambiguous (report as x/N
-with N=4, counting unrun as failure, plus a conditional SR over stage-1
-successes).</li>
-<li><strong>Layout QA answer-elicitation format.</strong> Whether QA answers are
-free text (scored by rubric rules) or forced through a small answer schema (easier
-to score, slightly more scaffold) — leaning free text + rubric parser, to keep the
-QA a genuine map-reading probe; decide before freeze.</li>
+<li><strong class="src">RESOLVED (T3.4) — Stage-2 accounting when stage 1 fails.</strong>
+Stage 2 runs <strong>iff stage 1 succeeded</strong> — confirmed, and extended to cover a
+<code>declare_done</code> outside the target radius, which doc
+<a href="05-agent-harness.html">05</a> had been treating as a continuation. (The
+precondition is stated in <strong>§3.2's table</strong>, not §3.1 as this bullet
+previously cited — §3.1 only defines the two stages. Dangling cite fixed here.) The
+budget resets at the boundary and the caps are unchanged. Reporting convention as
+proposed: return-home SR is <code>x/N</code> with N=4 counting the unrun stage a
+failure, denominator printed, plus a conditional <code>x/k</code> over stage-1
+successes with <code>k</code> printed. Full decision, the measured 1.574&nbsp;m floor
+behind it, and the per-cell conventions are in §3.2's decision box; the rule is now in
+<code>configs/benchmark.yaml</code> under <code>protocol</code>.</li>
+<li><strong class="src">RESOLVED (T3.1, consumed by T3.4) — Layout QA answer-elicitation
+format.</strong> <strong>Free text + rubric parser</strong>, per this bullet's own
+leaning ("to keep the QA a genuine map-reading probe"). Frozen in
+<code>prompts.py::LAYOUT_QA_QUESTIONS</code> / <code>LAYOUT_QA_PREAMBLE</code> /
+<code>render_qa_prompt</code>, with numbering the <em>only</em> structure imposed — the
+minimum a parser needs to attribute an answer to a question. §5.9's T3.1 note already
+recorded this; the bullet was never updated, so it is marked here by the task that
+actually produces the answers. T3.4 owns the split of the single numbered reply into
+five, and logs the unsplit reply as <code>final.qa_raw</code> so the split is
+reversible.</li>
 <li><strong>Token/cost logging for the OpenAI client.</strong> The
 <code>final.tokens</code> block assumes both providers report usage per call;
 verify the OpenAI SDK exposes image-token usage the same way before the schema

@@ -80,6 +80,7 @@ from duck_embody.agent.tools import (
     POSITION_ESTIMATE_NOTE,
     TOOL_NAMES,
     TOOL_SCHEMAS,
+    TRIAL_OVER_DETAIL,
     ToolContext,
     ToolOutcome,
     dispatch,
@@ -1862,6 +1863,35 @@ class TestDeclareDoneStageSignal:
         assert result["stage_ended"] == STAGE_RETURN_HOME
         assert result["ok"] is True
         assert set(result) == {"ok", "stage_ended", "detail"}
+
+    def test_a_failed_stage_one_is_not_offered_the_return_leg(self):
+        """T3.4's resolution of doc 05 §12 / doc 06 §12: stage 2 runs iff stage
+        1 SUCCEEDED, so a `declare_done` outside the 0.35 m target region must
+        not receive the return-home objective — otherwise a wrong declare that
+        happens to land inside the 0.5 m home disc scores `return_home` a
+        success with zero motion, i.e. 25 percentage points of an N=4 SR."""
+        result = stage_end_result(STAGE_FIND_KITCHEN, continue_to_return_home=False)
+        assert result["detail"] != STAGE2_OBJECTIVE_TOOL_RESULT
+        assert result["stage_ended"] == STAGE_FIND_KITCHEN
+        assert result["ok"] is True
+        assert set(result) == {"ok", "stage_ended", "detail"}
+
+    def test_the_failure_branch_is_byte_identical_to_the_trial_over_text(self):
+        """The recorded mitigation for what that resolution costs: the model can
+        infer pass/fail from whether a return leg is offered, so the text it does
+        get must be outcome-NEUTRAL — it says the trial ended, never that the
+        model was wrong. Byte-identical to stage 2's, which carries no verdict at
+        all."""
+        failed = stage_end_result(STAGE_FIND_KITCHEN, continue_to_return_home=False)
+        stage_two = stage_end_result(STAGE_RETURN_HOME)
+        assert failed["detail"] == stage_two["detail"] == TRIAL_OVER_DETAIL
+        for word in ("fail", "wrong", "missed", "incorrect", "score"):
+            assert word not in TRIAL_OVER_DETAIL.lower()
+
+    def test_the_success_branch_is_unchanged_by_the_new_keyword(self):
+        assert stage_end_result(STAGE_FIND_KITCHEN) == stage_end_result(
+            STAGE_FIND_KITCHEN, continue_to_return_home=True
+        )
 
     def test_declare_done_advances_no_physics_and_spends_no_budget(self):
         context = make_context()

@@ -820,6 +820,40 @@ class TestBreadcrumbs:
 
 
 class TestRenderMemoryBlock:
+    def test_the_block_is_never_empty_or_whitespace_only(self):
+        """A vacuous memory block is a 400 on turn 1 of EVERY trial.
+
+        The block is sent as a top-level user text block, and the Messages API
+        applies a non-empty rule to those. Measured 2026-07-26 against the live
+        API (claude-opus-5):
+
+            user content=""                -> 400 "user messages must have
+                                              non-empty content"
+            user content="   "             -> 400 "text content blocks must
+                                              contain non-whitespace text"
+            user [{"type":"text","text":""}] -> 400 "text content blocks must
+                                                be non-empty"
+
+        (The same empty block nested inside a `tool_result` IS accepted — the
+        check does not recurse there — so tool payloads are not at risk. This
+        one is, because it rides at the top level.)
+
+        Nothing currently makes the block empty: the headers are unconditional.
+        This pins that, because the failure mode is silent until it is total —
+        it would 400 the FIRST request of every trial in the batch, after the
+        freeze commit, with no partial results to diagnose from.
+        """
+        cases = {
+            "turn 1, nothing known": (Memory(), Counters()),
+            "populated mid-trial": seed_101_fixture(),
+        }
+        for label, (memory, counters) in cases.items():
+            block = render_memory_block(memory, counters, (0.0, 0.0), 0.0)
+            assert block.strip(), f"{label}: memory block is whitespace-only"
+            # Not merely non-empty — it must carry the headers the model is
+            # told to rely on, or it is vacuous in substance if not in bytes.
+            assert "==" in block, f"{label}: block lost its section headers"
+
     def test_reproduces_the_design_docs_own_worked_example(self):
         """Byte-exact against doc 05 §5.2, extracted from the HTML at test time.
 

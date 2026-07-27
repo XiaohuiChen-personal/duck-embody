@@ -1222,7 +1222,7 @@ cabinet with no penetration.
   `status.fell` — `tools.py` refuses further motion after a fall, but only the
   loop can stop rendering frames from the respawn point.**
 
-### T3.4 `[ ]` Episode loop + QA elicitation
+### T3.4 `[x]` Episode loop + QA elicitation
 
 - **Context:** Assembles everything. **Also owns the post-episode layout-QA
   exchange, which previously had a scorer (T4.1) but no producer** — without it
@@ -1264,6 +1264,174 @@ cabinet with no penetration.
 - **Smoke test:** T3.5.
 - **Acceptance:** T3.5 produces a schema-valid trial JSON **including a populated
   `final.qa`** (spot-validate against doc 06 §4).
+- **DONE 2026-07-26.** `bash scripts/run_tests.sh tests/ -q` → **1024 passed,
+  3 skipped in 1.03 s** (1015 before this task's provider/tools additions were
+  counted; 879 at task start, +137 in the new `tests/test_loop.py`, +4 in
+  `tests/test_tools.py`, +4 in `tests/test_providers.py`). `--help` verified
+  without launching kit:
+  `~/IsaacLab/isaaclab.sh -p scripts/run_trial.py --help` → exit 0.
+  Deliverables: `duck_embody/agent/loop.py`, `duck_embody/tasks/find_kitchen.py`,
+  `scripts/run_trial.py`, `tests/test_loop.py`, plus
+  `duck_embody/sim/recorder.py::attach_recorder` / `chunked_execute`.
+- **THE TWO OPEN QUESTIONS, RESOLVED** (doc 05 §12 + doc 06 §12 both marked
+  `RESOLVED (T3.4)`, with the reasoning in doc 05 §3.3 and doc 06 §3.2, same
+  commit):
+  1. **`return_home` after a stage-1 cap-out: NO** — and the resolution went
+     further, because settling the literal question surfaced a contradiction the
+     question did not name. Doc 05 §3.1/§3.3/§4.4 triggered stage 2 on "stage 1
+     ended via `declare_done`" (score not consulted) while doc 01 §8 and doc 06
+     §3.2 triggered it on "stage 1 succeeded" — they differ exactly on a
+     **wrong-place `declare_done`**, which both of those docs separately call a
+     failure, and which is far more likely than a cap-out. **Stage 2 now runs
+     iff stage 1 SUCCEEDED**; doc 05 is the one amended. Decisive reason,
+     measured: under the alternative a wrong declare landing inside the 0.5 m
+     home disc scores `return_home` a success with **zero motion** = 25
+     percentage points of an N=4 SR; under this rule that is geometrically
+     impossible, since stage 2 always starts within 0.35 m of the counter and
+     the worst-case spawn distance is **1.574 m** (seed 104).
+     `tests/test_loop.py::TestStageTwoGate` recomputes that floor from `LAYOUT`.
+     Recorded cost: the `declare_done` result now differs by outcome, so the
+     model can infer pass/fail at the transition — mitigated by making the
+     failure text byte-identical to stage 2's outcome-neutral trial-over text,
+     and by the fact that on that branch the trial is over and the model is
+     never sent anything again. Rule added to `configs/benchmark.yaml`
+     (`protocol.stage2_requires_stage1_success`) so it sits inside doc 06 §2/§7's
+     hashed contract — it previously lived in **no** config.
+  2. **Stage-2 time accounting: the budget RESETS, the caps do not change** — the
+     first stage-2 request renders `Budget: turns 0/40, policy-seconds 0.0/240`.
+     Already what doc 05 §3.3 (2), doc 06 §3.2, doc 01 §8, `Counters` and
+     `ToolContext.reset_for_stage()` all implied; **no code changed**, the
+     sentence is now stated outright in both docs and in `configs/benchmark.yaml`.
+     An unrun stage 2 logs outcome `not_run`, turns 0, policy-seconds 0.0; the
+     return-home SR stays `x/N` with N=4 plus a conditional `x/k` over stage-1
+     successes (doc 06 §12's own proposal, per-cell conventions now pinned in
+     §3.2 and added to §9.1's enumerated cases).
+- **Deviations recorded in the docs in this commit (rule 5).** Doc 05 §3.1's
+  pseudocode updated to the shipped shape plus a five-point implementation note
+  (shipped signatures; the missing derailment branch — as literally written §3.1
+  would have appended an assistant turn with no `tool_use` and an **empty user
+  message**, an API 400 on §8's *infra* path for a failure §8 says must be
+  scored; the fall turn's doc 06 §4 record is still written even though the
+  transcript entry is dropped; `declare_done` scored at its position in the call
+  list; the conditional return leg). Doc 05 §3.3, §4.4, §5.2 (what "first turn"
+  is, exactly, and where the memory block rides), §8 (the loop's half of the
+  error policy) and §12 updated. Doc 06 §4 **widened in nine places** — see its
+  decision box; the load-bearing ones are `execution` merged across multiple
+  motion calls with per-call detail kept (`counted_as_bump` is the only per-turn
+  source for §5.6's bumps), `execution` never null (T4.1 raises on a *missing*
+  `pose_trace`, so "no motion" must be an empty trace), `true_pose` lifted to a
+  sibling object, `frame_paths` given a producer at all (`.jpg`, decoded from the
+  exact bytes the model saw — re-capturing would render a different image),
+  `final.tokens` widened to `Usage.as_dict()`'s five keys so prompt-cache
+  accounting is visible (doc 06 §8's main cost lever), and `memory_snapshot`
+  gaining `corrections` (§5.8 reports them per stage and `Correction.turn` is
+  stage-local, so nothing else can recover the boundary post-batch).
+  `final.outcome` also gains a real vocabulary — `success | declared_elsewhere |
+  timeout_turns | timeout_motion | fall | not_run` — kept **separate** from
+  `end_reason`, because outcome = reason + score and conflating them is exactly
+  what loses the wrong-place-declare case.
+- **Two small API changes, both to close a hole rather than for taste:**
+  `tools._compass_deg` → public `tools.observed_compass_deg` (the loop needs the
+  same post-fall latch for the memory block and the QA prompt; a second copy
+  would show the spawn heading in every fallen trial's QA), and
+  `tools.stage_end_result(stage, *, continue_to_return_home=True)` (doc 05 §3.1's
+  pseudocode always called it with two arguments; the loop always passes the
+  keyword explicitly, because a default that silently offers the return leg is
+  the failure the parameter exists to prevent). Both provider adapters grew a
+  testable `request_kwargs()` that **omits** `system`/`tools` when empty — the QA
+  call is toolless and system-less, and it happens once per trial at the very
+  end, after every dollar of that trial is spent.
+- **Gaps closed that no doc had noticed:** nothing produced `obs.frame_paths`;
+  nothing incremented `ToolContext.turn` or `Counters.turns`; and **no code path
+  could record a per-trial mp4 at all** — `tools.py` drives the macros without
+  their `on_chunk=` callback and `SimSession`'s only per-step grabber is reachable
+  through `scripted_drive`, which the LLM path never uses. `recorder.attach_recorder`
+  puts the seam on `playback.execute`, where every physics step already funnels
+  through, so all three motion tools record at 25 fps with no doc 02 §6.2 macro
+  duplicated; `session._execute_recording` now delegates to the same
+  `chunked_execute` so the sampled-pose merge has one definition (a second copy
+  drifting would depress SPL silently).
+- **Also fixed while here:** the two success radii were duplicated between
+  `apartment_layout.py` and `configs/benchmark.yaml` with **no agreement test**,
+  unlike the caps. Under the resolution above the live gate and T4.1's scorer both
+  consume a radius, so a drift would let a trial be logged `find_kitchen: success`
+  (and run a stage 2) while the scorer published a failure. Agreement test added;
+  both consumers now import one predicate (`find_kitchen.score_stage`).
+- **Mutation-checked before landing (rule 10.4):** 25 deliberate defects
+  reintroduced one at a time, each confirmed to turn the suite red — first turn
+  duplicated in the K window (13 failures), images never aging out (2), the return
+  leg offered unconditionally (3), the fall check hoisted out of the per-call loop
+  (5), the turn counter never incremented (45+9 errors), the ToolContext rebuilt
+  instead of `reset_for_stage()` (1), `memory.stage` not stamped at the boundary
+  (2), `execution` written as null on non-motion turns (6), caps checked before
+  execution (8), QA skipped on a failed trial (6), `true_pose` re-read live after
+  a fall (1), `not_executed` blocks dropped (1), the memory block folded into the
+  system string (3), the NaN sanitiser removed (1), the derailment nudge replaced
+  (2), `declare_done` scored before a bundled `move` (6), the success radius made
+  exclusive (1), the QA sent with tools + the driving prompt (22+9 errors), the
+  pose trace dropped from the log (3), the correction stage stamp dropped (1),
+  `counted_as_bump` stripped (1), `motion_calls` clamped to 1 (2), `turn_idx` made
+  global (2), frames written as placeholder bytes rather than the sent ones (1),
+  full pose traces concatenated in `chunked_execute` instead of the 5 Hz samples
+  (1), the log flushed only at the end (1), and an infra failure writing a `final`
+  block anyway (1).
+- **Second adversarial review pass (rule 10.4), 2026-07-26 — 3 reviewers, 24
+  findings, all dispositioned.** Suite `1024 → 1068 passed, 3 skipped`. The three
+  that would have corrupted the batch:
+  1. **An Anthropic refusal turned a scored model failure into a free rerun, for
+     two of the three contestants only.** A refusal is HTTP 200 with an *empty*
+     `content` array, so `AssistantTurn.raw == []`; the loop correctly took doc 05
+     §8's derailment branch, but echoing that turn emitted
+     `{"role": "assistant", "content": []}` on the next request — an API 400,
+     which `run_trial.py` records as an infra failure with no `final`, so doc 06
+     §9.1's resume check reruns a trial the model actually failed. `to_native`
+     now drops an empty assistant turn (`_parse` normalises `raw` to a list);
+     doc 05 §7.2 amended. Asymmetric before the fix: `out.extend([])` is a no-op
+     on the OpenAI adapter, so the same behaviour cost Fable 5 / Opus 5 a trial
+     and GPT 5.6 sol nothing.
+  2. **A completed, fully paid trial could lose its `final` block to an ffmpeg
+     fault, and strand the GPU.** `log.finish(final)` sat *after* the recorder
+     block, outside any guard, and `session.close()` was not in a `finally`.
+     Reordered: scoring artifact first, video in its own `try/except`,
+     `session.close()` in a `finally`.
+  3. **The no-leakage guard was value-exact, so any *rounded* or *derived*
+     ground truth passed.** Appending the true pose at 1 dp to the memory block,
+     and appending a `math.dist(true_pose, goal)` range-to-goal oracle, both left
+     the suite green — the published SR/SPL/drift would have measured a model
+     with GPS. The guard is now **structural**: the trailing user message must be
+     byte-equal to `render_memory_block(...)`, every other model-facing part must
+     be re-assemblable from the frozen pieces, and the sentinel sweep covers
+     rounded forms.
+  Also fixed: `FROZEN_FILES` omitted the files that *enforce* three of doc 06 §2's
+  frozen items (the caps live in `memory.py`, the motion clamps in
+  `policy_wrapper.py`, K=10 in `loop.py`), so an uncommitted mid-batch edit was
+  invisible to `config_hash` — manifest extended, `freeze_commit()` now appends
+  `-dirty`, and doc 06 §2 records the list a test asserts against; `turns[].end_reason`
+  was `null` on a cap-ended stage, contradicting §4's own annotation; the QA
+  splitter scored `**Question 1:**` 0/5, let a nested numbered list steal a
+  boundary, and scored a one-line reply 1/5 (all three were per-model formatting
+  penalties on a published metric — fixed, with `final.qa_parse_failed` to make a
+  residual failure loud); infra tracebacks are scrubbed of anything key-shaped
+  before they reach a committed JSON (rules 6+7); `--model`/`--seed` are
+  constrained to `configs/benchmark.yaml`'s frozen matrix, so the out-of-benchmark
+  `judge.yaml` can no longer produce a benchmark-shaped result file.
+  **Test quality:** doc 06 §4's schema is now **extracted from the HTML** and
+  asserted path by path (six doc-mandated fields — `usage`,
+  `memory_snapshot.current_room`, `corrections[].old_xy/new_xy`,
+  `execution.calls[].pose_trace`, `stages[].true_pose`, `video_path` — could each
+  be deleted with the suite green); `FROZEN_FILES` is asserted against doc 06 §2
+  and every entry proved to move the hash; `obs` is checked for values, not only
+  key sets; frame paths for uniqueness. **Mutation-verified: 28 defects
+  reintroduced one at a time, 28 caught** (`scripts/run_tests.sh tests/ -q`).
+- **Still open and NOT silently decided:** doc 05 §12's motion-tools-per-turn cap
+  is implemented **uncapped and faithfully**, with `execution.motion_calls`,
+  per-turn `policy_seconds_used` and the running `budget.stage_policy_seconds_used`
+  logged so T3.5's smoke can answer it with data (caps are checked after the whole
+  turn, so a chained turn can legitimately overshoot 240 s — that overshoot is the
+  mechanism, and it is now visible rather than clipped). First-turn image aging is
+  implemented as the doc states (dropped, uniform rule) because the frozen
+  `SYSTEM_PROMPT` already promises exactly that to every model; changing it now
+  means changing frozen prompt text, and this is the last cheap moment.
 
 ### T3.5 `[ ]` Sanity episode + GPT dry run (VIDEO GATE)
 

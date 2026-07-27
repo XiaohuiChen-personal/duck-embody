@@ -53,7 +53,7 @@ terminated env *inside* ``env.step()`` and returns the post-reset observation, s
 every live sensor read after a fall reports the SPAWN pose —
 ``policy_wrapper.execute`` guards its own ``true_pose`` against exactly this and
 this module inherits none of that care for free. ``compass_deg()`` is therefore
-latched at the fall (:func:`_compass_deg`) rather than re-read, and the motion
+latched at the fall (:func:`observed_compass_deg`) rather than re-read, and the motion
 tools refuse to run at all once ``playback.fell`` is set (:func:`dispatch`), so
 no further physics can step against a respawned robot. Both recorded in doc 05
 §4.1/§4.2/§8.
@@ -361,7 +361,7 @@ class ToolContext:
     #: Compass heading latched at the moment of the fall, or ``None`` while the
     #: robot is upright. TRIAL-scoped and write-once: a fall ends the trial, so
     #: there is no boundary at which un-latching it would be correct. See
-    #: :func:`_compass_deg` for why the live sensor cannot be trusted afterwards.
+    #: :func:`observed_compass_deg` for why the live sensor cannot be trusted afterwards.
     compass_at_fall: float | None = None
 
     def reset_for_stage(self) -> None:
@@ -494,7 +494,14 @@ def trial_over(tool_name: str) -> dict:
     }
 
 
-def stage_end_result(stage: str) -> dict:
+#: The outcome-neutral stage-end text. Used for stage 2 (the trial really is
+#: over) AND for a stage-1 ``declare_done`` that failed the distance test — see
+#: :func:`stage_end_result`. Byte-identical in both cases on purpose: the model
+#: learns that the run ended, never that it was wrong.
+TRIAL_OVER_DETAIL = "The trial is over; no further tool calls will be executed."
+
+
+def stage_end_result(stage: str, *, continue_to_return_home: bool = True) -> dict:
     """``declare_done``'s own tool_result: the stage outcome (doc 05 §3.3).
 
     On ``find_kitchen`` it carries the ``return_home`` objective **verbatim**
@@ -502,8 +509,24 @@ def stage_end_result(stage: str) -> dict:
     ``SYSTEM_PROMPT`` (``tests/test_memory.py`` asserts it): a model that knew
     about the return leg in advance would map differently from the design the
     benchmark describes, so it exists only here, delivered mid-episode.
+
+    ``continue_to_return_home`` is T3.4's resolution of doc 05 §12 / doc 06 §12
+    (see :data:`duck_embody.tasks.find_kitchen.STAGE2_REQUIRES_STAGE1_SUCCESS`
+    for the full reasoning and its recorded cost): **stage 2 runs iff stage 1
+    succeeded**, so a ``declare_done`` in the wrong place must NOT hand the model
+    the return-leg objective. Doc 05 §3.1's normative pseudocode always
+    anticipated an episode-state-dependent result here — it calls
+    ``stage_end_result(stage, state)`` — and T3.2 narrowed the signature to one
+    argument; this keyword is that second argument, restored in the only shape
+    the shipped API needs.
+
+    It defaults to ``True`` so the doc-05-faithful success path stays a
+    one-argument call and :func:`_declare_done`'s fallback keeps working, but
+    **the loop always passes it explicitly**. A default that silently offered
+    the return leg is precisely the failure this parameter exists to prevent, so
+    it must never be reached by the code that actually decides.
     """
-    if stage == STAGE_FIND_KITCHEN:
+    if stage == STAGE_FIND_KITCHEN and continue_to_return_home:
         return {
             "ok": True,
             "stage_ended": STAGE_FIND_KITCHEN,
@@ -512,7 +535,7 @@ def stage_end_result(stage: str) -> dict:
     return {
         "ok": True,
         "stage_ended": stage,
-        "detail": "The trial is over; no further tool calls will be executed.",
+        "detail": TRIAL_OVER_DETAIL,
     }
 
 
@@ -569,8 +592,16 @@ def _arg_error(name: str, args: object) -> dict | None:
 # special-casing per tool.
 
 
-def _compass_deg(context: ToolContext) -> float:
+def observed_compass_deg(context: ToolContext) -> float:
     """The heading to report: the live compass, EXCEPT after a fall.
+
+    PUBLIC because T3.4's loop needs the identical rule in two places this
+    module cannot reach: the memory block rendered into every request (doc 05
+    §3.1 passes ``sim.compass_deg()`` there) and the block rendered for the
+    post-episode QA exchange. A loop that called ``playback.compass_deg()``
+    directly would show the model the SPAWN heading in the QA prompt of every
+    trial that ended in a fall — the exact failure the latch below exists to
+    prevent, reintroduced one layer up. One implementation, one rule.
 
     ``policy_wrapper.execute`` documents the trap it guards its own ``true_pose``
     against: Isaac Lab auto-resets a terminated env *inside* ``env.step()`` and
@@ -598,7 +629,7 @@ def _state_payload(context: ToolContext) -> dict:
     """
     x, y = context.integrator.xy
     return {
-        "compass_deg": round(_compass_deg(context), 1),
+        "compass_deg": round(observed_compass_deg(context), 1),
         "position_estimate": {
             "x": round(x, 2),
             "y": round(y, 2),
@@ -648,7 +679,7 @@ def _record_motion(
     scored counter is restricted.
 
     ``heading_before`` is the compass read before the command ran, latched here
-    if the command was the one that fell — see :func:`_compass_deg`.
+    if the command was the one that fell — see :func:`observed_compass_deg`.
     """
     context.counters.policy_seconds += result.policy_seconds
     if result.bumped and counts_bump:
@@ -662,7 +693,7 @@ def _record_motion(
     x, y = context.integrator.xy
     # The harness's ONE autonomous write into memory (doc 05 §5.1): the
     # integrator's estimate plus the compass — never the true pose.
-    context.memory.add_breadcrumb(x, y, _compass_deg(context))
+    context.memory.add_breadcrumb(x, y, observed_compass_deg(context))
     return {
         # doc 06 §4's `turns[].execution` block. `pose_trace` is the field the
         # whole channel exists for: §5.3 pins the SPL path integral to these
@@ -805,7 +836,7 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
         heading_before=heading_before,
     )
 
-    compass = _compass_deg(context)
+    compass = observed_compass_deg(context)
     payload = {
         # The RAW argument, not `target`. `mark_exit`'s 15° snap set the
         # precedent doc 05 §4.2 cites — "the ack echoes the raw value, so the

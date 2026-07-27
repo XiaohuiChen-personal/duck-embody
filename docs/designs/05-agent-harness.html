@@ -141,21 +141,67 @@ def run_stage(stage, state, sim, provider, tools):
                 # carries the stage outcome -- on stage 1, the return_home
                 # objective (sec 3.3). Calls listed after declare_done are not
                 # executed; they get a structured not_executed result.
-                results.append(stage_end_result(stage, state))
-                results += [not_executed(c) for c in turn.tool_calls[i+1:]]
+                score = score_stage(stage, context.playback.true_xy())  # scored HERE, so a
+                #   `move` bundled AHEAD of declare_done in the same turn counts
+                results.append(stage_end_result(stage,          # return leg only on a
+                    continue_to_return_home=score.success))     #   SUCCESS -- sec 3.3
+                results += [not_executed(c.name) for c in turn.tool_calls[i+1:]]
                 state.transcript.append(turn, results)
-                return end_stage(stage, state, reason="declare_done")
-            results.append(dispatch(call, sim, state))            # bad call -> structured error
-            if state.fell:
-                return end_stage(stage, state, reason="fall")     # a fall ends the TRIAL
-                                                                  # (no further model calls, so
-                                                                  # the dropped turn is moot)
+                return end_stage(stage, state, reason="declare_done", score=score)
+            results.append(dispatch(call, context))               # bad call -> structured error
+            if context.playback.fell:
+                log_turn(...)                                     # doc 06 sec 4's record is
+                return end_stage(stage, state, reason="fall")     #   STILL written; only the
+                                                                  #   provider transcript entry
+                                                                  #   is dropped, and it is moot
+                                                                  #   (no further model calls).
+                                                                  # A fall ends the TRIAL.
+        if not turn.tool_calls:                                   # sec 8's derailment row: the
+            results = [DERAILMENT_NUDGE]                          #   fixed nudge, then continue
         state.transcript.append(turn, results)                    # all results, one message
 
         # 4. Caps (checked after execution; capped stages scored as failures, never retried)
         if state.turns >= 40:            return end_stage(stage, state, reason="turn_cap")
         if state.policy_seconds >= 240:  return end_stage(stage, state, reason="motion_cap")
 </code></pre>
+
+<div class="decision"><strong>IMPLEMENTED BY T3.4 (<code>duck_embody/agent/loop.py</code>). The block above
+has been updated to the shipped shape; these are the five deviations and why each was necessary</strong>
+(AGENTS.md rule 5 — §5.2 set the precedent for recording a deviation rather than quietly keeping the
+pseudocode's spelling).
+<ol>
+<li><strong>Shipped signatures.</strong> T3.2 narrowed three of them and the loop uses the real ones:
+<code>stage_end_result(stage, *, continue_to_return_home)</code> (not <code>(stage, state)</code>),
+<code>not_executed(tool_name: str)</code> (not <code>not_executed(call)</code>),
+<code>dispatch(call, context: ToolContext)</code> (not <code>(call, sim, state)</code>), and
+<code>context.playback.fell</code> (not <code>state.fell</code>). Likewise <code>sim.compass_deg()</code> in
+phase 1 is <code>tools.observed_compass_deg(context)</code>, which returns the <em>latched</em> heading after
+a fall — the live sensor reports the spawn pose Isaac teleported to (§4.1).</li>
+<li><strong>A turn with no tool call had no branch.</strong> §8's refusal/derailment row requires the harness
+to append the fixed nudge and continue, but as literally written the loop would have appended an assistant turn
+with no <code>tool_use</code> and an <em>empty</em> user message — an API 400, i.e. §8's <em>infra</em> path,
+for a model failure §8 says must be scored. The branch is now explicit.</li>
+<li><strong>The fall turn is still logged.</strong> §3.1 returns without
+<code>state.transcript.append</code> and justifies the drop ("no further model calls, so the dropped turn is
+moot") — but that is the <em>provider</em> transcript. Doc <a href="06-benchmark-evaluation.html">06</a> §4
+still requires <code>turns[].execution</code> / <code>pose_trace</code> for that turn, and T4.1's scorer
+raises without it. The two artifacts diverge here by design.</li>
+<li><strong><code>declare_done</code> is scored at its position in the call list</strong>, from
+<code>playback.true_xy()</code> — so a <code>move</code> bundled ahead of it in the same turn counts and the
+model is judged from where it actually ended up. The predicate is
+<code>duck_embody/tasks/find_kitchen.py::score_stage</code>, which T4.1's scorer also calls; its decision
+inputs (true pose, distance, radius, goal) go into the log so the scorer <strong>recomputes</strong> the
+verdict rather than trusting it.</li>
+<li><strong>The return leg is conditional</strong> — see §3.3, resolved by T3.4.
+<code>tasks.find_kitchen.runs_return_home()</code> is asked once and its answer drives both the tool_result
+the model receives and whether the stage runs, so those two cannot disagree.</li>
+</ol>
+Two things the loop must NOT do, both pinned by <code>tests/test_loop.py</code>: catch anything around
+<code>provider.send</code> or <code>dispatch</code> (§8's infra path — a swallowed render error launders a
+broken GPU into a model failure), and fold the memory block into the <code>system</code> string. The system
+prompt plus the tool schema is the stable prefix doc 06 §8 counts on for prompt caching; a block that changes
+every turn would invalidate it on every single request, so the block rides in a trailing, <em>non-persisted</em>
+user message instead.</div>
 
 <h3>3.2 Stop conditions</h3>
 <table>
@@ -167,16 +213,68 @@ def run_stage(stage, state, sim, provider, tools):
 </table>
 
 <h3>3.3 Stage transition: find_kitchen → return_home</h3>
-<p>When <code>find_kitchen</code> ends via <code>declare_done</code>, the harness: (1)&nbsp;scores stage 1 from
-ground truth (the model never sees the score), (2)&nbsp;resets the per-stage counters (turns → 0,
-policy-seconds → 0), (3)&nbsp;keeps the memory object and the transcript window intact — the whole point is
-that the map built on the way out should pay off on the way back; the declare_done turn itself stays in the
-transcript, with every tool call it bundled (memory writes included) answered by a tool_result (§3.1) — and
+<p>When <code>find_kitchen</code> ends via <code>declare_done</code> <strong>and the distance test passes</strong>,
+the harness: (1)&nbsp;scores stage 1 from ground truth (the model never sees the numeric score or the
+distance; the only signal it gets is whether the return leg is offered — see the decision box below),
+(2)&nbsp;resets the per-stage counters (turns → 0, policy-seconds → 0), (3)&nbsp;keeps the memory object and
+the transcript window intact — the whole point is that the map built on the way out should pay off on the way
+back; the declare_done turn itself stays in the transcript, with every tool call it bundled (memory writes
+included) answered by a tool_result (§3.1) — and
 (4)&nbsp;delivers the new objective <em>as the declare_done call's tool_result</em>, in the same user message
 as the turn's other results (satisfying the tool_use/tool_result pairing, §7.2):
 <em>"New objective: return to your starting position and call declare_done when you are there."</em>
-If stage 1 ends by cap or fall, <code>return_home</code> is not attempted and is scored as a failure
-(see <a href="#open">open questions</a> for the cap case).</p>
+If stage 1 ends by cap, by fall, or by a <code>declare_done</code> outside the target radius,
+<code>return_home</code> is not attempted and is scored as a failure.</p>
+
+<div class="decision"><strong>RESOLVED BY T3.4 — does <code>return_home</code> run after a stage-1 cap-out?
+No. Nor after a wrong-place <code>declare_done</code>: stage 2 runs <em>iff stage 1 SUCCEEDED</em>.</strong>
+<p>The literal open question was never actually contested — this section, doc
+<a href="06-benchmark-evaluation.html">06</a> §3.2 and doc <a href="01-system-architecture.html">01</a> §8 all
+already said no to a cap-out. Reading the three together to settle it surfaced a contradiction they <em>did</em>
+have, on a case far more likely than a cap-out: §3.1/§3.3/§4.4 here triggered stage 2 on "stage 1 ended via
+<code>declare_done</code>" with the score not consulted, while doc 01 §8 and doc 06 §3.2 triggered it on
+"stage 1 succeeded". They differ exactly when the model declares done outside the 0.35&nbsp;m target region —
+which both of those docs separately call a failure. <strong>Doc 05 is the one amended</strong>; docs 01 and 06
+needed no change.</p>
+<p>The decisive reason is measured. Under "any <code>declare_done</code>", a wrong declare that happens to land
+inside the 0.5&nbsp;m home disc scores <code>return_home</code> a <strong>success with zero motion</strong>,
+and one such trial is 25 percentage points of a success rate at N=4 (doc 06 §6's honesty clause). Under
+"succeeded" that is geometrically impossible: stage 2 always begins within 0.35&nbsp;m of the counter, whose
+worst-case distance to a spawn point is <strong>1.574&nbsp;m</strong> (seed 104) against a 0.5&nbsp;m return
+radius — every seed clears it, and the guarantee is already load-bearing in <code>tests/test_layout.py</code>
+(spawn &gt; 3&nbsp;×&nbsp;0.35&nbsp;m from target, doc 06 §9.2). The alternative has <em>no</em> floor and would
+need an unprincipled extra guard no doc specifies. Supporting reasons: comparability (every stage 2 starts from
+the same disc, so <code>d_initial</code>, the SPL oracle length and time-to-home are homogeneous across trials
+and models); doc 06 §3.1's own statement of what stage 2 is for ("the model must navigate back using only what
+it wrote down" — a return leg from a spot the model never navigated <em>to</em> is not that test); and cost, on
+a stage AGENTS.md §8 lists first in the cut order.
+<span class="src">measured: <code>tests/test_loop.py::TestStageTwoGate</code> recomputes the 1.574&nbsp;m
+worst case from <code>apartment_layout.LAYOUT</code> and fails if it ever stops clearing the return radius</span></p>
+<p><strong>What this costs, recorded rather than buried.</strong> <code>declare_done</code>'s tool_result now
+differs by outcome, so the model can infer pass/fail at the transition — which is why item&nbsp;(1) above is
+reworded. Mitigations: the failure branch's text is <strong>outcome-neutral and byte-identical</strong> to
+stage 2's trial-over text ("The trial is over; no further tool calls will be executed."), so it says the run
+ended, never that the model was wrong; and on that branch the trial is over, so the model is never sent
+anything again and the only thing that reads the result is the log. The residual blast radius is the
+post-episode QA exchange (doc 06 §5.9), which runs after the episode either way and is scored against ground
+truth. Recorded in the write-up.</p>
+<p><strong>The rule now lives in a config</strong> —
+<code>configs/benchmark.yaml: protocol.stage2_requires_stage1_success</code> — so it sits inside doc 06 §2/§7's
+hashed fairness contract. It previously lived in no config at all. Implementation:
+<code>duck_embody/tasks/find_kitchen.py::runs_return_home</code>, asked once per trial and used for both the
+tool_result and the branch.</p></div>
+
+<div class="decision"><strong>RESOLVED BY T3.4 — how stage-2 time is accounted (doc
+<a href="06-benchmark-evaluation.html">06</a> §12's second half of the same question).</strong> The budget
+<strong>resets</strong> at the boundary and <strong>the caps do not change</strong>, so the first stage-2
+request renders <code>Budget: turns 0/40, policy-seconds 0.0/240</code>. That is what item&nbsp;(2) above
+already said and what <code>Counters</code> / <code>ToolContext.reset_for_stage()</code> already implemented;
+it is stated outright here because it was only ever implied. A cumulative line would show <code>turns
+31/40</code> on the model's first return-home request — an immediate false cap — and doc 06 §5.4 (time from
+<em>stage</em> start), §5.5 (per-stage turns used) and §5.8 (drift series <em>per stage</em>) all require the
+per-stage reading anyway. There is no presentation discontinuity because §5.2's block is regenerated fresh into
+every request and never stored in the transcript, so the model never sees a stale pre-reset budget line.
+An <strong>unrun</strong> stage 2 reports outcome <code>not_run</code> with turns 0 and policy-seconds 0.0.</div>
 
 <div class="warning"><strong>Multiple tool calls per turn are allowed and executed in listed order.</strong>
 This lets a model bundle memory writes (<code>update_room</code>, <code>mark_exit</code>,
@@ -470,7 +568,7 @@ identical to <code>integrate()</code> step for step when wz = 0. Doc 02 §6.3 re
 <h3>4.4 Control</h3>
 <table>
 <tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
-<tr><td><code>declare_done()</code></td><td>Ends the stage; triggers scoring against ground truth the model never sees</td><td>a final tool_result — the declare_done turn is kept in the transcript with every call answered (§3.1); on stage 1 that tool_result carries the return_home instruction (§3.3), on stage 2 the trial is over</td><td>Declaring in the wrong place is simply a scored failure — no retry, no hint</td></tr>
+<tr><td><code>declare_done()</code></td><td>Ends the stage; triggers scoring against ground truth the model never sees</td><td>a final tool_result — the declare_done turn is kept in the transcript with every call answered (§3.1); on a <strong>successful</strong> stage 1 that tool_result carries the return_home instruction (§3.3), and in every other case — stage 2, or a stage-1 declare outside the radius — it carries the outcome-neutral trial-over text instead (T3.4's resolution, §3.3)</td><td>Declaring in the wrong place is simply a scored failure — no retry, no hint, and no return leg</td></tr>
 </table>
 
 <h2 id="memory">5. Memory system low-level design</h2>
@@ -673,6 +771,26 @@ turn's image once it ages past K — are dropped. The memory block is the one ar
 it is regenerated fresh into every request, so a fact asserted on turn 3 is still in front of the model on
 turn 38, at constant token cost.</div>
 
+<div class="decision"><strong>PINNED BY T3.4: exactly what "first turn" is, and where the block rides.</strong>
+<ul>
+<li><strong><code>state.first_turn</code> is <code>state.transcript[0]</code></strong> — the first
+(assistant turn + its tool_result message) exchange, whatever it contains. §3.1's <code>transcript[1:]</code>
+slice is what proves it. Nothing precedes it: the model's turn 1 is unprompted after the system prompt, which
+already carries the stage-1 objective, plus the per-turn memory block. For a model that opens with
+<code>get_observation</code> (all of them are expected to) that first entry is the one carrying the
+spawn-point image §12 discusses. The effective window is therefore <strong>1 + min(K, len−1)</strong>
+entries — never K+1 with one of them repeated.</li>
+<li><strong>It is TRIAL-scoped, not stage-scoped.</strong> §3.3 item (3) keeps the transcript window intact
+across the boundary, so stage 2 still has stage 1's first turn pinned. Stage-scoping it would silently change
+what the pin <em>means</em> halfway through a trial.</li>
+<li><strong>The memory block is a trailing, non-persisted user message</strong>, not part of the
+<code>system</code> string and never appended to the transcript. Folding it into <code>system</code> would
+destroy the stable prefix doc <a href="06-benchmark-evaluation.html">06</a> §8 counts on for prompt caching
+(the block changes every turn); storing it in the transcript would show the model a stale budget line and a
+stale position beside the live ones. Consecutive user messages are merged server-side, which §3.3 already
+sanctions.</li>
+</ul></div>
+
 <div class="warning"><strong>Rendering rules pinned by T3.1</strong> (the example above is mid-trial and rich,
 so it leaves most of these open; the golden test in <code>tests/test_memory.py</code> extracts the block above
 from this file and asserts <code>render_memory_block</code> reproduces it <em>byte for byte</em>, so the doc and
@@ -860,9 +978,20 @@ Camera frames ride inside a tool_result's content as base64 image blocks:
 Fable 5 — required for multi-turn continuity).</li>
 <li><code>stop_reason</code> is checked before reading content; a <code>refusal</code> falls into the
 derailment path of §8, not the infra path.</li>
-</ul>
-<p><span class="src">source: https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview.md
-(HTTP 200, 2026-07-26)</span></p>
+<li><strong>An EMPTY assistant turn is dropped from the echo, never replayed</strong>
+<span class="src">added by T3.4's review pass, measured</span>. The bullet above (&ldquo;echoed back unchanged&rdquo;) and this one are in tension exactly once: a refusal arrives as HTTP&nbsp;200 with an empty <code>content</code> array, so <code>AssistantTurn.raw</code> is <code>[]</code> and the loop takes &sect;8&rsquo;s derailment branch. </p>
+
+<div class="warning"><p><strong>CORRECTED 2026-07-26 &mdash; the empty <em>assistant</em> turn was never the fault.</strong> An earlier revision of this bullet (and the matching code comment and test names) asserted that replaying <code>{"role": "assistant", "content": []}</code> is an API&nbsp;400, and labelled that &ldquo;measured&rdquo;. It was not measured, and it is <strong>false</strong>. Probed against the live API with <code>claude-opus-5</code>, the 12 tool schemas and adaptive thinking &mdash; the exact trial configuration:</p>
+<table>
+<tr><th>Message</th><th>Result</th></tr>
+<tr><td><code>{"role": "assistant", "content": []}</code></td><td><strong>ACCEPTED</strong> (stop=end_turn)</td></tr>
+<tr><td><code>{"role": "user", "content": []}</code> / <code>""</code></td><td><strong>400</strong> &ldquo;user messages must&hellip;&rdquo;</td></tr>
+<tr><td><code>{"role": "assistant", "content": null}</code></td><td><strong>400</strong> &ldquo;Input should be a valid list&rdquo;</td></tr>
+</table>
+<p>The real defect was &sect;3.1&rsquo;s pseudocode having <em>no derailment branch</em>, so on a refusal it appended an <strong>empty user message</strong> &mdash; and that is the 400. The fix that matters is the branch, which sends a non-empty nudge; <code>tests/test_providers.py::test_the_derailment_nudge_is_never_empty</code> pins it. Dropping the empty assistant turn is kept as hygiene, on its own honest merits: <code>content: null</code> <em>is</em> rejected, and an empty turn is a no-op that costs tokens and tells the model nothing.</p>
+<p>The consequence originally claimed still stands, and is why this was worth chasing: a 400 anywhere in the next request is caught at the trial boundary and logged as an infra failure, so doc&nbsp;06 &sect;9.1&rsquo;s resume check would rerun a trial the model actually failed &mdash; selection bias in that model&rsquo;s favour, which &sect;8 forbids. It was also asymmetric: <code>OpenAIProvider</code> builds <code>raw</code> as a list, so the same model behaviour would have cost the two Anthropic contestants a trial and cost GPT&nbsp;5.6&nbsp;sol nothing.<span class="src">source: scratchpad probes against the live API, 2026-07-26; reproduced in tests/test_providers.py</span></p></div>
+
+<p>
 
 <h3>7.3 OpenAI adapter — <strong>Responses API</strong>, not chat completions</h3>
 
@@ -967,6 +1096,41 @@ with <code>allow_nan=False</code>, so a non-finite value the <em>harness</em> pr
 this table says it belongs. <code>memory.number_arg</code> already guards the other direction, the values that
 come from the model.</div>
 
+<div class="note"><strong>The loop's half, implemented by T3.4 in
+<code>duck_embody/agent/loop.py</code>.</strong> <code>dispatch</code> owns every row that is a
+<em>result</em>; the loop owns the three that are control flow.
+<ul>
+<li><strong>Derailment.</strong> A turn with no tool call (prose only, empty, or
+<code>stop_reason: "refusal"</code>) appends <code>prompts.DERAILMENT_NUDGE</code> as its user message and the
+episode continues to its caps. The turn counts, because <code>state.turns += 1</code> fires before dispatch.
+Never a selective retry.</li>
+<li><strong>The infra path is taken at the trial boundary, not inside the loop.</strong> Nothing wraps
+<code>provider.send</code> or <code>dispatch</code>; <code>scripts/run_trial.py</code> catches at the top,
+records the traceback into the trial JSON and <strong>deliberately writes no <code>final</code> block</strong>,
+so doc <a href="06-benchmark-evaluation.html">06</a> §9.1's resume check rejects it and the trial reruns whole.
+An infra-failed JSON that carried a <code>final</code> would be skipped by the runner and silently reported as
+a result.
+<br><strong>Two consequences of that design, fixed by T3.4's review pass.</strong> (a) The catch spans the
+episode ONLY, and <code>log.finish(final)</code> now runs immediately after it — before any video work, which
+lives in its own <code>try</code>. A completed, fully paid trial whose <code>ffmpeg</code> step raised would
+otherwise have left every turn and no <code>final</code>: byte-for-byte an infra failure, so §9.1's check would
+move a finished result to <code>results/incomplete/</code> and rerun it for a video-encoding fault the model had
+no part in. Video is rule-11 <em>evidence</em>, not the trial result. (b) <code>session.close()</code> is in a
+<code>finally</code>, so the kit process is released on every path — a survivor holds the machine's single GPU
+and the rerun cannot start at all (AGENTS.md rule 1). The traceback is scrubbed of anything key-shaped before
+it is stored or printed: it is third-party exception text and <code>results/</code> is committed to a public
+repo (rules 6 and 7).</li>
+<li><strong>One direction this table did not cover, closed by T3.4.</strong> <code>json.loads</code> accepts
+the bare <code>NaN</code>/<code>Infinity</code> literals, so a model <em>can</em> emit one as a tool argument.
+<code>dispatch</code> correctly returns <code>invalid_args</code> — but doc 06 §4 logs
+<code>model_output.tool_calls</code> verbatim, and writing that value out with <code>allow_nan=False</code>
+would raise <em>while writing the log</em>, crashing the harness onto the infra path for a fault whose agency
+is entirely the model's. This is the agency line crossed backwards, and it would have rerun the trial and
+never scored the malformed call. The loop sanitises model-authored values into the log (non-finite floats
+become their repr as a string); the harness's own numbers still raise, exactly as the paragraph above
+requires.</li>
+</ul></div>
+
 <div class="warning"><strong>The line between "model failure" and "infra failure" is drawn at agency.</strong>
 If the model <em>could have</em> acted differently (bad tool call, refusal, wandering to the turn cap), the
 trial is a scored model failure. If nothing the model emitted caused the fault (network, GPU, kit), it is
@@ -1040,22 +1204,43 @@ across models, not to engineer them away.</p>
 <h2 id="open">12. Open questions</h2>
 
 <ul>
-<li><strong>Does <code>return_home</code> run after a stage-1 cap-out?</strong> Current design: no (only after
-<code>declare_done</code>); a capped stage 1 scores both stages as failures. Defensible but debatable — owner
-sign-off needed before scoring is unit-tested.</li>
-<li><strong>Does GPT 5.6 sol accept <code>temperature=0</code>?</strong> Unverified (§11): OpenAI's recent
-reasoning-model families (o-series, gpt-5 lineage) reject non-default sampling parameters, and GPT 5.6 sol is
-post-cutoff. A one-call probe before the config freeze settles it. If rejected, the OpenAI adapter drops the
-parameter and §7.1 is reworded to: no provider supports deterministic decoding for the locked models;
-reproducibility rests on sim seeds alone.</li>
-<li><strong>Anthropic-side nondeterminism.</strong> With sampling parameters rejected and thinking always on
-(Fable 5), the two Anthropic models are not deterministic at fixed seed. We accept and document this
-(fixed seeds control the <em>sim</em>, not decoding) — but should the report include a same-seed repeat run to
-quantify decoding variance? Costs one extra trial per Anthropic model.</li>
+<li><strong class="src">RESOLVED (T3.4) — Does <code>return_home</code> run after a stage-1 cap-out?</strong>
+<strong>No</strong>, and the resolution went further: stage 2 runs <strong>iff stage 1 succeeded</strong>, so a
+<code>declare_done</code> outside the 0.35&nbsp;m target region also ends the trial. Settling the literal
+question surfaced a real contradiction between this doc and docs 01/06 on that far more likely case; doc 05
+was amended toward docs 01/06. Full reasoning, the measured 1.574&nbsp;m floor that decides it, and the honest
+cost (the model can now infer pass/fail at the transition, mitigated by outcome-neutral wording) are in the
+decision box in §3.3. The rule is now inside the hashed fairness contract as
+<code>configs/benchmark.yaml: protocol.stage2_requires_stage1_success</code>; implementation is
+<code>tasks/find_kitchen.py::runs_return_home</code>. <em>Owner call if you disagree:</em> the cheaper
+alternative is to amend doc 01 §8 + doc 06 §3.2 instead and change no code — but it admits zero-motion
+<code>return_home</code> successes, with no floor at all.</li>
+<li><strong class="src">RESOLVED (T3.4) — how stage-2 time is accounted.</strong> The budget resets at the
+boundary and the caps are unchanged, so the first stage-2 request reads <code>turns 0/40, policy-seconds
+0.0/240</code>. Already what §3.3 item (2) said and what <code>Counters</code> /
+<code>ToolContext.reset_for_stage()</code> implemented; now stated outright in §3.3 and in
+<code>configs/benchmark.yaml</code> rather than only implied. No code changed.</li>
+<li><strong class="src">RESOLVED (T3.3) — Does GPT 5.6 sol accept <code>temperature=0</code>?</strong>
+<strong>No</strong>, and neither do the Anthropic contestants: T3.3 measured that <em>no</em> locked model
+supports deterministic decoding, and §7.1 already carries the reworded claim (reproducibility rests on sim
+seeds alone). This bullet contradicted §7.1 and is struck here by T3.4 (rule 5 hygiene). The OpenAI adapter
+sets no sampling parameter; <code>tests/test_providers.py</code> asserts none of the contestant configs
+introduces one.</li>
+<li><strong>Same-seed repeat run to quantify decoding variance.</strong> With sampling parameters rejected and
+thinking on, <em>all three</em> models are nondeterministic at fixed seed (the earlier framing of this bullet
+as "Anthropic-side" is stale per §7.1). We accept and document that fixed seeds control the <em>sim</em>, not
+decoding — but should the report include a same-seed repeat to quantify the variance? Costs one extra trial
+per model. Batch-design call, owned by T4.3, not by the loop.</li>
 <li><strong>Motion-tools-per-turn cap.</strong> Multiple tool calls per turn are allowed (§3.3). Should the
 harness cap motion tools at one per turn to keep "one look, one move" cadence, or is chaining
 (turn_to_heading + move) legitimate efficiency? Currently uncapped; smoke test will show whether chained
-motion without an intervening observation causes blind bumps.</li>
+motion without an intervening observation causes blind bumps. <strong>T3.4 implemented it uncapped, faithfully,
+and imposed no de-facto cap</strong> — and, so T3.5's smoke can answer this with data rather than impressions,
+every turn's log record carries <code>execution.motion_calls</code>, that turn's own
+<code>policy_seconds_used</code>, and the running <code>budget.stage_policy_seconds_used</code>. Note the caps
+are checked <em>after</em> the whole turn (§3.1 phase 4), so a chained turn can legitimately end past 240&nbsp;s;
+that overshoot is exactly the mechanism by which chaining buys extra motion, and it is now visible in the log
+rather than clipped.</li>
 <li><strong>look_around render path.</strong> Virtual camera-mount rotation while paused is declared, but the
 Isaac Sim implementation (rotating the camera prim + 4 renders without stepping physics) needs the smoke test
 to confirm no frame-latency artifacts (stale frames after teleporting a camera are a known renderer
@@ -1065,7 +1250,19 @@ it.</li>
 <li><strong>First-turn image aging.</strong> Policy says images older than K=10 turns are dropped, and the
 kept first turn loses its image too. Is the spawn-point image worth pinning permanently (helps
 return_home re-recognition) or is that scaffolding the model should replace with its own map? Currently:
-dropped, per the uniform rule.</li>
+dropped, per the uniform rule — and <strong>T3.4 implemented exactly that</strong>
+(<code>loop.context_messages</code>; <code>tests/test_loop.py::TestImageAging</code> pins both halves: frames
+survive while the first turn is inside the window and are stripped the moment it ages past it). The reason it
+is implemented as written rather than left open is that the frozen <code>SYSTEM_PROMPT</code> already
+<em>promises</em> the model the uniform rule in as many words — "only the first turn and the last 10 turns are
+kept, and their images are dropped as they age out" — so pinning the spawn frame would make an unchangeable
+sentence false for every trial in the batch. <strong>Changing it now means changing frozen prompt text</strong>,
+i.e. a doc 06 §2 freeze item; this is the last cheap moment (it hardens at T3.5/T4.3). Also settled here:
+<code>K=10</code> is a module constant (<code>loop.K_CONTEXT_TURNS</code>) mirrored in
+<code>configs/benchmark.yaml: context.k_turns</code>, <strong>not</strong> the per-model
+<code>configs/models/*.yaml</code> key §7.1 lists — a per-model K would let one YAML contradict the sentence
+every model is told, and AGENTS.md rule 4 forbids per-model tuning anyway. A test asserts the constant, the
+config and the prompt's own promise all still say 10.</li>
 <li><strong>Per-model image token cost.</strong> 512×512 frames price differently across the three models
 (and <code>look_around</code> sends four). The cost accounting (§7.1) needs measured per-image token counts
 from the smoke test before the batch budget is finalized; <code>configs/models/*.yaml</code> files themselves

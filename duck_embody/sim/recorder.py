@@ -206,3 +206,121 @@ class Recorder:
 def record_and_strip(out_prefix: Path | str, fps: int = 25) -> Recorder:
     """Convenience constructor mirroring how the smoke scripts use it."""
     return Recorder(out_prefix, fps=fps)
+
+
+# ---------------------------------------------------------------------------
+# Recording an LLM-driven episode (T3.4)
+# ---------------------------------------------------------------------------
+
+#: Recording chunk: 0.04 s = 2 control steps at 50 Hz, i.e. one grab per 25 fps
+#: frame. The same value ``SimSession._execute_recording`` has always used.
+RECORD_CHUNK_S = 0.04
+
+
+def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
+                    chunk_s: float = RECORD_CHUNK_S, **kwargs):
+    """Run one velocity command in short pieces, grabbing a frame between them.
+
+    Frame grabbing has to interleave with stepping, so a long command cannot be
+    recorded from the outside — it has to be cut up. ``execute`` is passed in
+    (rather than a ``PolicyPlayback``) so :func:`attach_recorder` can hand over
+    the *unpatched* bound method and not recurse into itself.
+
+    The merge is the delicate part and the reason this lives in one place:
+    only the 5 Hz ``sampled_xy`` samples are concatenated, and the start/end
+    bookends are added once at the end. Concatenating each chunk's full
+    ``pose_trace`` instead would contribute two extra points per 2-step chunk —
+    a ~50 Hz trace of per-step gait sway — which inflates the SPL path integral
+    doc 06 §5.3 pins to 5 Hz.
+    """
+    import math
+
+    from duck_embody.sim.policy_wrapper import CONTROL_DT, ExecResult, duration_to_steps
+
+    total_steps = duration_to_steps(duration_s)
+    done_steps = 0
+    merged: "ExecResult | None" = None
+    start_xy: tuple[float, float] | None = None
+    sampled: list[tuple[float, float]] = []
+
+    while done_steps < total_steps:
+        remaining = (total_steps - done_steps) * CONTROL_DT
+        part = execute(vx, vy, wz, min(chunk_s, remaining), **kwargs)
+        recorder.grab(env)
+        done_steps += part.steps
+
+        if start_xy is None:
+            start_xy = part.pose_trace[0]
+        sampled.extend(part.sampled_xy)
+
+        if merged is None:
+            merged = part
+        else:
+            merged.steps += part.steps
+            merged.policy_seconds += part.policy_seconds
+            merged.bumped = merged.bumped or part.bumped
+            merged.fell = part.fell
+            merged.true_pose = part.true_pose
+            merged.stopped_early = part.stopped_early
+            merged.stop_reason = part.stop_reason or merged.stop_reason
+
+        if part.fell or part.stopped_early:
+            break
+
+    end_xy = (merged.true_pose[0], merged.true_pose[1])
+    merged.duration_s = duration_s
+    merged.sampled_xy = sampled
+    merged.pose_trace = [start_xy, *sampled, end_xy]
+    merged.true_displacement_m = math.dist(start_xy, end_xy)
+    return merged
+
+
+def attach_recorder(playback, env, recorder, chunk_s: float = RECORD_CHUNK_S):
+    """Make every command a model issues record video. Returns a detach callable.
+
+    **Why a patch and not a wrapper object.** ``agent/tools.py`` drives motion
+    through ``playback.move()`` / ``playback.turn_to_heading()`` /
+    ``playback.execute()``, and the two macros never pass the ``on_chunk=``
+    callback the wrapper offers — while internally they call ``self.execute(...)``
+    on their own instance. So a proxy passed in as ``ToolContext.playback`` could
+    only intercept the macros' *outermost* call (5 Hz, one grab per 0.2 s servo
+    chunk), not the steps inside them, and re-implementing the macros to fix that
+    would fork a doc 02 §6.2 code path T2.4's physics pass validated. Replacing
+    the bound ``execute`` on the instance puts the seam exactly where every
+    physics step already funnels through, at 25 fps, with no macro duplicated.
+
+    Without it there is **no per-trial video at all**: ``SimSession``'s only
+    per-step grabber is reachable through ``scripted_drive``, which the LLM path
+    never uses. AGENTS.md rule 11 makes a video the acceptance evidence for any
+    run that steps simulation, and "the video wins" when it disagrees with the
+    metrics.
+
+    A ``stop_predicate`` call falls through unrecorded rather than raising: the
+    predicate is given the step index *within one* ``execute``, and chunking
+    restarts that index, so a chunked predicate would silently never fire. No
+    tool passes one today; the fallback means that if one ever does, it behaves
+    correctly and merely loses frames.
+    """
+    original = playback.execute
+
+    def recording_execute(vx, vy, wz, duration_s, stop_on_bump=False, stop_predicate=None):
+        if stop_predicate is not None:
+            return original(
+                vx, vy, wz, duration_s,
+                stop_on_bump=stop_on_bump, stop_predicate=stop_predicate,
+            )
+        return chunked_execute(
+            original, env, recorder, vx, vy, wz, duration_s,
+            chunk_s=chunk_s, stop_on_bump=stop_on_bump,
+        )
+
+    playback.execute = recording_execute
+
+    def detach() -> None:
+        # Delete the instance attribute so the class method is visible again.
+        try:
+            del playback.execute
+        except AttributeError:
+            pass
+
+    return detach

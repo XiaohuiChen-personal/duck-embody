@@ -140,12 +140,14 @@ class SimSession:
     def _execute_recording(self, vx, vy, wz, duration_s, recorder, **kwargs):
         """Execute one command, grabbing a viewport frame per control step.
 
-        Frame grabbing has to interleave with stepping, so this re-implements
-        the loop rather than calling ``PolicyPlayback.execute`` — done by
-        chunking the command into short executes and grabbing between them,
-        which keeps a single definition of the stepping semantics.
+        Frame grabbing has to interleave with stepping, so the command is cut
+        into short executes with a grab between them. The chunk-and-merge itself
+        lives in ``recorder.chunked_execute`` because T3.4's LLM path needs the
+        identical merge (``recorder.attach_recorder``) and a second copy of it
+        would drift — silently, since a mis-merged ``sampled_xy`` only shows up
+        as a depressed SPL months later (doc 06 §5.3).
         """
-        from duck_embody.sim.policy_wrapper import CONTROL_DT, ExecResult, duration_to_steps
+        from duck_embody.sim.recorder import chunked_execute
 
         if recorder is None:
             return self.playback.execute(vx, vy, wz, duration_s, **kwargs)
@@ -161,49 +163,16 @@ class SimSession:
                 "the caller instead."
             )
 
-        # 0.04 s chunks = 2 control steps: fine enough for 25 fps video while
-        # keeping per-chunk overhead negligible.
-        chunk_s = 0.04
-        total_steps = duration_to_steps(duration_s)
-        done_steps = 0
-        merged: ExecResult | None = None
-        start_xy: tuple[float, float] | None = None
-        sampled: list[tuple[float, float]] = []
-
-        while done_steps < total_steps:
-            remaining = (total_steps - done_steps) * CONTROL_DT
-            part = self.playback.execute(vx, vy, wz, min(chunk_s, remaining), **kwargs)
-            recorder.grab(self.env.unwrapped)
-            done_steps += part.steps
-
-            if start_xy is None:
-                start_xy = part.pose_trace[0]
-            # Merge the 5 Hz SAMPLES only. Concatenating each chunk's full
-            # pose_trace would add its start/end bookends — two extra points per
-            # 2-step chunk, i.e. a ~50 Hz trace of per-step gait sway, which
-            # inflates the SPL path integral (doc 06 §5.3 pins it to 5 Hz).
-            sampled.extend(part.sampled_xy)
-
-            if merged is None:
-                merged = part
-            else:
-                merged.steps += part.steps
-                merged.policy_seconds += part.policy_seconds
-                merged.bumped = merged.bumped or part.bumped
-                merged.fell = part.fell
-                merged.true_pose = part.true_pose
-                merged.stopped_early = part.stopped_early
-                merged.stop_reason = part.stop_reason or merged.stop_reason
-
-            if part.fell or part.stopped_early:
-                break
-
-        end_xy = (merged.true_pose[0], merged.true_pose[1])
-        merged.duration_s = duration_s
-        merged.sampled_xy = sampled
-        merged.pose_trace = [start_xy, *sampled, end_xy]
-        merged.true_displacement_m = math.dist(start_xy, end_xy)
-        return merged
+        return chunked_execute(
+            self.playback.execute,
+            self.env.unwrapped,
+            recorder,
+            vx,
+            vy,
+            wz,
+            duration_s,
+            **kwargs,
+        )
 
     # -- teardown -----------------------------------------------------------
 

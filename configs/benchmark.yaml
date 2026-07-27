@@ -16,6 +16,45 @@ caps:
   turns: 40                          # DESIGN doc 06 §3.2
   policy_seconds: 240                # DESIGN doc 06 §3.2
   # A fall ends the whole TRIAL, not just the stage (doc 01 §8).
+  #
+  # PER STAGE means the budget RESETS at the find_kitchen -> return_home
+  # boundary and the caps themselves do not change, so the first stage-2 request
+  # renders `Budget: turns 0/40, policy-seconds 0.0/240` (doc 05 §3.3 item (2),
+  # doc 06 §3.2; RESOLVED by T3.4 and now stated outright in both). A cumulative
+  # line would show `turns 31/40` on the model's first return-home request —
+  # an immediate false cap — and doc 06 §5.4/§5.5/§5.8 all report per stage.
+  # Implemented by `tools.ToolContext.reset_for_stage()`, which zeroes exactly
+  # the stage-scoped fields and deliberately NOT the trial-scoped bump counter.
+
+# --- Protocol (the stage machine) -------------------------------------------
+protocol:
+  # RESOLVED by T3.4 (doc 05 §12, doc 06 §12; previously in no config at all).
+  # `return_home` runs iff `find_kitchen` SUCCEEDED — so not after a cap-out, not
+  # after a fall, and (the case the open question did not name) not after a
+  # `declare_done` outside the 0.35 m target region either. Mirrors
+  # `duck_embody.tasks.find_kitchen.STAGE2_REQUIRES_STAGE1_SUCCESS`, with an
+  # agreement test in tests/test_loop.py. See that constant's docstring for the
+  # measured reason: under the alternative, a wrong declare landing inside the
+  # 0.5 m home disc scores return_home a success with ZERO motion, which is 25
+  # percentage points of an N=4 success rate.
+  stage2_requires_stage1_success: true
+  # An unrun stage 2 is reported as outcome `not_run` with turns 0 and
+  # policy-seconds 0.0; the return-home SR denominator stays N=4 (doc 06 §12).
+  unrun_stage_outcome: not_run
+
+# --- Context policy (doc 05 §5.2) -------------------------------------------
+context:
+  # System prompt + first turn + last K turns; the memory block is regenerated
+  # into every request and is exempt from truncation. Images age out with the
+  # window, INCLUDING the pinned first turn's spawn frame (doc 05 §12's uniform
+  # rule, kept by T3.4).
+  #
+  # NOT per-model. doc 05 §7.1 lists "context K" as a configs/models/*.yaml key,
+  # but the frozen SYSTEM_PROMPT states "the last 10 turns" to every model and
+  # AGENTS.md rule 4 forbids per-model tuning — a per-model K would let one YAML
+  # contradict the sentence the model is told, with nothing failing.
+  # `loop.K_CONTEXT_TURNS`; tests/test_loop.py asserts all three agree.
+  k_turns: 10
 
 # --- Locomotion -------------------------------------------------------------
 locomotion:

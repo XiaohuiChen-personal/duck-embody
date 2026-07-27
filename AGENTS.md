@@ -48,6 +48,8 @@ the parent robot project.
 | Protocol | Paused sim between LLM calls; 1 obs/turn (+ `look_around` panorama); context = first turn + last K + memory block | Paper's protocol; measures capability, not latency |
 | Repo | This dedicated public repo; parent robot repo is a read-only pinned dependency | Portfolio readability |
 | Trials | N=3–5 per model, fixed seed set, `find_kitchen` + `return_home` continuation | Comparison, not statistical paper |
+| Stage-2 gate (T3.4, 2026-07-26) | `return_home` runs **iff `find_kitchen` succeeded** — not after a cap-out, not after a fall, and not after a `declare_done` outside the 0.35 m radius | Docs 01/06 already said "succeeded" while doc 05 said "declared"; the difference is a wrong-place declare. Under "declared", a wrong declare inside the 0.5 m home disc scores `return_home` a success with **zero motion** — 25 pp of an N=4 SR. Under "succeeded" that is geometrically impossible (min stage-2 `d_initial` = 1.574 m, seed 104). Doc 05 §3.3 amended; `configs/benchmark.yaml: protocol.stage2_requires_stage1_success` |
+| Per-stage budget (T3.4) | Turns and policy-seconds **reset** at the stage boundary; the 40/240 caps are unchanged, so stage 2 opens at `turns 0/40, policy-seconds 0.0/240` | Already implied by doc 05 §3.3 (2) and implemented by `ToolContext.reset_for_stage()`; a cumulative line would show `31/40` on the model's first return-home request, i.e. an immediate false cap. `bumps` stays trial-scoped (doc 06 §5.6) |
 
 The concrete implementation plan will live in `docs/PLAN.md` (placeholder until
 written). The apartment layout dict (`duck_embody/env/apartment_layout.py`) is
@@ -236,6 +238,35 @@ Robot / policy (paths in parent repo or `~/IsaacLab`):
   NOT `inference_mode()`, if the env resets afterwards).
 - **Pausing is safe**: physics advances ONLY inside `env.step()`. Not stepping = frozen.
 
+Agent harness (found in T3.4's review pass, 2026-07-26):
+- **An Anthropic refusal is HTTP 200 with an EMPTY `content` array**, so
+  `AssistantTurn.raw` is `[]`. Echoing that back is
+  `{"role": "assistant", "content": []}` — an API 400 on the *next* request,
+  which converts a doc 05 §8 *scored* model failure into an *infra* rerun of the
+  whole trial. `AnthropicProvider.to_native` drops an empty assistant turn;
+  `_parse` normalises `raw` to a list. The bug was **asymmetric** —
+  `out.extend([])` is a no-op on the OpenAI adapter — so it would have cost only
+  the two Anthropic contestants a trial each. Any future provider adapter needs
+  the same guard.
+- **The fairness contract hashes FILES; doc 06 §2 freezes ITEMS.** Hash the file
+  that *enforces* an item, not the one that documents it: the 40/240 caps live in
+  `agent/memory.py` (not the mirrored `configs/benchmark.yaml`), the motion
+  clamps in `sim/policy_wrapper.py`, `K_CONTEXT_TURNS = 10` in `agent/loop.py`.
+  `freeze_commit()` appends `-dirty` when a frozen file is uncommitted, because
+  a bare `rev-parse HEAD` claimed trials ran code the commit does not contain —
+  and this tree always carries uncommitted work (see below).
+- **A value-exact leak test is not a leak test.** `str(7.77) not in sent` says
+  nothing about `"7.8"`, and nothing at all about a *derived* oracle
+  (`math.dist(true_pose, goal)`). Both passed the whole suite when injected. The
+  guard has to be structural: the model-facing text must be re-assemblable, byte
+  for byte, from the frozen prompt + the tool payloads + the rendered memory
+  block.
+- **Write the scoring artifact before the audit artifact.** A trial JSON with
+  every turn and no `final` block is byte-for-byte an infra failure (doc 06
+  §9.1), so any post-episode step that can raise — ffmpeg above all — must run
+  *after* `log.finish(final)` and inside its own guard. `session.close()` belongs
+  in a `finally`: a surviving kit process holds the machine's only GPU.
+
 Kit process / tooling (verified 2026-07-26 during PLAN T0.0):
 - **`SimulationApp.close()` terminates the process.** Statements after it never
   execute — a script that closes the app and *then* prints its summary or writes
@@ -328,7 +359,13 @@ results/         raw JSON · figures · videos (committed)
 - [ ] Vendor policy artifacts into `policy/`
 - [ ] Smoke tests (camera PNG, net displacement, asset inspection)
 - [ ] Apartment scene + survey renders
-- [ ] Agent loop + tools + memory + providers
+- [x] Agent loop + tools + memory + providers (T3.1–T3.4; `bash
+      scripts/run_tests.sh tests/ -q` → 1068 passed, 3 skipped). Single-trial
+      entry point is `scripts/run_trial.py --model --seed`; it writes doc 06 §4's
+      JSON incrementally plus a rule-11 mp4 + filmstrip, and runs the
+      post-episode layout QA. Second adversarial review pass done (24 findings,
+      all dispositioned, 28 mutations re-verified — see `docs/PLAN.md` T3.4).
+      **Not yet exercised against a live model — that is T3.5's gate.**
 - [ ] Sanity LLM episode → freeze configs → batch (Fable 5, Opus 5, GPT 5.6 sol × N=3–5)
 - [ ] Scoring, figures, README results
 

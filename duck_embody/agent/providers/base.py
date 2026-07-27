@@ -47,7 +47,43 @@ def load_env() -> None:
 
 @dataclass
 class TextBlock:
+    """A top-level text block in a message the harness composes.
+
+    Never nested inside a tool result — ``ToolResultBlock`` carries its own
+    ``text`` — so the rule below can be strict without constraining what a tool
+    is allowed to return.
+    """
+
     text: str
+
+    def __post_init__(self) -> None:
+        # Rejected HERE, in the provider-neutral layer, rather than in the
+        # Anthropic adapter where the symptom shows up. MEASURED 2026-07-26
+        # against both live APIs:
+        #
+        #   shape                        Anthropic          OpenAI
+        #   user text ""                 400 non-empty      ACCEPTED
+        #   user text "   "              400 non-whitespace ACCEPTED
+        #   user content []              400 non-empty      ACCEPTED
+        #
+        # A harness bug that emitted a blank block would therefore 400 the two
+        # Anthropic contestants and cost GPT 5.6 sol nothing — the same defect
+        # scored as an infra failure for two models and invisible for the third,
+        # which is the asymmetry AGENTS.md rule 4 exists to prevent. Guarding at
+        # the neutral layer makes the failure identical for all three, and makes
+        # it a loud local error in a unit test rather than a remote 400 mid-batch.
+        #
+        # Every construction site is harness-controlled (the memory block, the
+        # derailment nudge, the QA prompt), so this can only ever fire on our
+        # own bug — never on anything a model produced.
+        if not self.text or not self.text.strip():
+            raise ValueError(
+                "TextBlock text must be non-empty and not whitespace-only: "
+                "the Anthropic Messages API rejects such a block (400 'text "
+                "content blocks must contain non-whitespace text') while the "
+                "OpenAI Responses API accepts it, so letting one through would "
+                "penalise only the Anthropic contestants."
+            )
 
 
 @dataclass

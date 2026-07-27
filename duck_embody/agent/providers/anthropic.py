@@ -86,7 +86,11 @@ class AnthropicProvider:
         """
         content: list[dict] = [{"type": "text", "text": block.text}]
         for img in block.images:
-            if img.label:
+            # Nested inside a tool_result, where the API's non-empty-text rule
+            # does NOT apply (measured: the same blank block 400s at the top
+            # level and is accepted here). Guarded anyway so both label sites
+            # read the same and neither invites a "why only that one?" edit.
+            if img.label and img.label.strip():
                 content.append({"type": "text", "text": img.label})
             content.append(self._image_block(img))
         return content
@@ -95,6 +99,33 @@ class AnthropicProvider:
         out: list[dict] = []
         for msg in messages:
             if isinstance(msg, AssistantMessage):
+                if not msg.native:
+                    # An EMPTY assistant turn is dropped rather than echoed.
+                    #
+                    # NOT because echoing it is rejected - it is not. MEASURED 2026-07-26 against the live API (claude-opus-5, with the
+                    # 12 tool schemas and adaptive thinking, i.e. the exact trial config):
+                    #
+                    #     {"role": "assistant", "content": []}   -> ACCEPTED (stop=end_turn)
+                    #     {"role": "user",      "content": []}   -> 400 "user messages must ..."
+                    #     {"role": "assistant", "content": None} -> 400 "Input should be a valid list"
+                    #
+                    # So the 400 a refusal used to cause came from the EMPTY USER MESSAGE that
+                    # doc 05 §3.1's pseudocode appended when it had no derailment branch — not
+                    # from the empty assistant turn. The derailment branch (which sends a
+                    # non-empty nudge) is what actually fixes it.
+                    #
+                    # Dropping is kept anyway, on its own merits: `content:
+                    # None` IS rejected, so normalising through this path is a
+                    # real guard; and an empty turn is a no-op that costs
+                    # tokens and tells the model nothing. Synthesising a text
+                    # block instead would put words the model never wrote into
+                    # its own transcript.
+                    #
+                    # Safe because the turn has no `tool_use` blocks (that is
+                    # why it took the derailment branch), so nothing is
+                    # orphaned, and the nudge that follows is a user message -
+                    # consecutive user messages are accepted (measured above).
+                    continue
                 # Echoed back unchanged — thinking blocks included. Rebuilding
                 # them would break multi-turn continuity on Fable 5.
                 out.append({"role": "assistant", "content": msg.native})
@@ -105,7 +136,9 @@ class AnthropicProvider:
                 if isinstance(block, TextBlock):
                     content.append({"type": "text", "text": block.text})
                 elif isinstance(block, ImageBlock):
-                    if block.label:
+                    # `.strip()`, not truthiness: a whitespace-only label
+                    # is a 400 here and silently fine on OpenAI (measured).
+                    if block.label and block.label.strip():
                         content.append({"type": "text", "text": block.label})
                     content.append(self._image_block(block))
                 elif isinstance(block, ToolResultBlock):
@@ -134,25 +167,42 @@ class AnthropicProvider:
 
     # -- the call -----------------------------------------------------------
 
-    def send(self, system: str, messages: list[Message], tools: list[dict]) -> AssistantTurn:
+    def request_kwargs(self, system: str, messages: list[Message], tools: list[dict]) -> dict:
+        """The exact request body, split out of :meth:`send` so it is testable.
+
+        ``system`` and ``tools`` are **omitted when empty** rather than sent as
+        `""` / `[]`. T3.4's post-episode layout-QA exchange (doc 06 §5.9) is a
+        deliberately toolless, system-less call — "you have no camera, no robot,
+        and no tools now" — and an empty string for `system` risks the API's
+        non-empty-text-block rule on a request that runs once per trial, at the
+        very end, after all the money has been spent. Omitting the key asks for
+        exactly what the exchange means. The benchmark path always passes both
+        non-empty, so its body is unchanged.
+        """
         kwargs = {
             "model": self.model_id,
             "max_tokens": self.cfg.max_tokens,
-            "system": system,
             "messages": self.to_native(messages),
-            "tools": self.to_native_tools(tools),
             # Adaptive is the only supported mode on the locked models; the
             # summary is free (display controls visibility, not billing) and
             # gives the write-up something to quote.
             "thinking": {"type": "adaptive", "display": "summarized"},
         }
+        if system:
+            kwargs["system"] = system
+        if tools:
+            kwargs["tools"] = self.to_native_tools(tools)
         # NOTE: `effort` is deliberately NOT set — the API default (high) is
         # used for both Anthropic models. Picking a level would be an arbitrary
         # constant applied to two of the three contestants; leaving the default
         # keeps "no per-model tuning" (rule 4) literally true.
         kwargs.update(self.cfg.params)
+        return kwargs
 
-        response = self.client.messages.create(**kwargs)
+    def send(self, system: str, messages: list[Message], tools: list[dict]) -> AssistantTurn:
+        response = self.client.messages.create(
+            **self.request_kwargs(system, messages, tools)
+        )
         return self._parse(response)
 
     def _parse(self, response) -> AssistantTurn:
@@ -192,7 +242,12 @@ class AnthropicProvider:
             text="\n".join(p for p in text_parts if p),
             tool_calls=tool_calls,
             usage=usage,
-            raw=response.content,
+            # Normalised to a list, never `None`: a refusal is HTTP 200 with an
+            # empty (or absent) `content`, and `to_native` must be able to tell
+            # "nothing to echo" from a real turn without special-casing `None`.
+            # It drops an empty one rather than emitting invalid content — see
+            # there for why that is a scored-vs-rerun distinction.
+            raw=list(response.content or []),
             stop_reason=stop_reason,
             thinking="\n".join(p for p in thinking_parts if p),
             refusal=refusal,
