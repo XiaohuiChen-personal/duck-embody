@@ -146,6 +146,21 @@ def main() -> int:
     preflight_provider(args.model)
 
     # Heavy imports last, and only after the provider config is known good.
+    # Stale-bytecode guard. `isaaclab.sh -p` does NOT set
+    # PYTHONDONTWRITEBYTECODE, and Python validates a cached module on
+    # (source mtime truncated to SECONDS, source size) — so an edit made in the
+    # same second as the previous run, at the same byte count, silently runs the
+    # OLD module. AGENTS.md §5 records this biting the test suite; it then bit a
+    # T3.5 trial, which recorded `fell: true` with no diagnostics because the
+    # running process predated the code that captures them. Cheap to assert,
+    # expensive to discover from a finished trial.
+    from duck_embody.sim.policy_wrapper import ExecResult as _ExecResult
+
+    if "fall_diagnostics" not in _ExecResult.__dataclass_fields__:
+        print("FATAL: loaded policy_wrapper is STALE (no fall_diagnostics). "
+              "Clear __pycache__ and re-run.")
+        return 2
+
     from duck_embody.agent.loop import EpisodeRunner, TrialLog
     from duck_embody.agent.tools import ToolContext
     from duck_embody.env.camera import HeadCamera

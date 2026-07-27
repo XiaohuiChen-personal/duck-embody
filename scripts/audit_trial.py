@@ -152,7 +152,8 @@ def audit(path: Path) -> int:
     if tok:
         print(f"\n  tokens: in {tok.get('input_tokens')} / out {tok.get('output_tokens')} / "
               f"cache_read {tok.get('cache_read_tokens')} / cache_write {tok.get('cache_write_tokens')}")
-        print(f"  cost:   ${tok.get('cost_usd', 0):.4f}")
+        cost = tok.get("cost_usd_estimate", tok.get("cost_usd", 0))
+        print(f"  cost:   ${cost:.4f}")
         check((tok.get("cache_read_tokens") or 0) > 0, "prompt caching is actually being hit",
               "a trial with zero cache reads is paying full rate every turn")
 
