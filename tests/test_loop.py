@@ -1959,6 +1959,36 @@ REQUIRED_TURN_KEYS = {
 }
 
 
+class TestTrialLogFramesHygiene:
+    """A trial's frames dir is cleared at TrialLog init, never merged into.
+
+    `mkdir(exist_ok=True)` let every attempt at a trial_id ACCUMULATE into one
+    directory: fable5_seed101 mixed frames from >=3 T3.5 attempts, with a
+    deleted attempt's JSON referencing filenames whose bytes a later attempt
+    had overwritten. A T4.2 resume that reruns an incomplete trial would
+    contaminate the rerun's frame evidence the same way (gap G6)."""
+
+    def test_a_previous_attempts_frames_are_cleared_at_init(self, tmp_path):
+        stale_dir = tmp_path / "frames" / "fake_seed101"
+        stale_dir.mkdir(parents=True)
+        stale = stale_dir / "t007_0.jpg"
+        stale.write_bytes(b"previous attempt's bytes")
+
+        log = make_log(tmp_path)
+
+        assert log.frames_dir == stale_dir
+        assert log.frames_dir.is_dir()
+        assert not stale.exists(), "stale frame survived into the new attempt"
+        assert list(log.frames_dir.iterdir()) == []
+
+    def test_frames_written_by_this_attempt_survive(self, tmp_path):
+        """Positive control: the clear happens at INIT only, never later."""
+        log = make_log(tmp_path)
+        paths = log.save_frames(1, [ImageBlock(data_b64=base64.b64encode(b"x").decode())])
+        assert paths == ["frames/fake_seed101/t001_0.jpg"]
+        assert (log.frames_dir / "t001_0.jpg").read_bytes() == b"x"
+
+
 class TestTrialLogSchema:
     @pytest.fixture
     def document(self, tmp_path):

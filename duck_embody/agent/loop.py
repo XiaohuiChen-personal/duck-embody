@@ -58,6 +58,7 @@ import json
 import math
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -476,7 +477,19 @@ class TrialLog:
         self.frames_rel = f"frames/{trial_id}"
         root = Path(frames_root) if frames_root is not None else self.path.parent
         self.frames_dir = root / "frames" / trial_id
-        self.frames_dir.mkdir(parents=True, exist_ok=True)
+        # Cleared, never merged — the same rule Recorder.__init__ applies to
+        # its frames dir, for the same reason. `mkdir(exist_ok=True)` alone let
+        # every attempt at a trial_id ACCUMULATE into one directory:
+        # fable5_seed101 ended up holding frames from >=3 T3.5 attempts, with
+        # a deleted attempt's JSON referencing filenames whose bytes a later
+        # attempt had overwritten — evidence that illustrates decisions it did
+        # not inform. A T4.2 resume that reruns an incomplete trial would
+        # contaminate the rerun's frame set the same way. This JSON's
+        # `obs.frame_paths` only ever references frames THIS attempt writes,
+        # so clearing loses nothing that the log can still point to.
+        if self.frames_dir.exists():
+            shutil.rmtree(self.frames_dir)
+        self.frames_dir.mkdir(parents=True)
         self.document: dict = {
             "trial_id": trial_id,
             "config": {
