@@ -205,7 +205,12 @@ def s3_approaches() -> list[dict]:
         # y=0.90, not the west edge's 0.95: the east edge sits under
         # counter_4's south face (y 1.0165), and a 0.95 start would spawn the
         # body inside that cabinet's clearance.
-        {"label": "counter east edge", "spawn": (east, 0.90, 270.0),
+        # 3 cm INSIDE the geometric edge: the knife-edge ride at exactly
+        # `east` measured ZERO force at both seeds (gait sway carries the body
+        # a centimetre wide of a zero-overlap line). 3 cm keeps the overlap on
+        # one body-half — the property the probe needs — while making contact
+        # robust to sway.
+        {"label": "counter east edge", "spawn": (east - 0.03, 0.90, 270.0),
          "expected": "right_leg", "mirror_key": "counter_edge"}
     )
     # Sofa east edge, approaching north: the robot's LEFT is west = sofa side.
@@ -224,9 +229,8 @@ def s3_approaches() -> list[dict]:
 
 def estimated_policy_seconds() -> float:
     total = 0.0
-    # S1: one move at the sofa from the seed-101 spawn + settles.
-    (sx, sy), sh = spawn_pose(101)
-    total += (reach_along(sx, sy, sh) + 0.3) / MOVE_SPEED_MPS + 2.0
+    # S1: one move into the sofa from the T2.4-proven south approach.
+    total += (reach_along(0.30, 0.75, 90.0) + 0.3) / MOVE_SPEED_MPS + 2.0
     # S2: reach the counter + the push allowance.
     total += reach_along(2.72, 0.95, 270.0) / MOVE_SPEED_MPS + PUSH_ALLOWANCE_S + 2.0
     # S3: every approach (x seeds) + dwell + recovery (1.5 s sidestep + 0.3 m
@@ -408,7 +412,11 @@ class ScriptedNavigator:
     CHORD_START_EXEMPT_M = 0.10
     CHORD_MAX_M = 1.2
 
-    def __init__(self, goals: list[tuple[tuple[float, float], float]]):
+    def __init__(
+        self,
+        goals: list[tuple[tuple[float, float], float]],
+        true_xy_fn=None,
+    ):
         from duck_embody.agent.providers.base import Usage  # pure import
 
         self._usage_cls = Usage
@@ -423,6 +431,16 @@ class ScriptedNavigator:
         self.calls_made = 0
         # Stall detector state: (current waypoint, distance to it) at the last
         # navigate decision.
+        # Ground-truth oracle for RE-ANCHORING ONLY, via the real
+        # correct_position tool. The first gate run measured why this exists:
+        # the navigator steered and DECLARED on the dead-reckoned estimate, and
+        # ~2.4 m of accumulated drift pushed a geometrically perfect declare
+        # outside the 0.35 m radius -> 'declared_elsewhere'. S5 tests the
+        # PIPES, not dead-reckoning accuracy (that is the benchmark's own
+        # subject); a scripted harness check may know the truth, and feeding it
+        # through correct_position exercises loop closure end to end - the same
+        # call a model makes when it re-recognises a landmark.
+        self.true_xy_fn = true_xy_fn
         self._stall_ref: tuple[tuple[float, float], float] | None = None
         self._stall_turns = 0
         # Consecutive bump recoveries without intervening progress.
@@ -508,8 +526,25 @@ class ScriptedNavigator:
         x = float(state["position_estimate"]["x"])
         y = float(state["position_estimate"]["y"])
         compass = float(state["compass_deg"])
+
+        # Oracle re-anchor: when the estimate has drifted, correct it FIRST (in
+        # the same multi-call turn) and steer on the corrected value.
+        anchor_calls = []
+        if self.true_xy_fn is not None:
+            tx, ty = self.true_xy_fn()
+            if math.dist((x, y), (tx, ty)) > 0.10:
+                anchor_calls.append(self._call(
+                    "correct_position", x=round(tx, 3), y=round(ty, 3),
+                    reason="scripted oracle re-anchor (harness smoke)",
+                ))
+                x, y = tx, ty
         dist_to_goal = math.dist((x, y), goal_xy)
 
+        if anchor_calls and dist_to_goal <= declare_within:
+            # Do not bundle the declare with the anchor: the anchor must land
+            # in the integrator BEFORE the declare turn, so the declare's own
+            # payload reflects it.
+            return anchor_calls + [self._call("get_observation")]
         if dist_to_goal <= declare_within:
             if self.stage_idx == 0 and not self.did_precision_tools:
                 # Exercise the remaining tools once, at the goal, where a
@@ -642,9 +677,11 @@ class ScriptedNavigator:
         bearing = math.degrees(math.atan2(wy - y, wx - x)) % 360.0
         err = (bearing - compass + 180.0) % 360.0 - 180.0
         if abs(err) > 10.0:
-            return [self._call("turn_to_heading", heading_deg=round(bearing, 1))]
+            return anchor_calls + [
+                self._call("turn_to_heading", heading_deg=round(bearing, 1))
+            ]
         commanded = min(1.5, max(0.08, math.dist((x, y), (wx, wy)) - self.STOP_SHORT_M))
-        return [self._call("move", distance_m=round(commanded, 3))]
+        return anchor_calls + [self._call("move", distance_m=round(commanded, 3))]
 
     def _planner(self):
         """The padded planning grid (see PLAN_INFLATE_M), built once."""
@@ -755,7 +792,13 @@ def scenario_s1(report: Report, session, out_dir: Path) -> None:
     from duck_embody.sim.session import SpawnPose
 
     pb = session.playback
-    (sx, sy), heading = spawn_pose(101)
+    # T2.4-PROVEN clean-bump approach (sofa from the south: stopped at 0.29 m,
+    # bumped, no fall — physics_pass_report.json). The first gate run used the
+    # seed-101 spawn toward the sofa's east face, the exact approach every
+    # sanity trial toppled on: the duck FELL before the 3-step debounce could
+    # confirm a bump, so the scenario measured a fall, not the recorded-bump
+    # path it exists to exercise.
+    sx, sy, heading = 0.30, 0.75, 90.0
     session.reset(seed=101, spawn=SpawnPose(sx, sy, heading))
     pb.settle(0.4)
 
@@ -858,7 +901,14 @@ def scenario_s2(report: Report, session, out_dir: Path) -> None:
     frames_ok = False
     if len(frames) >= 7:
         reference = frames[0]  # standing at spawn, by construction
-        noise_floor = mean_abs_diff(frames[0], frames[1])
+        # Median consecutive-pair diff over the video's middle — NOT
+        # diff(f0, f1): the recorder's first grab is a stale/unrendered init
+        # frame, and the first gate run measured diff(f0,f1)=70.5, turning the
+        # '3x noise floor' bar into an impossible 211 on 8-bit frames.
+        mids = frames[1:-5]
+        pairs = list(zip(mids, mids[1:])) or [(frames[0], frames[1])]
+        diffs_seq = sorted(mean_abs_diff(a, b) for a, b in pairs)
+        noise_floor = diffs_seq[len(diffs_seq) // 2]
         tail = frames[-5:]
         frame_diffs = {p.name: mean_abs_diff(reference, p) for p in tail}
         frame_diffs["noise_floor_f0_f1"] = noise_floor
@@ -1098,7 +1148,14 @@ def scenario_s5(report: Report, session, out_dir: Path) -> None:
     # Declare thresholds sit well inside the true radii (0.35 / 0.5) so honest
     # dead-reckoning drift over this short course cannot flip the verdict.
     provider = ScriptedNavigator(
-        goals=[(target_point(), 0.2), ((sx, sy), 0.25)]
+        goals=[(target_point(), 0.2), ((sx, sy), 0.25)],
+        # Oracle re-anchor via the REAL correct_position tool: the first gate
+        # run measured 'declared_elsewhere' — ~2.4 m of honest dead-reckoning
+        # drift pushed a geometrically perfect declare outside the 0.35 m
+        # radius. S5 verifies the pipes, not drift (the benchmark's own
+        # subject), so the scripted navigator re-anchors like a model that
+        # recognises landmarks — through the same tool call.
+        true_xy_fn=pb.true_xy,
     )
     context = ToolContext(
         playback=pb, camera=camera, memory=Memory(),

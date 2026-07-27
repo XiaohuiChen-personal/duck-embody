@@ -118,6 +118,12 @@ locomotion:
   bump:
     force_n: 1.0
     debounce_steps: 3
+    # AMENDED by gap-hunt S4 (2026-07-27): move() aborts only on SUSTAINED
+    # contact - 2 consecutive bumping chunks (0.4 s). A single-chunk graze is
+    # reported in status.contact but does not stop the walk. Measured defect it
+    # fixes: a 60 ms graze aborted a 1.0 m move at 0.347 m with 0.80 m free
+    # ahead, telling the model "bumped" in open space.
+    move_abort_sustained_chunks: 2
     # False-positive half, asserted rather than assumed: all 8 doorway transits
     # (4 doorways x both directions) report bumped=false.
     doorway_transits_clean: 8

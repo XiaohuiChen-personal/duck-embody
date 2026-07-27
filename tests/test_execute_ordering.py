@@ -408,3 +408,107 @@ class TestExecuteContactUnion:
 
         assert result.bumped is True
         assert result.contact_groups == ["head", "torso"]
+
+
+class TestSustainedContactAbort:
+    """`move` aborts on SUSTAINED contact, never on a single-chunk graze.
+
+    MEASURED (gap-hunt S4, 2026-07-27): under abort-on-first-bump, a 60 ms
+    right-leg graze stopped a 1.0 m move at 0.347 m with 0.80 m geometrically
+    free ahead. The model was told `bumped: true` in open space — the harness
+    conflating CONTACT with BLOCKED and refusing a viable command, which is the
+    harness making the model's decision (doc 05 §1). One bumping chunk now
+    reports contact without stopping; MOVE_ABORT_SUSTAINED_CHUNKS (=2)
+    consecutive bumping chunks abort.
+    """
+
+    @staticmethod
+    def _playback(fake_execute):
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        pb.compass_deg = lambda: 0.0
+        pb.true_xy = lambda: (0.0, 0.0)
+        pb.execute = fake_execute
+        return pb
+
+    @staticmethod
+    def _chunk(bumped: bool, x: float, groups=None):
+        return _res(
+            steps=10,
+            policy_seconds=0.2,
+            bumped=bumped,
+            contact_groups=list(groups or ([] if not bumped else ["right_leg"])),
+            pose_trace=[(x, 0.0), (x + 0.04, 0.0)],
+            true_pose=(x + 0.04, 0.0, 0.0),
+        )
+
+    def test_a_single_graze_chunk_does_not_abort_the_move(self):
+        """Chunk 2 bumps, chunk 3 is clean: the move must run to its target,
+        still REPORT the contact (bumped + groups survive the merge), and end
+        with stop_reason 'reached' — not 'bump' at a third of the distance."""
+        calls = {"n": 0}
+
+        def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
+            if vx == 0.0:  # settle
+                return self._chunk(False, 0.24)
+            calls["n"] += 1
+            return self._chunk(calls["n"] == 2, 0.04 * (calls["n"] - 1))
+
+        pb = self._playback(fake_execute)
+        result = pb.move(0.20, stop_on_bump=True)
+
+        assert result.stop_reason == "reached", result.stop_reason
+        assert result.bumped is True, "the graze must still be reported"
+        assert "right_leg" in result.contact_groups
+        assert calls["n"] >= 5, "the move gave up early on a single graze"
+
+    def test_two_consecutive_bumping_chunks_abort(self):
+        calls = {"n": 0}
+
+        def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
+            if vx == 0.0:
+                return self._chunk(False, 0.12)
+            calls["n"] += 1
+            return self._chunk(calls["n"] >= 2, 0.04 * (calls["n"] - 1))
+
+        pb = self._playback(fake_execute)
+        result = pb.move(1.0, stop_on_bump=True)
+
+        assert result.stop_reason == "bump"
+        assert result.stopped_early is True
+        assert calls["n"] == 3, f"expected abort on the 3rd chunk (2nd consecutive bump), got {calls['n']}"
+
+    def test_separated_grazes_never_accumulate(self):
+        """bump, clean, bump, clean ... must not count as 'sustained'."""
+        calls = {"n": 0}
+
+        def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
+            if vx == 0.0:
+                return self._chunk(False, 0.4)
+            calls["n"] += 1
+            return self._chunk(calls["n"] % 2 == 1, 0.04 * (calls["n"] - 1))
+
+        pb = self._playback(fake_execute)
+        result = pb.move(0.32, stop_on_bump=True)
+
+        assert result.stop_reason == "reached"
+        assert result.bumped is True
+
+    def test_send_velocity_semantics_unchanged(self):
+        """The sustained gate is a MOVE policy; execute()'s own per-chunk bump
+        reporting (what send_velocity returns) is untouched — pinned by reading
+        the constant is only consumed inside move()."""
+        import inspect
+
+        from duck_embody.sim import policy_wrapper
+
+        src = inspect.getsource(policy_wrapper)
+        uses = [
+            line for line in src.splitlines()
+            if "MOVE_ABORT_SUSTAINED_CHUNKS" in line
+            and not line.strip().startswith("#")
+            and "=" not in line.split("MOVE_ABORT_SUSTAINED_CHUNKS")[0] + "X"
+        ]
+        move_src = inspect.getsource(policy_wrapper.PolicyPlayback.move)
+        assert "MOVE_ABORT_SUSTAINED_CHUNKS" in move_src
+        exec_src = inspect.getsource(policy_wrapper.PolicyPlayback.execute)
+        assert "MOVE_ABORT_SUSTAINED_CHUNKS" not in exec_src

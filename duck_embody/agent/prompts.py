@@ -274,12 +274,13 @@ request; these are the notes that are not in them.
    *Motion.* `turn_to_heading(heading_deg)` rotates in place, closed-loop on
    the compass to within 5 deg, and reports `timed_out` rather than spinning
    forever. `move(distance_m)` walks forward at 0.2 m/s, at most 1.5 m per
-   call, and auto-stops on contact with `bumped: true` plus the dead-reckoned
-   distance it covered. `status.contact` names which parts of YOUR OWN body felt
-   it — any of `head`, `torso`, `left_leg`, `right_leg`. It tells you what you
-   touched with, never what you touched: `head` means something at your own
-   height, `torso` something lower, and a single leg means you caught an edge
-   on that side and can often clear it by shifting the other way. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
+   call, and auto-stops when contact PERSISTS (about half a second of steady
+   force), returning `bumped: true` plus the dead-reckoned distance it covered.
+   A passing graze does not stop the walk — it is reported, not acted on.
+   `status.contact` names which parts of YOUR OWN body felt contact — any of
+   `head`, `torso`, `left_leg`, `right_leg`. It tells you what you touched
+   with, never what you touched: `head` means something at your own height,
+   `torso` something lower, and a single leg means one leg caught a low edge. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
    hatch and does **not** auto-stop — it runs its full duration even through a
    collision. Every command is clamped to the policy's trained envelope and the
    clamp is echoed back: if a command returns changed, the changed one is what

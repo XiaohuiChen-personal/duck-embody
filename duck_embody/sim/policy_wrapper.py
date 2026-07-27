@@ -82,6 +82,16 @@ MACRO_CHUNK_S = 0.2
 #: Extra time allowed before a macro gives up, as a multiple of the ideal.
 MACRO_TIME_MARGIN = 1.6
 
+#: How many CONSECUTIVE bumping chunks abort a `move`. MEASURED (gap-hunt S4,
+#: 2026-07-27): with abort-on-first-bump, a 60 ms right-leg graze stopped a
+#: 1.0 m move at 0.347 m in a corridor with 0.80 m geometrically free ahead —
+#: the harness refusing a viable command and telling the model "bumped", which
+#: conflates CONTACT with BLOCKED. One chunk of contact (<= 0.2 s) is a graze:
+#: reported in `status.contact`, not acted on. Two consecutive chunks (0.4 s of
+#: sustained contact) is a block: abort. Fast enough to beat a wall-press
+#: topple, which T2.4 measured at ~2-5 s of pressing.
+MOVE_ABORT_SUSTAINED_CHUNKS = 2
+
 #: P gain on heading error (radians) -> wz. Saturates the +/-0.5 rad/s hull at
 #: ~19 deg of error. Mirrors Isaac Lab's own heading controller structure.
 KP_HEADING = 1.5
@@ -756,6 +766,7 @@ class PolicyPlayback:
         held_heading = self.compass_deg()
         start_xy = self.true_xy()
         travelled = 0.0
+        bump_chunks = 0
         merged: ExecResult | None = None
         reason = "timeout"
         # The last pose observed while the episode was LIVE. Re-reading
@@ -787,8 +798,16 @@ class PolicyPlayback:
                 reason = "fell"
                 break
             if part.bumped and stop_on_bump:
-                reason = "bump"
-                break
+                # Sustained-contact gate (see MOVE_ABORT_SUSTAINED_CHUNKS): a
+                # single bumping chunk is a graze — contact is still REPORTED
+                # (merged.bumped, contact_groups survive the merge) but the
+                # command keeps walking. Only consecutive bumping chunks abort.
+                bump_chunks += 1
+                if bump_chunks >= MOVE_ABORT_SUSTAINED_CHUNKS:
+                    reason = "bump"
+                    break
+            else:
+                bump_chunks = 0
             if travelled >= target_dist:
                 reason = "reached"
                 break
