@@ -77,9 +77,10 @@ with the unrun stage counted a failure.
 ![gpt56sol_seed103 — the closest run of the batch (2× speed)](results/videos/gpt56sol_seed103.gif)
 
 *The closest run of the batch (`gpt56sol_seed103`, 2× speed): GPT 5.6 sol
-navigates out of the hallway into the kitchen and declares done beside kitchen
-cabinetry — 0.83 m from the goal counter point, outside the 0.35 m success
-radius. Right room, wrong counter. Full video:
+navigates out of the hallway into the kitchen and declares done **5 cm from the
+face of a real counter** — the east-wall run (`counter_5`), not the south run
+the goal point sits before, leaving it 0.83 m from the goal, outside the 0.35 m
+success radius. Right room, wrong counter. Full video:
 [`gpt56sol_seed103.mp4`](results/videos/gpt56sol_seed103.mp4).*
 
 ### Per-model aggregates (N=4 trials each, mean [95% bootstrap CI])
@@ -167,9 +168,14 @@ Fable 5 (seed 104) declared at **1.66 m** from the goal, GPT 5.6 sol (seed 103)
 at **0.83 m** — the closest any trial got to the 0.35 m success radius. The
 seed-103 audit is the sharpest evidence in the batch: the model genuinely
 navigated into the kitchen (`visited_rooms: hallway, kitchen`) and declared
-beside kitchen cabinetry — *the room identification was right, the declared
-position was short*, and its dead-reckoned belief was 0.40 m off at that moment,
-larger than the success radius itself.
+**facing the east-wall counter run at 5.1 cm from the face of `counter_5`** —
+the same white Sektion cabinet asset as the goal counters, mapped in its own
+landmark notes as "white counter/peninsula projects westward from east wall."
+It satisfied the objective's literal text ("walk to the counter") at a genuine
+counter; the scored goal point sits before the *south* counter run, 1.14 m
+away. *The room identification was right, the counter was real, the declared
+position was short* — and its dead-reckoned belief was 0.40 m off at that
+moment, larger than the success radius itself.
 
 ![Trajectory vs belief — gpt56sol_seed103](results/figures/trajectory_vs_belief_gpt56sol_seed103.png)
 
@@ -270,6 +276,13 @@ known scoring limitations are in [`docs/METRICS.md`](docs/METRICS.md) §5.
 - **The prompt was frozen before the fall pattern was known.** Nothing tells
   the model that hull-limit rotation near an obstacle risks a fall. Fair across
   models; clearly improvable scaffold.
+- **"The counter" is ambiguous where the scoring is not.** The objective says
+  "walk to the counter"; the kitchen contains two counter runs of the same
+  asset (south — where the scored goal point sits — and east-wall), and the
+  objective cannot name one without leaking layout knowledge. `gpt56sol_seed103`
+  declared 5 cm from the east-wall run's face and scored `declared_elsewhere`.
+  Identical ambiguity for all three models, so the comparison holds; a v2
+  scoring fix is success within 0.35 m of *any* kitchen-counter face.
 - **Judge-gate reliance.** Room recognizability was gated by an
   out-of-benchmark judge model (`claude-sonnet-5`,
   [`configs/models/judge.yaml`](configs/models/judge.yaml); gate design:
