@@ -958,10 +958,11 @@ class EpisodeRunner:
             #
             # `reset_for_stage()`, NEVER a rebuilt ToolContext: doc 05 §4.1 pins
             # that it zeroes exactly `turn`, `last_bumped`,
-            # `last_distance_moved_m` and the two Counters fields, and
-            # deliberately leaves `bumps` alone because doc 06 §5.6 counts bumps
-            # over the TRIAL. Rebuilding would drop every stage-1 collision from
-            # a headline metric with no test and no traceback.
+            # `last_contact_groups`, `last_distance_moved_m` and the two
+            # Counters fields, and deliberately leaves `bumps` alone because
+            # doc 06 §5.6 counts bumps over the TRIAL. Rebuilding would drop
+            # every stage-1 collision from a headline metric with no test and
+            # no traceback.
             self.context.reset_for_stage()
             # One line, and nothing else sets it: `reset_for_stage` deliberately
             # does not (it owns the *budget*, not the protocol). `Correction.turn`
@@ -1050,6 +1051,12 @@ class EpisodeRunner:
             "position_estimate": {"x": round(position[0], 2), "y": round(position[1], 2)},
             "status": {
                 "bumped": context.last_bumped,
+                # Same carried reading `_state_payload` shows the model
+                # (T3.5's contact field, recorded into doc 06 §4 in the same
+                # commit): without it the log's "what the model was shown"
+                # summary silently under-reports the one status field that says
+                # WHICH way was blocked.
+                "contact": list(context.last_contact_groups),
                 "fell": bool(context.playback.fell),
                 "distance_moved_m": round(context.last_distance_moved_m, 3),
             },

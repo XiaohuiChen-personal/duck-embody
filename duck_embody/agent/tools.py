@@ -358,7 +358,8 @@ class ToolContext:
     #: STAGE-scoped: cleared by :meth:`reset_for_stage`.
     last_bumped: bool = False
     #: Regions in contact at the last bump; carried so the next
-    #: `get_observation` can report it alongside `bumped`.
+    #: `get_observation` can report it alongside `bumped`. STAGE-scoped, like
+    #: the `bumped` flag it refines: cleared by :meth:`reset_for_stage`.
     last_contact_groups: list = field(default_factory=list)
     last_distance_moved_m: float = 0.0
     #: Compass heading latched at the moment of the fall, or ``None`` while the
@@ -377,9 +378,17 @@ class ToolContext:
         zero :attr:`bumps`, halving a doc 06 §5.6 headline metric with no test
         and no traceback. ``compass_at_fall`` is likewise left alone: a fall ends
         the trial, so stage 2 never starts after one.
+
+        ``last_contact_groups`` is cleared WITH ``last_bumped`` because the two
+        are one reading: T3.5 added the contact list after this method was
+        written, and carrying it across the boundary would open stage 2 with the
+        contradictory status ``bumped: false, contact: ["torso"]`` — a contact
+        list from a bump the same payload no longer reports. Recorded in doc 05
+        §4.1 in the same commit (AGENTS.md rule 5).
         """
         self.turn = 0
         self.last_bumped = False
+        self.last_contact_groups = []
         self.last_distance_moved_m = 0.0
         self.counters.turns = 0
         self.counters.policy_seconds = 0.0

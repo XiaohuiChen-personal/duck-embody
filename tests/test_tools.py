@@ -273,6 +273,12 @@ class FakePlayback:
         #: Set to force a macro to stop early (bump / fall) after N drive chunks.
         self.stop_after_chunks: int | None = None
         self.bumped = False
+        #: What `contact_groups()` sampled at the bump. The real `execute()`
+        #: only populates `ExecResult.contact_groups` when `bumped` went true
+        #: (`policy_wrapper.py:518-526`), so the fakes mirror that: non-empty
+        #: iff the command bumped. A fake that always returned [] would leave
+        #: the carry-and-reset path of `status.contact` untestable.
+        self.bump_contact_groups: list[str] = ["torso"]
         self.turn_stop_reason = "reached"
         #: Compass reading the turn macro lands on; None = perfect turn.
         self.turn_lands_on: float | None = None
@@ -353,6 +359,7 @@ class FakePlayback:
             steps=steps,
             policy_seconds=steps * CONTROL_DT,
             bumped=self.bumped,
+            contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=self._fell,
             fall_diagnostics=self.fall_diagnostics if stop_reason == "fell" else None,
             clamp_notes=notes,
@@ -379,6 +386,7 @@ class FakePlayback:
             steps=duration_to_steps(drive_s + settle_s),
             policy_seconds=drive_s + settle_s,
             bumped=self.bumped,
+            contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=self._fell,
             stop_reason=self.turn_stop_reason,
         )
@@ -428,6 +436,7 @@ class FakePlayback:
             steps=duration_to_steps(drive_s + settle_s),
             policy_seconds=drive_s + settle_s,
             bumped=self.bumped,
+            contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=fell,
             stop_reason=reason,
             dead_reckoned_distance_m=travelled,
@@ -1738,6 +1747,27 @@ class TestObservationPayload:
             0.4, abs=0.05
         )
 
+    def test_contact_is_carried_to_the_next_observation_and_cleared_by_clean_motion(self):
+        """The end-to-end trace `status.contact` was added for (doc 04 §6.2):
+        `playback` samples the groups AT the bump → `ExecResult.contact_groups`
+        → `_record_motion` carries them on the context → the NEXT
+        `get_observation` reports them beside `bumped`. And like `bumped`, the
+        reading describes the LAST motion command — a clean command clears it,
+        so a stale list can never outlive the collision it described."""
+        playback = FakePlayback()
+        playback.bumped = True
+        context = make_context(playback=playback)
+        dispatch(call("move", distance_m=0.5), context)
+        obs = dispatch(call("get_observation"), context)
+        assert obs.payload["status"]["bumped"] is True
+        assert obs.payload["status"]["contact"] == ["torso"]
+
+        playback.bumped = False
+        dispatch(call("move", distance_m=0.5), context)
+        obs = dispatch(call("get_observation"), context)
+        assert obs.payload["status"]["bumped"] is False
+        assert obs.payload["status"]["contact"] == []
+
     def test_a_fall_is_reported_live_rather_than_carried(self):
         """`fell` is sticky and ends the TRIAL, so the final observation must
         report it however it is reached — including on a `get_observation` that
@@ -1867,12 +1897,20 @@ class TestBudgetAndCounters:
         context = make_context(playback=playback, turn=9)
         dispatch(call("move", distance_m=0.4), context)
         assert (context.bumps, context.last_bumped) == (1, True)
+        assert context.last_contact_groups == ["torso"]
         assert context.counters.policy_seconds > 0.0
 
         context.reset_for_stage()
         assert context.bumps == 1, "bumps is trial-scoped (doc 06 §5.6)"
         assert context.turn == 0
         assert context.last_bumped is False
+        # T3.5 added `last_contact_groups` AFTER reset_for_stage was written
+        # (commit dbb9ff5 vs 87150fe), and the shipped reset left it carried —
+        # so stage 2's first observation opened with the contradictory status
+        # `bumped: false, contact: ["torso"]`, a contact list from a stage-1
+        # bump the same payload no longer reported. It resets with the
+        # `bumped` flag it refines (doc 05 §4.1, amended in the same commit).
+        assert context.last_contact_groups == []
         assert context.last_distance_moved_m == 0.0
         assert context.counters.turns == 0
         assert context.counters.policy_seconds == 0.0

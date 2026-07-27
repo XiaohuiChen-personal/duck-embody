@@ -392,6 +392,14 @@ relative to the JSON's directory and carry the trial id, so 12 trials can share 
 <li><strong><code>obs.position_estimate</code>.</strong> <code>tools._state_payload</code> emits a third key
 (<code>note</code>, the frozen model-facing caption). The log keeps §4's <code>{x, y}</code> — the note is
 constant text, not data.</li>
+<li><strong><code>obs.status.contact</code></strong> (additive, T3.5's forensic pass). When T3.5 added
+<code>status.contact</code> to the model-facing payload (doc <a href="04-camera-observation.html">04</a>
+§6.2), the log's <code>obs.status</code> kept the original three fields — so the "what the model was shown"
+summary silently omitted the one status field that says <em>which way</em> was blocked, and an audit would have
+had to re-derive it from the previous turn's <code>execution.calls[].contact_groups</code>. The obs now records
+the same carried contact list the payload shows, in the payload's field order. Deliberately NOT added to the
+schema block above, following the additive-fields convention: the block is the <em>minimum</em> contract the
+conformance tests hold every trial JSON to — the committed golden trial predates the field.</li>
 <li><strong><code>final.tokens</code> key names.</strong> §4 said <code>{input, output,
 cost_usd_estimate}</code>; <code>providers.base.Usage.as_dict()</code> emits
 <code>{input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd_estimate}</code>.

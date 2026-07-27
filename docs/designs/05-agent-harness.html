@@ -364,20 +364,21 @@ is the enforcer.</p>
 <h3>4.1 Perception tools</h3>
 <table>
 <tr><th>Tool</th><th>What it does</th><th>Returns</th><th>Failure modes</th></tr>
-<tr><td><code>get_observation()</code></td><td>Renders one frame from the head camera; reads the integrator and sim status. No physics steps.</td><td>image + <code>compass_deg</code> + <code>position_estimate {x, y}</code> + <code>status {bumped, fell, distance_moved_m}</code> (fields describe the <em>last</em> motion command)</td><td>None expected; render failure → infra path (§8)</td></tr>
+<tr><td><code>get_observation()</code></td><td>Renders one frame from the head camera; reads the integrator and sim status. No physics steps.</td><td>image + <code>compass_deg</code> + <code>position_estimate {x, y}</code> + <code>status {bumped, contact, fell, distance_moved_m}</code> (fields describe the <em>last</em> motion command; <code>contact</code> added by T3.5, doc <a href="04-camera-observation.html">04</a> §6.2)</td><td>None expected; render failure → infra path (§8)</td></tr>
 <tr><td><code>look_around()</code></td><td>Renders 4 frames at absolute headings 0/90/180/270° by rotating the virtual camera mount while paused; the robot body does not move, so no fall risk and no policy-seconds.</td><td>4 labeled images + the same state block as <code>get_observation</code></td><td>None expected; higher token cost (4 images) — the model pays for it in context</td></tr>
 </table>
 
 <div class="decision"><strong>PINNED BY T3.2 (AGENTS.md rule 5): the status block before any motion has run.</strong>
 The row above says the <code>status</code> fields describe the <em>last</em> motion command, and said nothing
 about the first observation of a stage, when there is no last command. They are
-<code>{bumped: false, fell: &lt;live&gt;, distance_moved_m: 0.0}</code>. Omitting the keys instead would change the
+<code>{bumped: false, contact: [], fell: &lt;live&gt;, distance_moved_m: 0.0}</code>. Omitting the keys instead would change the
 payload's <em>shape</em> between turn 1 and turn 2, which is a worse answer than a documented zero — doc
 <a href="04-camera-observation.html">04</a> §6 freezes the field set. <code>fell</code> is the one field read
 live rather than carried, because it is sticky and ends the trial: the final observation must report it however
 it is reached, including on a <code>get_observation</code> that ran no motion of its own.
 The carry-over state lives in <code>tools.ToolContext</code> (<code>last_bumped</code>,
-<code>last_distance_moved_m</code>), i.e. in the dispatcher's state, which T3.4's loop owns.</div>
+<code>last_contact_groups</code>, <code>last_distance_moved_m</code>), i.e. in the dispatcher's state, which
+T3.4's loop owns.</div>
 
 <div class="decision"><strong>PINNED BY T3.2's review pass: what "resets with the stage" means, exactly.</strong>
 The paragraph above previously ended "…which T3.4's loop owns and resets with the stage", which invites the
@@ -387,9 +388,16 @@ loop to rebuild or zero the whole <code>ToolContext</code> at the <code>find_kit
 collision would silently vanish from a published headline metric, with nothing failing. §3.3 resets only turns
 and policy-seconds. <code>ToolContext</code> therefore owns the reset itself:
 <code>reset_for_stage()</code> zeroes exactly <code>turn</code>, <code>last_bumped</code>,
-<code>last_distance_moved_m</code> and the two <code>Counters</code> fields, and deliberately leaves
+<code>last_contact_groups</code>, <code>last_distance_moved_m</code> and the two <code>Counters</code> fields,
+and deliberately leaves
 <code>bumps</code> (trial-scoped) and <code>compass_at_fall</code> (a fall ends the trial, so stage 2 never
-starts after one) alone. T3.4 calls that one method rather than reproducing a field list.</div>
+starts after one) alone. T3.4 calls that one method rather than reproducing a field list.
+<span class="src">AMENDED by T3.5's forensic pass: <code>last_contact_groups</code> was added to the carried
+status (doc <a href="04-camera-observation.html">04</a> §6.2's <code>status.contact</code>) <em>after</em> this
+list was written, and the shipped <code>reset_for_stage()</code> did not clear it — stage 2's first payload
+would have opened with the contradictory status <code>bumped: false, contact: ["torso"]</code>, a contact list
+carried from a stage-1 bump the same payload no longer reports. It resets with <code>last_bumped</code>, the
+flag it refines.</span></div>
 
 <div class="decision"><strong>PINNED BY T3.2's review pass: a fall has already teleported the robot, so the
 perception tools are the ONLY ones still answered.</strong> Isaac Lab auto-resets a terminated env

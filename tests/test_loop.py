@@ -195,6 +195,9 @@ class FakePlayback:
         self.calls: list[tuple[str, dict]] = []
         self.move_falls = False
         self.bumped = False
+        #: Sampled at the bump by the real `execute()` — non-empty iff bumped,
+        #: mirroring `tests/test_tools.py`'s fake.
+        self.bump_contact_groups: list[str] = ["torso"]
         self.move_policy_seconds = 3 * MACRO_CHUNK_S
 
     # -- sensors (SCORING ONLY except compass_deg) --------------------------
@@ -257,6 +260,7 @@ class FakePlayback:
             steps=duration_to_steps(drive_s + settle_s),
             policy_seconds=drive_s + settle_s,
             bumped=self.bumped,
+            contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=fell,
             stop_reason="fell" if fell else ("bump" if self.bumped else "reached"),
             dead_reckoned_distance_m=travelled,
@@ -686,6 +690,30 @@ class TestImageAging:
             "IMAGE-0"
         ]
 
+    def test_a_fourteen_turn_transcript_carries_exactly_the_last_ten_images(self):
+        """The exact image set at an arbitrary mid-episode length, hunting the
+        off-by-one at the window edge: entries 4-13 (the last K=10) keep their
+        frames, the pinned first turn is emitted but bare, entries 1-3 are gone
+        entirely. Off by one in ``image_floor`` and either entry 3's image
+        reappears without its entry or entry 4 goes dark while in-window."""
+        images = self._images(context_messages([entry(i) for i in range(14)]))
+        assert sorted(images) == [0, *range(4, 14)], "entries emitted"
+        assert images[0] == [], "pinned first turn is bare at n=14"
+        assert all(images[i] == [f"IMAGE-{i}"] for i in range(4, 14))
+
+    @pytest.mark.parametrize(
+        "n,first_turn_keeps_image", [(10, True), (11, False), (12, False)]
+    )
+    def test_the_first_turn_image_drops_exactly_when_it_leaves_the_window(
+        self, n, first_turn_keeps_image
+    ):
+        """K, K+1, K+2: the spawn frame survives while entry 0 is among the
+        last K entries (n <= 10) and drops the moment it is not (n = 11), and
+        stays dropped — never flickering back at n = 12."""
+        images = self._images(context_messages([entry(i) for i in range(n)]))
+        expected = ["IMAGE-0"] if first_turn_keeps_image else []
+        assert images[0] == expected
+
     def test_the_prompt_promise_and_the_constant_agree(self):
         """The one sentence the model is told about the context policy."""
         assert (
@@ -836,6 +864,48 @@ class TestStageTransition:
         assert stage2_turns[0]["budget"]["stage_turns_used"] == 1
         assert stage2_turns[0]["budget"]["stage_policy_seconds_used"] == 0.0
         assert final["stages"][STAGE_RETURN_HOME]["outcome"] == OUTCOME_SUCCESS
+
+    def test_a_stage_one_contact_list_does_not_leak_into_stage_two(self, tmp_path):
+        """T3.5 added ``last_contact_groups`` AFTER ``reset_for_stage`` was
+        written. Left carried, a trial whose last stage-1 motion bumped would
+        open stage 2 with ``bumped: false, contact: ["torso"]`` — a contact
+        list from a bump the same payload no longer reports — shown identically
+        to all three models at the one boundary every successful trial crosses.
+        """
+        playback = FakePlayback()
+        playback.bumped = True  # stage 1's move bumps and samples ["torso"]
+        context = make_context(playback=playback)
+        provider = FakeProvider(
+            [
+                turn(call("move", distance_m=1.0)),
+                standing_at(playback, target_true_xy(0.1), turn(call(DECLARE_DONE))),
+                turn(call("get_observation")),
+                standing_at(playback, SPAWN_XY, turn(call(DECLARE_DONE))),
+            ]
+        )
+        log = make_log(tmp_path)
+        runner = EpisodeRunner(
+            provider=provider, context=context, stages=stage_specs(SEED), log=log
+        )
+        final = runner.run()
+        assert final["outcome"][STAGE_FIND_KITCHEN] == OUTCOME_SUCCESS
+
+        # Positive control: the bumped move really did carry its contact into
+        # the next payload the model read (turn 2's request echoes turn 1's
+        # tool_result via the transcript).
+        move_result = json.loads(runner.transcript[0].results[0].text)
+        assert move_result["status"]["contact"] == ["torso"]
+
+        # The stage-2 get_observation — the first payload after the boundary —
+        # must NOT report stage-1's contact beside a reset `bumped: false`.
+        stage2_obs = json.loads(runner.transcript[2].results[0].text)
+        assert stage2_obs["status"]["bumped"] is False
+        assert stage2_obs["status"]["contact"] == []
+        # And the log's pre-decision obs for that turn says the same.
+        stage2_turns = [
+            t for t in log.document["turns"] if t["stage"] == STAGE_RETURN_HOME
+        ]
+        assert stage2_turns[0]["obs"]["status"]["contact"] == []
 
     def test_the_first_stage_two_block_reads_zero_of_forty(self, tmp_path):
         """Q2's resolution, made visible: per-stage means the budget RESETS and
@@ -1978,7 +2048,9 @@ class TestTrialLogSchema:
                 "frame_paths", "compass_deg", "position_estimate", "status",
             }
             assert set(record["obs"]["position_estimate"]) == {"x", "y"}
-            assert set(record["obs"]["status"]) == {"bumped", "fell", "distance_moved_m"}
+            assert set(record["obs"]["status"]) == {
+                "bumped", "contact", "fell", "distance_moved_m",
+            }
             assert set(record["true_pose"]) == {"x", "y", "heading_deg"}
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", record["timestamp"])
 
@@ -2190,6 +2262,32 @@ class TestObsRecordsWhatTheModelWasShown:
         moved = turns[0]["execution"]["calls"][-1]["distance_moved_m"]
         assert moved > 0.0
         assert turns[1]["obs"]["status"]["distance_moved_m"] == round(moved, 3)
+
+    def test_the_obs_contact_column_records_what_the_status_payload_showed(
+        self, tmp_path
+    ):
+        """T3.5 added ``status.contact`` to the model-facing payload but not to
+        the log's ``obs.status`` — so the audit's "what was it reading when it
+        decided" column silently omitted the one field that says WHICH way was
+        blocked. The obs must carry the same carried reading, same vintage."""
+        playback = FakePlayback()
+        runner, _, log = make_runner(
+            tmp_path,
+            [
+                turn(call("move", distance_m=1.0)),
+                turn(call("get_observation")),
+                turn(call(DECLARE_DONE)),
+            ],
+            context=make_context(playback=playback),
+        )
+        playback.bumped = True
+        runner.context.playback.set_true_xy(target_true_xy(9.0))
+        runner.run_stage(runner.stages[0])
+        turns = log.document["turns"]
+        # Turn 1 was shown the zero state; turn 2 was shown the bump's contact.
+        assert turns[0]["obs"]["status"]["contact"] == []
+        assert turns[1]["obs"]["status"]["bumped"] is True
+        assert turns[1]["obs"]["status"]["contact"] == ["torso"]
 
     def test_the_position_estimate_follows_the_integrator_not_the_breadcrumb(
         self, tmp_path
