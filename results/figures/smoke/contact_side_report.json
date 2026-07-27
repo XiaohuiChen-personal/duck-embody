@@ -413,16 +413,16 @@
   ],
   "side_rate": 0.5,
   "mirrors": {
-    "wall0": [
-      "left_leg"
-    ],
     "wall25": [
       "right_leg"
     ],
-    "counter_edge": [
+    "wall15": [
       "right_leg"
     ],
-    "wall15": [
+    "wall0": [
+      "left_leg"
+    ],
+    "counter_edge": [
       "right_leg"
     ]
   },
