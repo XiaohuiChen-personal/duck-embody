@@ -34,13 +34,23 @@ APPROACHES = [
 ]
 
 
-def side_of(name: str) -> str:
-    low = name.lower()
-    if "left" in low:
-        return "L"
-    if "right" in low or low.endswith("_2") or low.endswith("_3"):
-        return "R"
-    return "-"
+def group_of(pb, names: list[str]) -> dict[str, str]:
+    """body name -> kinematic group, from the SHIPPED tree grouping.
+
+    ``pb._contact_groups`` is grouped by position in the articulation tree —
+    the grouping the model-facing ``status.contact`` actually uses. The
+    name-suffix heuristic this probe originally carried (`"_2"`/`"_3"` => R)
+    is exactly backwards for `knee_and_ankle_assembly_2`, which sits under
+    `left_roll_to_pitch_assembly` (policy_wrapper.__init__ documents the
+    dump), so its verdict would have contradicted the signal being validated.
+    Summing forces by the shipped groups means the verdict and the shipped
+    tool report the same thing, or the probe is measuring nothing.
+    """
+    by_group: dict[str, str] = {}
+    for group, ids in pb._contact_groups.items():
+        for idx in ids:
+            by_group[names[idx]] = group
+    return by_group
 
 
 def main() -> int:
@@ -57,8 +67,7 @@ def main() -> int:
     print("  GROUPING the code actually uses:")
     for grp, ids in pb._contact_groups.items():
         print(f"    {grp:<10} {[names[i] for i in ids]}")
-    print("  sides inferred from body names:")
-    print("   ", {n: side_of(n) for n in names if side_of(n) != "-"})
+    body_group = group_of(pb, names)
 
     for label, (x, y, heading) in APPROACHES:
         session.reset(seed=101, spawn=SpawnPose(x, y, heading))
@@ -81,7 +90,12 @@ def main() -> int:
         while reach < 2.0 and g.is_free(x + dx * (reach + 0.05), y + dy * (reach + 0.05)):
             reach += 0.05
         steps = int((reach + 0.45) / 0.2 * 50) + 60
-        print(f"    standoff {standoff:.2f} m -> {steps} steps "
+        # `reach`, the variable actually computed above. The first run of this
+        # probe crashed HERE with `NameError: standoff` — after the multi-minute
+        # cold start, before measuring anything — because the print referenced
+        # a name from an earlier draft. Recorded so nobody "simplifies" the
+        # f-string back.
+        print(f"    reach {reach:.2f} m -> {steps} steps "
               f"({steps / 50 * 0.2:.2f} m of commanded travel)")
         for _ in range(steps):
             pb.execute(0.2, 0.0, 0.0, 1 / 50)
@@ -92,18 +106,21 @@ def main() -> int:
         loud = {n: v for n, v in sorted(peak.items(), key=lambda kv: -kv[1])}
         if not loud:
             print("    *** NOTHING registered — the probe did not reach the obstacle")
-        left = sum(v for n, v in loud.items() if side_of(n) == "L")
-        right = sum(v for n, v in loud.items() if side_of(n) == "R")
-        front = sum(v for n, v in loud.items() if "head" in n.lower())
+        # Summed by the SHIPPED tree grouping (see group_of), never by name
+        # suffix: the verdict must be about the signal the model actually gets.
+        left = sum(v for n, v in loud.items() if body_group.get(n) == "left_leg")
+        right = sum(v for n, v in loud.items() if body_group.get(n) == "right_leg")
+        front = sum(v for n, v in loud.items() if body_group.get(n) == "head")
+        torso = sum(v for n, v in loud.items() if body_group.get(n) == "torso")
         report["approaches"].append(
             {"label": label, "spawn": [x, y, heading], "peak_by_body": loud,
              "left_total": round(left, 1), "right_total": round(right, 1),
-             "head_total": round(front, 1),
+             "head_total": round(front, 1), "torso_total": round(torso, 1),
              "contact_groups": sorted(groups_seen)}
         )
         print(f"\n  {label}  (heading {heading:g} deg)")
         print(f"    bodies over threshold: {list(loud)[:6]}")
-        print(f"    L={left:7.1f}  R={right:7.1f}  head={front:7.1f}")
+        print(f"    L={left:7.1f}  R={right:7.1f}  head={front:7.1f}  torso={torso:7.1f}")
         print(f"    contact_groups() reported: {sorted(groups_seen) or 'NONE'}")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
