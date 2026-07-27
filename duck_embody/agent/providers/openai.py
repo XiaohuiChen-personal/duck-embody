@@ -240,8 +240,23 @@ class OpenAIProvider:
         refusal = None
 
         for item in response.output or []:
-            # Echo every item back verbatim next turn.
-            native.append(item.model_dump() if hasattr(item, "model_dump") else item)
+            # Echo every item back next turn — minus the server-only fields.
+            #
+            # MEASURED (T3.5 GPT dry run, first multi-turn echo): the SDK's
+            # model_dump() includes `status: "completed"` on output items, and
+            # replaying it verbatim is a 400 — "Unknown parameter:
+            # 'input[0].status'". The reasoning-only probe missed this because
+            # its whole turn was stripped; a normal turn (reasoning +
+            # function_call) echoes its items and dies on the FIRST follow-up
+            # request of every trial. `exclude_none` for the same reason:
+            # nullable fields the API rejects as explicit nulls on input.
+            dumped = (
+                item.model_dump(exclude_none=True)
+                if hasattr(item, "model_dump")
+                else dict(item)
+            )
+            dumped.pop("status", None)
+            native.append(dumped)
 
             itype = getattr(item, "type", None)
             if itype == "function_call":

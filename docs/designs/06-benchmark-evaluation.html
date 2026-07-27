@@ -57,6 +57,7 @@ loop closure, bootstrap CI, oracle path) is defined at first use.</p>
 </nav>
 
 <h2 id="claims">1. What the benchmark claims — and does not claim</h2>
+<div class="note"><strong>MEASURED (T3.5 live runs, 2026-07-27) &mdash; per-turn wall-clock.</strong> From consecutive turn timestamps in the trial JSONs: fable5 median 12&ndash;18 s (max 36 s; one thinking-heavy opening turn 33 s); gpt-5.6-sol median 24 s (max 63 s, n=4). The 5&ndash;25 s/turn assumption below is superseded &mdash; the measured medians land inside it. Batch forecast: central ~2.8 h sequential (42 turns/trial &times; 12 &times; ~20 s), worst case ~8 h with every stage at the 40-turn cap. Frozen in <code>configs/benchmark.yaml: runtime.per_turn_wall_s</code>.<span class="src">source: results/raw/*_seed101.json timestamps via scripts/audit_trial.py</span></div>
 
 <p>The benchmark compares <strong>three frontier models on identical tasks</strong>:
 <strong>Fable&nbsp;5</strong> (<code>claude-fable-5</code>, Anthropic),

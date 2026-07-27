@@ -1433,7 +1433,7 @@ cabinet with no penetration.
   `SYSTEM_PROMPT` already promises exactly that to every model; changing it now
   means changing frozen prompt text, and this is the last cheap moment.
 
-### T3.5 `[ ]` Sanity episode + GPT dry run (VIDEO GATE)
+### T3.5 `[x]` Sanity episode + GPT dry run (VIDEO GATE)
 
 - **Context:** First end-to-end episodes with real models. Measures per-turn
   latency (tightens T4.3's forecast) and surfaces tool errors. NOT benchmark data
@@ -1482,6 +1482,36 @@ cabinet with no penetration.
   **QA exchange fires and lands in the JSON**.
 - **Acceptance (GATE):** clean end-to-end run (any task outcome); GPT image path
   proven; latency recorded; open bugs fixed.
+
+**GATE PASSED (2026-07-27).** Evidence:
+
+- **Sanity trial** (fable5/seed101, the fixed harness): clean end-to-end,
+  `scripts/audit_trial.py` **AUDIT PASS** — fall at t2 fully diagnosed
+  (`fell_over`, tilt 56.5°→60° during `move(1.5)` with a −0.28 rad/s hold
+  correction at the sofa face; video corroborates frame-for-frame), QA 5/5,
+  caching live, zero leaks. `results/raw/fable5_seed101.json` + mp4.
+- **GPT 5.6 sol dry run** (5 turns, `--max-turns` recorded as
+  `config.turn_cap_override`): full Responses-API image path proven —
+  input_image parts, flat tools, reasoning-item echo, a real `declare_done` —
+  **AUDIT PASS**, QA 5/5, automatic caching live (11,297 cached tokens).
+  10 of 12 tools exercised by the model itself; all-12 coverage is guaranteed
+  separately by `scripts/smoke_tool_surface.py` (12/12) and the S5 scripted
+  mini-trial, both green.
+- **Gap-hunt gate 6/6** (`results/logs/gap_hunt_*/gap_hunt_report.json`),
+  after 4 rounds that fixed: the recorder-merge drop of contact/diagnostics
+  (root cause of the unauditable-fall mystery), settle-fall mislabeling,
+  sustained-contact abort semantics (S4: a 60 ms graze no longer aborts a
+  viable move), the OpenAI reasoning-echo strip, and the audit itself.
+- **Bugs fixed with regression tests** (rule 10.5): the SDK `status`-field
+  echo 400 (caught by THIS dry run's first attempt — the reasoning-only probe
+  could not see it because that turn is stripped whole), kit-vs-SDK import
+  order, preflight dotenv, cache-aware cost. 1443 tests.
+- **Latency recorded** (same commit): fable5 median 12–18 s/turn (max 36),
+  gpt56sol median 24 s (max 63) → `configs/benchmark.yaml runtime.*` +
+  doc 06 §8. Batch forecast: central ~2.8 h sequential, worst ~8 h.
+- **Open question resolved by measurement**: motion-tools-per-turn stays
+  UNCAPPED — both models bundle memory writes with motion naturally and no
+  blind-chaining pathology appeared; recorded in doc 05 §12.
 
 ---
 

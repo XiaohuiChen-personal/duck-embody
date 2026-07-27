@@ -200,6 +200,21 @@ scoring:
 runtime:
   wall_s_per_policy_s_with_recording: 1.73
   measured_at: T1.3
+  # MEASURED per-turn wall-clock (API + sim + render), T3.5 live runs
+  # (2026-07-27), from consecutive turn timestamps in the trial JSONs:
+  #   fable5   sanity runs: median 12-18 s, p90 16-31 s, max 36 s;
+  #            a thinking-heavy opening turn measured 33 s
+  #   gpt56sol dry run:     median 24 s, max 63 s (n=4)
+  # Batch forecast at these numbers: central ~42 turns/trial x 12 trials
+  # x ~20 s median = ~2.8 h sequential; worst case (every stage to the
+  # 40-turn cap) x p90 ~ 8 h. Supersedes doc 06 §8's unmeasured 5-25 s/turn
+  # band - the median lands inside it.
+  per_turn_wall_s:
+    fable5_median_range: [12, 18]
+    fable5_max: 36
+    gpt56sol_median: 24
+    gpt56sol_max: 63
+  batch_forecast_h: {central: 2.8, worst_case: 8.0}
 
 # --- Camera (frozen; MEASURED by T1.4) --------------------------------------
 camera:

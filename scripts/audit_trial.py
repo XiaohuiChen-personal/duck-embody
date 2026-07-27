@@ -49,7 +49,12 @@ def parse_ts(value: str) -> datetime | None:
         return None
 
 
-def audit(path: Path) -> int:
+def audit(path: Path, require_tool_coverage: bool = False) -> int:
+    # require_tool_coverage is for SCRIPTED trials (the S5 mini-trial), whose
+    # navigator promises all 12 tools. A real model trial that fell on turn 2
+    # legitimately used six — which tools a model chooses is model behaviour,
+    # and failing the audit on it would punish the harness for the model's
+    # brevity.
     trial = json.loads(path.read_text())
     turns = trial.get("turns", [])
     final = trial.get("final") or {}
@@ -84,7 +89,11 @@ def audit(path: Path) -> int:
         all_tools = sorted(used)
     missing = [n for n in all_tools if n not in used]
     print(f"  tools used: {', '.join(f'{k}x{v}' for k, v in sorted(used.items())) or 'none'}")
-    check(not missing, "every tool exercised at least once", f"missing: {missing}" if missing else "")
+    if require_tool_coverage:
+        check(not missing, "every tool exercised at least once",
+              f"missing: {missing}" if missing else "")
+    elif missing:
+        print(f"  INFO  tools not exercised by this model: {missing}")
 
     # -- errors the model was handed ---------------------------------------
     for t in turns:
@@ -103,7 +112,16 @@ def audit(path: Path) -> int:
         if info.get("end_reason") == "fall":
             diag = None
             for t in reversed(turns):
-                d = (t.get("execution") or {}).get("fall_diagnostics")
+                ex = t.get("execution") or {}
+                d = ex.get("fall_diagnostics")
+                if not d:
+                    # The schema carries them PER-CALL (execution.calls[i]);
+                    # auditing only the merged turn level made a correctly
+                    # instrumented trial read as unauditable.
+                    for call in ex.get("calls") or []:
+                        if call.get("fall_diagnostics"):
+                            d = call["fall_diagnostics"]
+                            break
                 if d:
                     diag = d
                     break

@@ -1274,7 +1274,7 @@ def scenario_s5(report: Report, session, out_dir: Path) -> None:
         sys.path.insert(0, str(REPO_ROOT / "scripts"))
         import audit_trial
 
-        audit_rc = audit_trial.audit(json_path)
+        audit_rc = audit_trial.audit(json_path, require_tool_coverage=True)
         measurements["audit_rc"] = audit_rc
         if audit_rc != 0:
             problems.append("audit_trial.py FAILED the trial JSON")
