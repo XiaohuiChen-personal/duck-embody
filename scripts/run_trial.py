@@ -145,6 +145,20 @@ def main() -> int:
     # vendor SDK, which must not be imported before kit starts (see below).
     preflight_provider(args.model)
 
+    # AGENTS.md rule 1, automated (pre-freeze gap G7): refuse to launch beside
+    # another GPU/kit job. Two T3.5-era logs end in a 22-minute wedged shutdown
+    # that held the machine's only GPU, and the concurrency probe showed a
+    # second kit does NOT reliably die at its init banner — it can limp into
+    # nondeterministic material-binding/camera failures instead. Checked HERE,
+    # before the multi-minute cold start, and never auto-killed: the guard
+    # prints the PIDs and leaves the decision to the operator.
+    from duck_embody.sim.preflight import format_refusal, rule1_violations
+
+    violations = rule1_violations()
+    if violations:
+        print(format_refusal(violations))
+        return 2
+
     # Heavy imports last, and only after the provider config is known good.
     # Stale-bytecode guard. `isaaclab.sh -p` does NOT set
     # PYTHONDONTWRITEBYTECODE, and Python validates a cached module on
