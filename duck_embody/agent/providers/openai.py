@@ -87,6 +87,39 @@ class OpenAIProvider:
     def _text_part(text: str) -> dict:
         return {"type": "input_text", "text": text}
 
+    @staticmethod
+    def _item_type(item) -> str | None:
+        """Type of one echoed output item — dict from ``model_dump`` normally,
+        an SDK object if a future item type ever lacks ``model_dump``."""
+        if isinstance(item, dict):
+            return item.get("type")
+        return getattr(item, "type", None)
+
+    @classmethod
+    def _without_trailing_reasoning(cls, native: list) -> list:
+        """Drop reasoning items that no non-reasoning item follows.
+
+        The defensive half of the pair the Anthropic adapter's empty-turn drop
+        is the other half of (gap G5). A gpt-5.6-sol turn that exhausts
+        ``max_output_tokens`` DURING reasoning yields reasoning-only output —
+        commonly on the derailment path, where the turn is echoed back
+        verbatim — and the Responses API documents rejecting a ``reasoning``
+        item without its required follow-up item (400). That 400 would surface
+        as a doc 05 §8 INFRA rerun of the whole trial, converting one
+        contestant's own budget exhaustion (a §8 *scored* model failure — the
+        burned turn still counts either way) into a free retry.
+
+        Model-neutral by construction: it fires only on shapes that would
+        otherwise 400, and never touches a reasoning item that keeps its
+        follower — mid-turn continuity is preserved verbatim (§7.3). Interior
+        reasoning items are left alone even in the trailing scan: the scan
+        stops at the first non-reasoning item from the end.
+        """
+        end = len(native)
+        while end > 0 and cls._item_type(native[end - 1]) == "reasoning":
+            end -= 1
+        return native[:end] if end < len(native) else native
+
     def to_native(self, messages: list[Message]) -> list[dict]:
         """Neutral messages -> Responses API ``input`` items."""
         out: list[dict] = []
@@ -94,8 +127,12 @@ class OpenAIProvider:
         for msg in messages:
             if isinstance(msg, AssistantMessage):
                 # `native` is the model's list of output items, echoed verbatim
-                # (reasoning items included — dropping them breaks continuity).
-                out.extend(msg.native)
+                # (reasoning items included — dropping them breaks continuity)
+                # — EXCEPT trailing reasoning-only items, which the API rejects
+                # with a 400 on the echo (see _without_trailing_reasoning). A
+                # turn that was reasoning-only becomes an empty extend, the
+                # exact analogue of the Anthropic adapter's empty-turn drop.
+                out.extend(self._without_trailing_reasoning(msg.native))
                 continue
 
             plain_parts: list[dict] = []

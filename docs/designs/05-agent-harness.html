@@ -1043,6 +1043,22 @@ output}</code>, where <code>output</code> is a <strong>string</strong>.</li>
 API change: a tool result still cannot carry an image, so frames follow in an adjacent
 user message, labelled and attributed to the originating <code>call_id</code>.</p>
 
+<div class="decision"><strong>Recorded by the pre-freeze forensic pass (gap G5): trailing reasoning-only
+items are stripped from the echo.</strong> A gpt-5.6-sol turn that exhausts <code>max_output_tokens</code>
+<em>during</em> reasoning yields reasoning-only output; the derailment branch echoes the turn back verbatim,
+and the Responses API documents rejecting a <code>reasoning</code> item without its required follow-up item —
+a 400 on the <em>next</em> request, i.e. §8's INFRA path rerunning a whole trial for what §8 classifies as a
+<em>scored</em> model failure (the burned budget costs the model its turn either way). The adapter therefore
+drops reasoning items that no non-reasoning item follows before echoing
+(<code>OpenAIProvider._without_trailing_reasoning</code>) — the exact analogue of the Anthropic adapter's
+measured empty-turn drop, and model-neutral by the same argument: it fires only on shapes that would
+otherwise 400, and a reasoning item that keeps its follower is echoed byte-for-byte, so §7.2/§7.3's
+continuity requirement is untouched. CAVEAT, stated honestly: the triggering shape is <em>documented</em> but
+not yet reproduced against the live API (a probe costs a paid call and sits with the orchestrator — the
+consolidated pre-freeze report's G5 option (a)); the strip is written so that if the shape never occurs,
+the code path simply never fires. Pinned by shape tests in <code>tests/test_providers.py</code>, alongside
+the mirror pin on the Anthropic empty-turn drop.</div>
+
 <div class="warning"><strong>Recorded by T3.2's review pass: the ONE place the tool surface is not
 byte-identical across contestants, and it is API-imposed.</strong> <code>tools.dispatch</code> sets
 <code>is_error=True</code> on every <code>invalid_args</code> / <code>unknown_tool</code> /

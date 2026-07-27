@@ -348,6 +348,34 @@ class TestOpenAIMessageShaping:
         out = openai_adapter.to_native([AssistantMessage(native=native)])
         assert out == native
 
+    def test_a_reasoning_only_turn_is_not_echoed(self, openai_adapter):
+        """G5: a turn that exhausted max_output_tokens DURING reasoning is
+        reasoning-only; the Responses API documents rejecting a reasoning item
+        without its required follow-up, so echoing it converts one
+        contestant's scored budget exhaustion into a §8 infra rerun. The
+        analogue of the Anthropic empty-turn drop
+        (`test_an_empty_assistant_turn_is_dropped_not_echoed`; the
+        thinking-only echo mirror is
+        `test_a_non_empty_assistant_turn_is_still_echoed`)."""
+        native = [
+            {"type": "reasoning", "id": "rs_1", "summary": []},
+            {"type": "reasoning", "id": "rs_2", "summary": []},
+        ]
+        out = openai_adapter.to_native([AssistantMessage(native=native)])
+        assert out == []
+
+    def test_only_the_trailing_reasoning_items_are_stripped(self, openai_adapter):
+        """A reasoning item that keeps its follower is continuity (doc 05
+        §7.3) and must be replayed byte-for-byte; only the trailing
+        followerless tail — the shape that would 400 — is dropped."""
+        native = [
+            {"type": "reasoning", "id": "rs_1", "summary": []},
+            {"type": "function_call", "call_id": "c1", "name": "move", "arguments": "{}"},
+            {"type": "reasoning", "id": "rs_2", "summary": []},
+        ]
+        out = openai_adapter.to_native([AssistantMessage(native=native)])
+        assert out == native[:2]
+
     def test_look_around_labels_survive_the_carrier(self, openai_adapter):
         msg = UserMessage(
             blocks=[
