@@ -179,6 +179,68 @@ class ExecResult:
     dead_reckoned_distance_m: float = 0.0
 
 
+def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecResult":
+    """Fold one more chunk's ``ExecResult`` into a running total. THE merge.
+
+    This is the single merge implementation for BOTH stitching layers — the
+    macros' 0.2 s servo chunks (:meth:`PolicyPlayback._merge` delegates here)
+    and the recorder's 0.04 s video chunks (``recorder.chunked_execute``).
+    They used to be two hand-mirrored copies, and the copies drifted: the
+    recorder's dropped ``contact_groups`` and ``fall_diagnostics`` entirely, so
+    every video-recorded run — the default and the rule-11-mandatory batch path
+    — reported ``bumped: true, contact: []`` to the model and ``fell: true``
+    with no diagnostics to the audit log whenever the confirming chunk was not
+    the first (the COMMON case: BUMP_DEBOUNCE_STEPS=3 exceeds a 2-step chunk).
+    One function, so the two paths structurally cannot disagree again.
+
+    Field rules that are policy, not plumbing:
+
+    * ``contact_groups`` is the UNION over chunks, preserving first-seen order
+      — never last-wins. A drive that catches the head on a shelf and then
+      scrapes the torso felt both, and the earlier region is exactly the one a
+      last-wins merge silently destroyed. Matches ``execute()``'s own
+      within-call accumulation, so all three layers agree.
+    * ``fall_diagnostics`` belongs to the chunk that terminated; a later None
+      never overwrites a captured one. Its ``policy_seconds_into_call`` is
+      re-stamped with the ACCUMULATED seconds into this call: ``execute()`` can
+      only know its own chunk, which bounded every recorded fall at 0.04 s
+      regardless of how deep into the command it happened.
+    * ``clamp_notes`` extend WITHOUT duplicates. Every 0.04 s recording chunk
+      of one out-of-hull command carries the identical note; extending blindly
+      would echo it ~75 times per 3 s command, turning the model-facing
+      ``notes`` key from a signal into noise. (Macro chunks pre-clamp and
+      carry no notes, so this changes nothing for them.)
+    * ``duration_s`` and ``commanded`` are deliberately NOT merged and stay the
+      first chunk's values — stale by design; never read them off a merged
+      result (AGENTS.md §5).
+    """
+    if total is None:
+        return part
+    total.steps += part.steps
+    total.policy_seconds += part.policy_seconds
+    total.bumped = total.bumped or part.bumped
+    for group in part.contact_groups:
+        if group not in total.contact_groups:
+            total.contact_groups.append(group)
+    if part.fall_diagnostics is not None:
+        total.fall_diagnostics = part.fall_diagnostics
+        # AFTER the policy_seconds accumulation above, so the stamp covers
+        # every chunk of this call including the terminating one (G9): the
+        # chunk-local figure said every recorded fall happened <= 0.04 s in.
+        total.fall_diagnostics["policy_seconds_into_call"] = round(
+            total.policy_seconds, 3
+        )
+    total.fell = part.fell
+    total.sampled_xy.extend(part.sampled_xy)
+    total.true_pose = part.true_pose
+    total.stopped_early = part.stopped_early
+    total.stop_reason = part.stop_reason or total.stop_reason
+    for note in part.clamp_notes:
+        if note not in total.clamp_notes:
+            total.clamp_notes.append(note)
+    return total
+
+
 class PolicyPlayback:
     """Loads ``model_2999.pt`` and drives the env under injected commands."""
 
@@ -509,6 +571,13 @@ class PolicyPlayback:
                     "tilt_threshold_deg": FALL_TILT_LIMIT_DEG,
                     "commanded": (cvx, cvy, cwz),
                     "policy_seconds_into_call": round(steps_done * CONTROL_DT, 3),
+                    # Self-description, because the numbers can otherwise look
+                    # wrong on their own: pre-step values are one control step
+                    # (20 ms) BEFORE the thresholds fired, so a recorded tilt
+                    # of 59.4 deg can sit beside a 60.0 threshold in the same
+                    # dict with fell_over true — honest, but inexplicable to a
+                    # reader who was not told the sampling instant.
+                    "values_pre_step": True,
                 }
                 break
 
@@ -519,11 +588,20 @@ class PolicyPlayback:
                 self._bump_run += 1
                 if self._bump_run >= BUMP_DEBOUNCE_STEPS:
                     bumped = True
-                    # Sampled AT the bump, not afterwards: by the end of the
-                    # call the robot has usually separated and the regions read
-                    # empty — which is how `contact_report()` came back {} in
-                    # the T3.5 probe right after a confirmed sofa collision.
-                    contact_groups = self.contact_groups()
+                    # Sampled DURING confirmed contact, never at the end of the
+                    # call: by then the robot has usually separated and the
+                    # regions read empty — which is how `contact_report()` came
+                    # back {} in the T3.5 probe right after a confirmed sofa
+                    # collision. Accumulated as a first-seen-order UNION over
+                    # every confirmed-contact step (under stop_on_bump=False
+                    # the command keeps driving through contact), not
+                    # overwritten with the latest sample: a drive that catches
+                    # the head and then scrapes the torso felt both, and the
+                    # merge layers (`merge_exec_results`) apply the identical
+                    # union rule across chunks.
+                    for group in self.contact_groups():
+                        if group not in contact_groups:
+                            contact_groups.append(group)
                     if stop_on_bump:
                         stopped_early = True
                         stop_reason = "bump"
@@ -576,23 +654,12 @@ class PolicyPlayback:
     # -- motion macros (doc 02 §6) ------------------------------------------
 
     def _merge(self, total: ExecResult | None, part: ExecResult) -> ExecResult:
-        if total is None:
-            return part
-        total.steps += part.steps
-        total.policy_seconds += part.policy_seconds
-        total.bumped = total.bumped or part.bumped
-        if part.contact_groups:
-            total.contact_groups = part.contact_groups
-        # Diagnostics belong to the chunk that terminated, so never overwrite a
-        # captured one with a later None.
-        total.fall_diagnostics = part.fall_diagnostics or total.fall_diagnostics
-        total.fell = part.fell
-        total.sampled_xy.extend(part.sampled_xy)
-        total.true_pose = part.true_pose
-        total.stopped_early = part.stopped_early
-        total.stop_reason = part.stop_reason or total.stop_reason
-        total.clamp_notes.extend(part.clamp_notes)
-        return total
+        # Pure delegation to the ONE shared merge. The recorder's chunked path
+        # merges through the same function, so the two layers cannot drift —
+        # the hand-mirrored copy this used to be beside dropped
+        # contact_groups/fall_diagnostics on every recorded run (see
+        # merge_exec_results).
+        return merge_exec_results(total, part)
 
     def turn_to_heading(
         self,
@@ -639,6 +706,12 @@ class PolicyPlayback:
             last_pose = settle.true_pose
             if on_chunk is not None:
                 on_chunk()
+            # A topple DURING the settle is still a fall. The stale local flag
+            # used to win here, so the very command that ended the trial
+            # reported stop_reason "reached"/"timeout" — and tools.py derives
+            # the model-facing `timed_out` from that exact string, telling the
+            # model its turn timed out on a trial that was already over.
+            fell = settle.fell
 
         residual = shortest_angle_diff_deg(last_pose[2], target)
         merged.stop_reason = (
@@ -723,6 +796,12 @@ class PolicyPlayback:
             last_pose = stop.true_pose
             if on_chunk is not None:
                 on_chunk()
+            # A topple DURING the settle is still a fall. `reason` was decided
+            # before the settle ran, so without this the audit record carried
+            # the contradiction `fell: true, stop_reason: "reached",
+            # stopped_early: false` on the command that ended the trial.
+            if stop.fell:
+                reason = "fell"
 
         end_xy = (last_pose[0], last_pose[1])
         merged.stop_reason = reason

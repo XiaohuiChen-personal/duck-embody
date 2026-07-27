@@ -339,6 +339,19 @@ the same 20 s / 4 m with <code>k</code> unchanged at 1.018. This is squarely ins
 rule 5's declared exception (c), closed-loop motion macros servoing on compass + dead reckoning.
 <span class="src">source: results/figures/smoke/displacement_report.json (runs a, d, f)</span></li>
 </ul></div>
+<div class="note"><strong>AMENDED by the pre-freeze forensic pass — a fall during the trailing settle
+chunk is a fall.</strong> Both macros append a trailing 0.2&nbsp;s zero-command settle chunk (the
+<code>step(CHUNK)</code> after <code>set_command(0,0,0)</code> above) and merge it into the result — but both
+decided their <code>stop_reason</code> <em>before</em> that chunk ran, so a robot that toppled while stopping
+was recorded as <code>fell: true</code> with <code>stop_reason: "reached"/"timeout"</code> and
+<code>stopped_early: false</code>; <code>turn_to_heading</code> additionally derives the model-facing
+<code>timed_out</code> from that string, so the very command that ended the trial could tell the model it
+merely timed out. Fixed in both macros (<code>if settle.fell: reason = "fell"</code>), pinned by
+<code>tests/test_execute_ordering.py</code>. Related merge-layer rules — the shared
+<code>merge_exec_results</code>, the first-seen-order <em>union</em> of <code>contact_groups</code> across
+chunks, and the call-accumulated <code>fall_diagnostics.policy_seconds_into_call</code> — are recorded in doc
+<a href="06-benchmark-evaluation.html">06</a> §4's widened list.</div>
+
 <p>Bump detection reads
 the existing contact sensor (the same signal the removed <code>base_contact</code> termination used),
 debounced over a few chunks so a single 1 N grazing spike doesn't halt a legitimate squeeze through a

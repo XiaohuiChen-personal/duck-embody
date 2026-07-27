@@ -736,11 +736,14 @@ def _record_motion(
         # consequential event in a run; T3.5 produced one that could not be
         # audited afterwards because the log recorded only the boolean. None
         # on every non-terminating call.
-        # Falls back to the playback's own copy. The ExecResult carries it on
-        # every path I could exercise, but a T3.5 trial recorded `fell: true`
-        # with None and I could not reproduce that specific case — so rather
-        # than trust a negative, read the instance state too. Safe: a fall ends
-        # the trial, so there is at most one per run, and `reset()` clears it.
+        # Falls back to the playback's own copy. The T3.5 `fell: true` /
+        # diagnostics-None artifact is now ROOT-CAUSED: recorder.chunked_execute's
+        # merge dropped `fall_diagnostics` for any fall confirmed after piece 1
+        # (fixed — both merge layers now share policy_wrapper.merge_exec_results,
+        # pinned by tests/test_execute_ordering.py). The fallback stays anyway:
+        # it also covers any future ExecResult producer that forgets the field,
+        # and it is safe — a fall ends the trial, so there is at most one per
+        # run, and `reset()` clears it between runs.
         "fall_diagnostics": (
             result.fall_diagnostics
             or (context.playback.fall_diagnostics if result.fell else None)

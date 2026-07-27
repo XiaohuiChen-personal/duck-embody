@@ -226,22 +226,37 @@ def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
     (rather than a ``PolicyPlayback``) so :func:`attach_recorder` can hand over
     the *unpatched* bound method and not recurse into itself.
 
-    The merge is the delicate part and the reason this lives in one place:
-    only the 5 Hz ``sampled_xy`` samples are concatenated, and the start/end
-    bookends are added once at the end. Concatenating each chunk's full
-    ``pose_trace`` instead would contribute two extra points per 2-step chunk —
-    a ~50 Hz trace of per-step gait sway — which inflates the SPL path integral
+    The chunk-fold itself is ``policy_wrapper.merge_exec_results`` — the SAME
+    function the motion macros merge through, on purpose. This block used to
+    carry its own hand-mirrored field list, and the copy drifted: it never
+    merged ``contact_groups`` or ``fall_diagnostics``, so every recorded run
+    (the default, and the rule-11-mandatory batch path) showed the model
+    ``bumped: true, contact: []`` and logged ``fell: true`` with no
+    diagnostics whenever the confirming chunk was not the first — the common
+    case, since BUMP_DEBOUNCE_STEPS=3 exceeds a 2-step chunk. That is T3.5's
+    "fell with no diagnostics" artifact, root-caused at last (the
+    stale-bytecode theory run_trial.py used to state was wrong).
+
+    What stays here is the trace bookkeeping: only the 5 Hz ``sampled_xy``
+    samples are concatenated (by the merge), and the start/end bookends are
+    added once at the end. Concatenating each chunk's full ``pose_trace``
+    instead would contribute two extra points per 2-step chunk — a ~50 Hz
+    trace of per-step gait sway — which inflates the SPL path integral
     doc 06 §5.3 pins to 5 Hz.
     """
     import math
 
-    from duck_embody.sim.policy_wrapper import CONTROL_DT, ExecResult, duration_to_steps
+    from duck_embody.sim.policy_wrapper import (
+        CONTROL_DT,
+        ExecResult,
+        duration_to_steps,
+        merge_exec_results,
+    )
 
     total_steps = duration_to_steps(duration_s)
     done_steps = 0
     merged: "ExecResult | None" = None
     start_xy: tuple[float, float] | None = None
-    sampled: list[tuple[float, float]] = []
 
     while done_steps < total_steps:
         remaining = (total_steps - done_steps) * CONTROL_DT
@@ -251,26 +266,14 @@ def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
 
         if start_xy is None:
             start_xy = part.pose_trace[0]
-        sampled.extend(part.sampled_xy)
-
-        if merged is None:
-            merged = part
-        else:
-            merged.steps += part.steps
-            merged.policy_seconds += part.policy_seconds
-            merged.bumped = merged.bumped or part.bumped
-            merged.fell = part.fell
-            merged.true_pose = part.true_pose
-            merged.stopped_early = part.stopped_early
-            merged.stop_reason = part.stop_reason or merged.stop_reason
+        merged = merge_exec_results(merged, part)
 
         if part.fell or part.stopped_early:
             break
 
     end_xy = (merged.true_pose[0], merged.true_pose[1])
     merged.duration_s = duration_s
-    merged.sampled_xy = sampled
-    merged.pose_trace = [start_xy, *sampled, end_xy]
+    merged.pose_trace = [start_xy, *merged.sampled_xy, end_xy]
     merged.true_displacement_m = math.dist(start_xy, end_xy)
     return merged
 

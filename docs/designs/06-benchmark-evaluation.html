@@ -439,6 +439,24 @@ bytes re-injected into this turn's request — while <code>memory_snapshot</code
 read post-dispatch and therefore include this turn's writes. Both are the right vintage for their consumer
 (§5.8's correction series needs the writes the turn made; an audit of what the model read needs the block it
 read), so the two halves disagree by exactly one turn's writes, by construction.</li>
+<li><strong>The recorded path honours the same <code>ExecResult</code> contract as the unrecorded one</strong>
+(pre-freeze forensic pass). Every recorded command — the default, and the rule-11-mandatory batch path —
+is stitched from 0.04&nbsp;s pieces by <code>recorder.chunked_execute</code>, whose merge used to be a
+hand-mirrored copy of the macro merge that had drifted: it dropped <code>contact_groups</code> and
+<code>fall_diagnostics</code> whenever the confirming piece was not the first, which is the <em>common</em>
+case (the 3-step bump debounce exceeds a 2-step piece). Consequences before the fix: the model read
+<code>bumped: true, contact: []</code> after every recorded bump while the frozen prompt promises the contact
+signal, and the audit log recorded <code>fell: true</code> with <code>fall_diagnostics: null</code> — T3.5's
+unexplained artifact, whose stale-bytecode theory is retracted. Both stitching layers now share ONE merge
+(<code>policy_wrapper.merge_exec_results</code>), whose per-field rules are policy:
+<code>contact_groups</code> merges as a <strong>union preserving first-seen order</strong> (never last-wins —
+an earlier felt region, e.g. head then torso, must not vanish; <code>execute()</code> applies the identical
+union within a call), and <code>fall_diagnostics.policy_seconds_into_call</code> is re-stamped with the
+seconds accumulated into the whole <em>call</em> (the chunk-local figure bounded every recorded fall at
+0.04&nbsp;s). The diagnostics dict also carries <code>values_pre_step: true</code>: its height/tilt are
+sampled one control step before the thresholds fired (the post-step scene is already teleported), so a tilt
+just under the stated threshold beside <code>fell_over: true</code> is honest, and now self-explanatory.
+Pinned by <code>tests/test_execute_ordering.py</code>.</li>
 </ol>
 <p>Also added: <code>final.end_reason</code> and <code>final.stages</code>. <strong>Outcome and end reason are
 two different things and conflating them loses a case.</strong> <code>end_reason</code> is doc 05 §3.2's four
