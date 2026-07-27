@@ -1,0 +1,1133 @@
+{
+  "trial_id": "claude-fable-5_seed101",
+  "config": {
+    "freeze_commit": "0000000000000000000000000000000000000000",
+    "config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "model": "claude-fable-5",
+    "model_config": "fable5",
+    "seed": 101,
+    "spawn": {
+      "xy": [
+        0.5,
+        0.5
+      ],
+      "heading_deg": 90.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 0.5,
+        "y": 0.5,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "update_room",
+            "args": {
+              "name": "living room",
+              "description": "sofa, blue rug"
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "living room"
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.8
+            }
+          }
+        ],
+        "dispatched": 3,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.81 m, 4.0 policy-s",
+        "policy_seconds_used": 4.0,
+        "pose_trace": [
+          [
+            0.5,
+            0.5
+          ],
+          [
+            0.675,
+            0.6
+          ],
+          [
+            0.85,
+            0.7
+          ],
+          [
+            1.025,
+            0.8
+          ],
+          [
+            1.2,
+            0.9
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 4.0,
+            "pose_trace": [
+              [
+                0.5,
+                0.5
+              ],
+              [
+                0.675,
+                0.6
+              ],
+              [
+                0.85,
+                0.7
+              ],
+              [
+                1.025,
+                0.8
+              ],
+              [
+                1.2,
+                0.9
+              ]
+            ],
+            "sampled_xy": [
+              [
+                0.675,
+                0.6
+              ],
+              [
+                0.85,
+                0.7
+              ],
+              [
+                1.025,
+                0.8
+              ]
+            ],
+            "true_pose": [
+              1.2,
+              0.9,
+              90.0
+            ],
+            "true_displacement_m": 0.8062257748298549,
+            "distance_moved_m": 0.8062257748298549,
+            "bumped": false,
+            "fell": false,
+            "stop_reason": "",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 1.2,
+        "y": 0.9,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "living room": {
+            "name": "living room",
+            "description": "sofa, blue rug",
+            "landmarks": []
+          }
+        },
+        "exits": [],
+        "trajectory": [
+          "living room"
+        ],
+        "current_room": "living room",
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 2/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 4.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 3,
+      "global_turn_idx": 3,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 1.18,
+          "y": 0.92
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "add_landmark",
+            "args": {
+              "room": "living room",
+              "description": "blue rug"
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.2
+            }
+          },
+          {
+            "name": "update_room",
+            "args": {
+              "name": "kitchen",
+              "description": "counter"
+            }
+          },
+          {
+            "name": "set_current_room",
+            "args": {
+              "name": "kitchen"
+            }
+          },
+          {
+            "name": "mark_exit",
+            "args": {
+              "room": "living room",
+              "direction_deg": 0,
+              "status": "leads_to:kitchen"
+            }
+          }
+        ],
+        "dispatched": 5,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 1.01 m, 6.0 policy-s, auto-stop on collision (bump)",
+        "policy_seconds_used": 6.0,
+        "pose_trace": [
+          [
+            1.2,
+            0.9
+          ],
+          [
+            1.45,
+            0.9375
+          ],
+          [
+            1.7000000000000002,
+            0.9750000000000001
+          ],
+          [
+            1.9500000000000002,
+            1.0125
+          ],
+          [
+            2.2,
+            1.05
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 6.0,
+            "pose_trace": [
+              [
+                1.2,
+                0.9
+              ],
+              [
+                1.45,
+                0.9375
+              ],
+              [
+                1.7000000000000002,
+                0.9750000000000001
+              ],
+              [
+                1.9500000000000002,
+                1.0125
+              ],
+              [
+                2.2,
+                1.05
+              ]
+            ],
+            "sampled_xy": [
+              [
+                1.45,
+                0.9375
+              ],
+              [
+                1.7000000000000002,
+                0.9750000000000001
+              ],
+              [
+                1.9500000000000002,
+                1.0125
+              ]
+            ],
+            "true_pose": [
+              2.2,
+              1.05,
+              90.0
+            ],
+            "true_displacement_m": 1.0111874208078344,
+            "distance_moved_m": 1.0111874208078344,
+            "bumped": true,
+            "fell": false,
+            "stop_reason": "bump",
+            "counted_as_bump": true
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 2.2,
+        "y": 1.05,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "living room": {
+            "name": "living room",
+            "description": "sofa, blue rug",
+            "landmarks": [
+              "blue rug"
+            ]
+          },
+          "kitchen": {
+            "name": "kitchen",
+            "description": "counter",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "living room",
+            "direction_deg": 0.0,
+            "status": "leads_to:kitchen"
+          }
+        ],
+        "trajectory": [
+          "living room",
+          "kitchen"
+        ],
+        "current_room": "kitchen",
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\nTrajectory: living room\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.18, y=0.92  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): living room\nBreadcrumbs (last 5): (none yet)\nBudget: turns 3/40, policy-seconds 4.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 3,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 10.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 4,
+      "global_turn_idx": 4,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 2.24,
+          "y": 1.01
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "correct_position",
+            "args": {
+              "x": 2.2,
+              "y": 1.05,
+              "reason": "counter in view"
+            }
+          },
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.45
+            }
+          },
+          {
+            "name": "declare_done",
+            "args": {}
+          }
+        ],
+        "dispatched": 2,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.48 m, 2.5 policy-s",
+        "policy_seconds_used": 2.5,
+        "pose_trace": [
+          [
+            2.2,
+            1.05
+          ],
+          [
+            2.2875,
+            0.9675
+          ],
+          [
+            2.375,
+            0.885
+          ],
+          [
+            2.4625,
+            0.8025
+          ],
+          [
+            2.55,
+            0.72
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 2.5,
+            "pose_trace": [
+              [
+                2.2,
+                1.05
+              ],
+              [
+                2.2875,
+                0.9675
+              ],
+              [
+                2.375,
+                0.885
+              ],
+              [
+                2.4625,
+                0.8025
+              ],
+              [
+                2.55,
+                0.72
+              ]
+            ],
+            "sampled_xy": [
+              [
+                2.2875,
+                0.9675
+              ],
+              [
+                2.375,
+                0.885
+              ],
+              [
+                2.4625,
+                0.8025
+              ]
+            ],
+            "true_pose": [
+              2.55,
+              0.72,
+              90.0
+            ],
+            "true_displacement_m": 0.4810405388322275,
+            "distance_moved_m": 0.4810405388322275,
+            "bumped": false,
+            "fell": false,
+            "stop_reason": "",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 2.55,
+        "y": 0.72,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "living room": {
+            "name": "living room",
+            "description": "sofa, blue rug",
+            "landmarks": [
+              "blue rug"
+            ]
+          },
+          "kitchen": {
+            "name": "kitchen",
+            "description": "counter",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "living room",
+            "direction_deg": 0.0,
+            "status": "leads_to:kitchen"
+          }
+        ],
+        "trajectory": [
+          "living room",
+          "kitchen"
+        ],
+        "current_room": "kitchen",
+        "plan": "",
+        "corrections": [
+          {
+            "turn": 4,
+            "old_xy": [
+              2.24,
+              1.01
+            ],
+            "new_xy": [
+              2.2,
+              1.05
+            ],
+            "reason": "counter in view",
+            "stage": "find_kitchen"
+          }
+        ],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.24, y=1.01  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nBudget: turns 4/40, policy-seconds 10.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 4,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 12.5,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": "declare_done"
+    },
+    {
+      "stage": "return_home",
+      "turn_idx": 1,
+      "global_turn_idx": 5,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 2.5,
+          "y": 0.75
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 1.4
+            }
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 1.27 m, 7.0 policy-s",
+        "policy_seconds_used": 7.0,
+        "pose_trace": [
+          [
+            2.55,
+            0.72
+          ],
+          [
+            2.2375,
+            0.7775
+          ],
+          [
+            1.9249999999999998,
+            0.835
+          ],
+          [
+            1.6125,
+            0.8925
+          ],
+          [
+            1.3,
+            0.95
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 7.0,
+            "pose_trace": [
+              [
+                2.55,
+                0.72
+              ],
+              [
+                2.2375,
+                0.7775
+              ],
+              [
+                1.9249999999999998,
+                0.835
+              ],
+              [
+                1.6125,
+                0.8925
+              ],
+              [
+                1.3,
+                0.95
+              ]
+            ],
+            "sampled_xy": [
+              [
+                2.2375,
+                0.7775
+              ],
+              [
+                1.9249999999999998,
+                0.835
+              ],
+              [
+                1.6125,
+                0.8925
+              ]
+            ],
+            "true_pose": [
+              1.3,
+              0.95,
+              90.0
+            ],
+            "true_displacement_m": 1.2709838708654015,
+            "distance_moved_m": 1.2709838708654015,
+            "bumped": false,
+            "fell": false,
+            "stop_reason": "",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 1.3,
+        "y": 0.95,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "living room": {
+            "name": "living room",
+            "description": "sofa, blue rug",
+            "landmarks": [
+              "blue rug"
+            ]
+          },
+          "kitchen": {
+            "name": "kitchen",
+            "description": "counter",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "living room",
+            "direction_deg": 0.0,
+            "status": "leads_to:kitchen"
+          }
+        ],
+        "trajectory": [
+          "living room",
+          "kitchen"
+        ],
+        "current_room": "kitchen",
+        "plan": "",
+        "corrections": [
+          {
+            "turn": 4,
+            "old_xy": [
+              2.24,
+              1.01
+            ],
+            "new_xy": [
+              2.2,
+              1.05
+            ],
+            "reason": "counter in view",
+            "stage": "find_kitchen"
+          }
+        ],
+        "stage": "return_home",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.50, y=0.75  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 7.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": null
+    },
+    {
+      "stage": "return_home",
+      "turn_idx": 2,
+      "global_turn_idx": 6,
+      "timestamp": "2026-07-27T04:12:31Z",
+      "obs": {
+        "frame_paths": [],
+        "compass_deg": 90.0,
+        "position_estimate": {
+          "x": 1.28,
+          "y": 0.9
+        },
+        "status": {
+          "bumped": false,
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "move",
+            "args": {
+              "distance_m": 0.9
+            }
+          },
+          {
+            "name": "declare_done",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "move: moved 0.77 m, 4.5 policy-s",
+        "policy_seconds_used": 4.5,
+        "pose_trace": [
+          [
+            1.3,
+            0.95
+          ],
+          [
+            1.1300000000000001,
+            0.8574999999999999
+          ],
+          [
+            0.96,
+            0.7649999999999999
+          ],
+          [
+            0.79,
+            0.6725
+          ],
+          [
+            0.62,
+            0.58
+          ]
+        ],
+        "motion_calls": 1,
+        "calls": [
+          {
+            "tool": "move",
+            "policy_seconds_used": 4.5,
+            "pose_trace": [
+              [
+                1.3,
+                0.95
+              ],
+              [
+                1.1300000000000001,
+                0.8574999999999999
+              ],
+              [
+                0.96,
+                0.7649999999999999
+              ],
+              [
+                0.79,
+                0.6725
+              ],
+              [
+                0.62,
+                0.58
+              ]
+            ],
+            "sampled_xy": [
+              [
+                1.1300000000000001,
+                0.8574999999999999
+              ],
+              [
+                0.96,
+                0.7649999999999999
+              ],
+              [
+                0.79,
+                0.6725
+              ]
+            ],
+            "true_pose": [
+              0.62,
+              0.58,
+              90.0
+            ],
+            "true_displacement_m": 0.7741446893184762,
+            "distance_moved_m": 0.7741446893184762,
+            "bumped": false,
+            "fell": false,
+            "stop_reason": "",
+            "counted_as_bump": false
+          }
+        ]
+      },
+      "true_pose": {
+        "x": 0.62,
+        "y": 0.58,
+        "heading_deg": 90.0
+      },
+      "memory_snapshot": {
+        "rooms": {
+          "living room": {
+            "name": "living room",
+            "description": "sofa, blue rug",
+            "landmarks": [
+              "blue rug"
+            ]
+          },
+          "kitchen": {
+            "name": "kitchen",
+            "description": "counter",
+            "landmarks": []
+          }
+        },
+        "exits": [
+          {
+            "room": "living room",
+            "direction_deg": 0.0,
+            "status": "leads_to:kitchen"
+          }
+        ],
+        "trajectory": [
+          "living room",
+          "kitchen"
+        ],
+        "current_room": "kitchen",
+        "plan": "",
+        "corrections": [
+          {
+            "turn": 4,
+            "old_xy": [
+              2.24,
+              1.01
+            ],
+            "new_xy": [
+              2.2,
+              1.05
+            ],
+            "reason": "counter in view",
+            "stage": "find_kitchen"
+          }
+        ],
+        "stage": "return_home",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.28, y=0.90  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 2/40, policy-seconds 7.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 2,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 11.5,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "end_reason": "declare_done"
+    }
+  ],
+  "video_path": null,
+  "final": {
+    "outcome": {
+      "find_kitchen": "success",
+      "return_home": "success"
+    },
+    "end_reason": {
+      "find_kitchen": "declare_done",
+      "return_home": "declare_done"
+    },
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "declare_done",
+        "outcome": "success",
+        "success": true,
+        "turns_used": 4,
+        "policy_seconds_used": 12.5,
+        "score": {
+          "success": true,
+          "distance_m": 0.03,
+          "radius_m": 0.35,
+          "goal_xy": [
+            2.55,
+            0.75
+          ],
+          "true_xy": [
+            2.55,
+            0.72
+          ]
+        },
+        "true_pose": {
+          "x": 2.55,
+          "y": 0.72,
+          "heading_deg": 90.0
+        }
+      },
+      "return_home": {
+        "stage": "return_home",
+        "end_reason": "declare_done",
+        "outcome": "success",
+        "success": true,
+        "turns_used": 2,
+        "policy_seconds_used": 11.5,
+        "score": {
+          "success": true,
+          "distance_m": 0.1442,
+          "radius_m": 0.5,
+          "goal_xy": [
+            0.5,
+            0.5
+          ],
+          "true_xy": [
+            0.62,
+            0.58
+          ]
+        },
+        "true_pose": {
+          "x": 0.62,
+          "y": 0.58,
+          "heading_deg": 90.0
+        }
+      }
+    },
+    "bumps": 1,
+    "metrics": {},
+    "tokens": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "cost_usd_estimate": 0.0
+    },
+    "tokens_breakdown": {
+      "episode": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      },
+      "qa": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.0
+      }
+    },
+    "qa": [
+      {
+        "number": 1,
+        "question": "Which room connects the bedroom to the kitchen?",
+        "answer": "The hallway connects the bedroom to the kitchen.",
+        "score": null
+      },
+      {
+        "number": 2,
+        "question": "Starting at the front of the sofa, give turn-by-turn directions to the fridge.",
+        "answer": "From the front of the sofa, head east through the doorway into the kitchen; the fridge is on the north wall.",
+        "score": null
+      },
+      {
+        "number": 3,
+        "question": "How many rooms did you visit? Name them.",
+        "answer": "I visited two rooms: the living room and the kitchen.",
+        "score": null
+      },
+      {
+        "number": 4,
+        "question": "Which direction (compass) is the kitchen from your spawn point?",
+        "answer": "The kitchen is to the northeast of my spawn point.",
+        "score": null
+      },
+      {
+        "number": 5,
+        "question": "Name one landmark in each room you visited.",
+        "answer": "Living room: the blue rug. Kitchen: the fridge.",
+        "score": null
+      }
+    ],
+    "qa_raw": "1. The hallway connects the bedroom to the kitchen.\n2. From the front of the sofa, head east through the doorway into the kitchen; the fridge is on the north wall.\n3. I visited two rooms: the living room and the kitchen.\n4. The kitchen is to the northeast of my spawn point.\n5. Living room: the blue rug. Kitchen: the fridge.",
+    "qa_parse_failed": false
+  }
+}

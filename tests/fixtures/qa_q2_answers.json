@@ -1,0 +1,236 @@
+{
+  "_about": [
+    "doc 06 §5.9 Q2 — 'Starting at the front of the sofa, give turn-by-turn directions to the fridge.'",
+    "PLAN T4.1 requires the Q2 direction-vocabulary parse rules to be authored and",
+    "COMMITTED WITH FIXTURES BEFORE the batch, so the vocabulary cannot be tuned after",
+    "model answers are visible. These are those fixtures. The rules themselves are",
+    "module-level constants in duck_embody/scoring.py (deliberately not a config file:",
+    "they never touch what a model sees, so they are not a doc 06 §2 fairness item).",
+    "Gold facts, COMPUTED from the committed layout, never transcribed from doc 06 §11:",
+    "  start room  = room_at(sofa.pos)              -> living_room",
+    "  goal room   = room_at(fridge.pos)            -> kitchen",
+    "  oracle      = room_path(living_room,kitchen) -> [living_room, kitchen]",
+    "  start point = q2_start_point()               -> (0.4955, 1.60)",
+    "  gold bearing (direct doorway (1.8,1.2))      -> 342.9528 deg (compass_8 E)",
+    "  gold bearing (hallway doorway (0.9,2.7))     -> 69.8101 deg",
+    "  oracle_length(sofa,fridge) 3.1521 m direct / 3.6107 m via hallway (+14.55 %)",
+    "All 35 cases run against duck_embody.scoring.score_q2 in",
+    "tests/test_scoring.py::TestQ2ParseRules.",
+    "STILL OPEN (recorded in docs/METRICS.md): none of these is a real model answer,",
+    "because T3.5's sanity trial has not run. At least one genuine Fable 5 / Opus 5 /",
+    "GPT 5.6 sol Q2 answer should be added before the freeze — hand-written fixtures",
+    "systematically under-represent bullet lists, markdown and step numbering."
+  ],
+  "cases": [
+    {
+      "id": "q2_1_canonical",
+      "expected": 1.0,
+      "why": "oracle route, cued initial direction east (17.0 deg off gold), names the fridge",
+      "answer": "From the front of the sofa, head east about 1.3 m to the doorway in the east wall of the living room. Go through it into the kitchen, then turn left and walk about 1.1 m north; the fridge is against the east wall."
+    },
+    {
+      "id": "q2_1_straight_ahead",
+      "expected": 1.0,
+      "why": "'straight ahead' resolves against INITIAL_FACING_DEG = 0 (east)",
+      "answer": "Face the coffee table and walk straight ahead about 1.4 m, passing south of the table, out of the living room and into the kitchen. Then bear left; the fridge is ahead of you."
+    },
+    {
+      "id": "q2_1_southeast",
+      "expected": 1.0,
+      "why": "SE is 28.0 deg off gold — inside the 45 deg wedge, and it is the leg that actually clears the coffee table",
+      "answer": "Walk southeast around the coffee table, then through the opening into the kitchen. The refrigerator is at the north end of the kitchen."
+    },
+    {
+      "id": "q2_1_implied_start_room",
+      "expected": 1.0,
+      "why": "normalization N3 prepends the start room, licensed by the cued direction",
+      "answer": "Go east through the doorway into the kitchen; the fridge is on the north wall."
+    },
+    {
+      "id": "q2_1_goal_preamble",
+      "expected": 1.0,
+      "why": "normalization N2 drops a goal-room-only preamble",
+      "answer": "The fridge is in the kitchen. From the sofa in the living room, head toward 0 degrees, cross into the kitchen, and the fridge is ahead."
+    },
+    {
+      "id": "q2_1_uppercase_abbrev",
+      "expected": 1.0,
+      "why": "abbreviations are UPPERCASE-only, so the 'e' of 'i.e.' must not read as east",
+      "answer": "From the sofa head E through the doorway into the kitchen, i.e. the room with the counter; the fridge is on the north wall."
+    },
+    {
+      "id": "q2_1_wall_noise",
+      "expected": 1.0,
+      "why": "cue anchoring: 'against the west wall' is a description, not the initial direction",
+      "answer": "The sofa is against the west wall. Walk east to the doorway on the east side of the living room, into the kitchen; fridge on the right."
+    },
+    {
+      "id": "q2_1_absolute_degrees",
+      "expected": 1.0,
+      "why": "explicit absolute heading, 2.0 deg off gold",
+      "answer": "From the front of the sofa turn to heading 345 and walk 1.4 m out of the living room into the kitchen; the refrigerator is ahead."
+    },
+    {
+      "id": "q2_1_bear_right",
+      "expected": 1.0,
+      "why": "'bear right' is -45 from east = 315 deg, 28.0 deg off gold",
+      "answer": "From the front of the sofa bear right slightly, walk to the doorway, leave the living room and enter the kitchen; the fridge is ahead."
+    },
+    {
+      "id": "q2_1_synonyms",
+      "expected": 1.0,
+      "why": "'lounge' and 'galley' come from the FROZEN ROOM_SYNONYMS table",
+      "answer": "Head east out of the lounge through the doorway into the galley; the fridge is on the north wall."
+    },
+    {
+      "id": "q2_1_right_as_intensifier",
+      "expected": 1.0,
+      "why": "'walk right past' is the intensifier, blocked by RIGHT_ADVERB_BLOCKLIST; 'head east' is the real direction",
+      "answer": "From the front of the sofa, walk right past the coffee table, then head east out of the living room and into the kitchen; the fridge is ahead."
+    },
+    {
+      "id": "q2_1_tol_boundary_inside",
+      "expected": 1.0,
+      "why": "44.95 deg from gold — pins DIRECTION_TOL_DEG = 45 AND q2_start_point() together",
+      "answer": "From the front of the sofa turn to heading 27.9 degrees and walk out of the living room into the kitchen; the fridge is ahead."
+    },
+    {
+      "id": "q2_05_wrong_initial_dir",
+      "expected": 0.5,
+      "why": "frozen 0.5 anchor: correct room sequence, wrong turn direction (72.9 deg off)",
+      "answer": "From the front of the sofa, turn left and walk north out of the living room into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_05_missing_direction",
+      "expected": 0.5,
+      "why": "frozen 0.5 anchor: correct room sequence, MISSING turn direction",
+      "answer": "Leave the living room and enter the kitchen. The fridge is against the far wall."
+    },
+    {
+      "id": "q2_05_hallway_detour",
+      "expected": 0.5,
+      "why": "doc 06 §5.9's 'decide before freeze': a valid but non-oracle route costs exactly one defect; the gold bearing is recomputed for THAT route (69.81 deg), so it is not penalised twice",
+      "answer": "From the front of the sofa turn left and head north out of the living room into the hallway, go east along the hallway, then turn right and go south into the kitchen. The fridge is on your left."
+    },
+    {
+      "id": "q2_05_no_fridge_named",
+      "expected": 0.5,
+      "why": "route and direction correct but never names the fridge — the third clause of the 1 anchor",
+      "answer": "Head east from the sofa out of the living room through the doorway into the kitchen, then north to the tall white appliance."
+    },
+    {
+      "id": "q2_05_reversed_mentions",
+      "expected": 0.5,
+      "why": "normalization N4 salvages the reversed phrasing but always records a defect",
+      "answer": "Turn to heading 345 and walk 1.4 m into the kitchen from the living room; the refrigerator is ahead."
+    },
+    {
+      "id": "q2_05_turn_90_left",
+      "expected": 0.5,
+      "why": "relative degrees: matched before the absolute pattern, so '90' is not also read as a heading",
+      "answer": "From the front of the sofa turn 90 degrees left, then walk out of the living room into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_05_northeast_word",
+      "expected": 0.5,
+      "why": "NE is 62.1 deg off gold — outside the wedge",
+      "answer": "From the front of the sofa head northeast out of the living room into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_05_turn_around",
+      "expected": 0.5,
+      "why": "'turn around' is an unambiguous 180",
+      "answer": "From the front of the sofa turn around, then make your way out of the living room into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_05_tol_boundary_outside",
+      "expected": 0.5,
+      "why": "45.15 deg from gold — just outside; the twin of q2_1_tol_boundary_inside",
+      "answer": "From the front of the sofa turn to heading 28.1 degrees and walk out of the living room into the kitchen; the fridge is ahead."
+    },
+    {
+      "id": "q2_05_back_wall_not_a_turn",
+      "expected": 0.5,
+      "why": "bare 'back' is NOT in the vocabulary: 'the back wall' must not read as a 180",
+      "answer": "Leave the living room through the east doorway into the kitchen; the fridge is against the back wall."
+    },
+    {
+      "id": "q2_0_empty",
+      "expected": 0.0,
+      "why": "split_qa_answers' record of an unparseable answer; doc 06 §5.9 says T4.1 scores it 0",
+      "answer": ""
+    },
+    {
+      "id": "q2_0_never_reaches_kitchen",
+      "expected": 0.0,
+      "why": "frozen 0 anchor: the route would not reach the kitchen",
+      "answer": "Turn left, walk north into the hallway, then east; the bedroom is at the end and the fridge is in there."
+    },
+    {
+      "id": "q2_0_impossible_edge",
+      "expected": 0.0,
+      "why": "bedroom is not adjacent to the kitchen — not a graph walk",
+      "answer": "From the sofa, turn around and go west into the bedroom, then south into the kitchen where the fridge is."
+    },
+    {
+      "id": "q2_0_no_route_no_dir",
+      "expected": 0.0,
+      "why": "two independent defects (no route, no direction) — the documented extension beyond the frozen anchors",
+      "answer": "The fridge is in the kitchen. I do not remember the way."
+    },
+    {
+      "id": "q2_0_kitchenette",
+      "expected": 0.0,
+      "why": "doc 06 §12's deliberate non-synonym: whole-word matching means 'kitchenette' is not the kitchen",
+      "answer": "From the living room walk east into the kitchenette; the fridge is there."
+    },
+    {
+      "id": "q2_0_own_room_names",
+      "expected": 0.0,
+      "why": "KNOWN LIMITATION, disclosed in docs/METRICS.md: the system prompt tells the model to coin its own room names, and a coined name matches nothing",
+      "answer": "From Place 1 walk east through the second doorway into Place 3; the fridge is against the far wall of Place 3."
+    },
+    {
+      "id": "q2_0_locator_only_no_directions",
+      "expected": 0.0,
+      "why": "no cue-anchored direction AND reversed order = two defects",
+      "answer": "From the sofa the doorway is on your right; through it is the kitchen and the fridge is inside. You start in the living room."
+    },
+    {
+      "id": "q2_0_two_defects",
+      "expected": 0.0,
+      "why": "extra room AND the fridge never named",
+      "answer": "From the front of the sofa turn left and go north out of the living room into the hallway, then east and south into the kitchen; the tall white box is there."
+    },
+    {
+      "id": "q2_1_cue_at_the_window_edge",
+      "expected": 1.0,
+      "why": "PINS CUE_WINDOW FROM BELOW. The only cue ('head') sits exactly CUE_WINDOW = 4 tokens before 'east' (head, through, the, door, EAST), so any smaller window loses the direction and the answer drops to 0.5. Nothing else in the corpus places a cue 2-4 tokens out.",
+      "answer": "From the front of the sofa, head through the door east into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_05_uncued_direction_just_out_of_reach",
+      "expected": 0.5,
+      "why": "PINS CUE_WINDOW FROM ABOVE. 'east' sits 5 tokens after the last cue ('continue'), so it is a spatial DESCRIPTION of a wall, not an instruction: the answer has a missing turn direction (1 defect). A window of 5 or more would read it as the initial direction and — because east happens to be correct here — promote the answer to 1.0.",
+      "answer": "From the living room, leave by the door and continue on; the kitchen's east wall holds the fridge."
+    },
+    {
+      "id": "q2_0_four_room_walk",
+      "expected": 0.0,
+      "why": "PINS MAX_EXTRA_ROOMS FROM ABOVE. living_room -> kitchen -> hallway -> kitchen is a real graph walk ending at the goal, but it is TWO rooms past the oracle, which is past the one-room tolerance the hallway detour buys. At MAX_EXTRA_ROOMS = 2 it becomes walkable and scores 0.5. q2_05_hallway_detour pins the constant from below.",
+      "answer": "From the living room, head east into the kitchen, then north into the hallway, and back south into the kitchen where the fridge is."
+    },
+    {
+      "id": "q2_1_through_the_doorway",
+      "expected": 1.0,
+      "why": "CONTROL for the pair below: the oracle route described with the ordinary word 'doorway'.",
+      "answer": "From the front of the sofa, walk east through the doorway into the kitchen; the fridge is there."
+    },
+    {
+      "id": "q2_1_through_the_entry",
+      "expected": 1.0,
+      "why": "PINS PROSE_AMBIGUOUS_SYNONYMS. 'entry' is a hallway synonym in the frozen table, so in free prose it inserted a PHANTOM room: the sequence became living_room -> hallway -> kitchen, which costs the exact-route defect AND recomputes the gold bearing to the hallway doorway (69.810 deg), turning the correct 'east' into a second defect — 1.0 -> 0.0 against the byte-identical sentence above. Same for 'entryway' and 'landing'. normalize_claim (whole-string room NAMES, doc 06 §5.7) still uses the full table.",
+      "answer": "From the front of the sofa, walk east through the entry into the kitchen; the fridge is there."
+    }
+  ]
+}
