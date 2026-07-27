@@ -189,7 +189,30 @@ class AnthropicProvider:
             "thinking": {"type": "adaptive", "display": "summarized"},
         }
         if system:
-            kwargs["system"] = system
+            # PROMPT CACHING. The system prompt + 12 tool schemas are 3,919
+            # MEASURED tokens (anthropic count_tokens, 2026-07-26) and are
+            # byte-identical on every one of a trial's ~50 calls — 22% of all
+            # input tokens, re-billed at full rate every turn without this.
+            #
+            # Marking the system block caches everything before it in the
+            # prompt hierarchy (tools, then system), so one breakpoint covers
+            # both. Reads bill at 0.1x, the one-time write at 1.25x.
+            #
+            # BENCHMARK-SAFE, which is the only reason it is allowed inside the
+            # freeze: caching changes what we are BILLED, never what any model
+            # sees — the assembled prompt is byte-for-byte identical with and
+            # without the marker. It is applied to both Anthropic contestants
+            # identically. OpenAI needs no equivalent: the Responses API caches
+            # automatically (gpt-5.6-sol cached input $0.50/M vs $5.00/M), which
+            # is why that contestant already got the discount and these two did
+            # not — an asymmetry in the BILL, not in the measurement.
+            kwargs["system"] = [
+                {
+                    "type": "text",
+                    "text": system,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
         if tools:
             kwargs["tools"] = self.to_native_tools(tools)
         # NOTE: `effort` is deliberately NOT set — the API default (high) is

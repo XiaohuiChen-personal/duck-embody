@@ -215,9 +215,33 @@ class ModelConfig:
     params: dict = field(default_factory=dict)
     notes: str = ""
 
+    #: Prompt-cache multipliers on the input rate. Anthropic bills a cache READ
+    #: at 0.1x and the one-time WRITE at 1.25x. OpenAI's published cached-input
+    #: rate for gpt-5.6-sol is $0.50 against $5.00, i.e. the same 0.1x, and it
+    #: has no separate write charge — so `cache_write_tokens` is simply 0 there
+    #: and the write term vanishes without needing a per-provider branch.
+    CACHE_READ_MULTIPLIER = 0.1
+    CACHE_WRITE_MULTIPLIER = 1.25
+
     def cost(self, usage: Usage) -> float:
+        """USD for one call, INCLUDING the prompt-cache terms.
+
+        The cache terms are not decoration. With caching on, `input_tokens`
+        counts only the UNCACHED remainder — 84 tokens on a measured trial call
+        — while the 3,856-token cached prefix is reported separately in
+        `cache_read_tokens` / `cache_write_tokens`. Summing only input+output
+        would therefore report a trial's cost as a small fraction of the real
+        invoice, and would report the cached and uncached calls as costing
+        exactly the same amount (measured: both $0.0010 before this fix), which
+        is the tell that the cache columns were being dropped on the floor.
+
+        Cost is a published per-model column, so an error here is a wrong number
+        in the write-up rather than a crash.
+        """
         return (
             usage.input_tokens * self.price_in_per_mtok
+            + usage.cache_read_tokens * self.price_in_per_mtok * self.CACHE_READ_MULTIPLIER
+            + usage.cache_write_tokens * self.price_in_per_mtok * self.CACHE_WRITE_MULTIPLIER
             + usage.output_tokens * self.price_out_per_mtok
         ) / 1_000_000
 
@@ -246,6 +270,40 @@ def load_model_config(name: str) -> ModelConfig:
         params=raw.get("params") or {},
         notes=raw.get("notes", ""),
     )
+
+
+def preflight_provider(name: str) -> ModelConfig:
+    """Validate a model config WITHOUT importing the vendor SDK.
+
+    Split out from `build_provider` because of a measured kit hazard (T3.5):
+    importing the `anthropic` SDK before `AppLauncher` starts leaves it unable
+    to strip its own unset-parameter defaults, so a dozen `omit` sentinels
+    survive into the request body and the first call dies with
+    ``TypeError: Object of type Omit is not JSON serializable``.
+
+    The caller still wants to fail in a second on a typo'd model name or a
+    missing key rather than after a multi-minute cold start — and none of those
+    checks need the SDK. So they happen here, pre-kit, and the client itself is
+    constructed by `build_provider` after kit is up.
+    """
+    # `.env` is loaded HERE as well as at adapter import. Until this function
+    # existed, the only path to `require_key` ran through a vendor adapter
+    # module, whose import called `load_env()` as a side effect. Preflight
+    # deliberately does NOT import that module (the whole point — see the
+    # docstring), so relying on that side effect made the key look unset and
+    # every trial died claiming ANTHROPIC_API_KEY was missing when it was not.
+    # `load_dotenv` does not override an already-set variable, so calling it
+    # twice is free.
+    load_env()
+
+    cfg = load_model_config(name)
+    if cfg.provider == "anthropic":
+        require_key("ANTHROPIC_API_KEY", "Anthropic")
+    elif cfg.provider == "openai":
+        require_key("OPENAI_API_KEY", "OpenAI")
+    else:
+        raise ValueError(f"Unknown provider '{cfg.provider}' in config '{name}'")
+    return cfg
 
 
 def build_provider(name: str, max_retries: int = 5):

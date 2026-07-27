@@ -120,7 +120,11 @@ def main() -> int:
     # Imports that need no kit, so a config typo fails in a second rather than
     # after a multi-minute cold start.
     from duck_embody.agent.memory import Counters, Memory, PositionIntegrator
-    from duck_embody.agent.providers.base import build_provider, load_model_config
+    from duck_embody.agent.providers.base import (
+        build_provider,
+        load_model_config,
+        preflight_provider,
+    )
     from duck_embody.tasks.find_kitchen import spawn_for_seed, stage_specs
 
     cfg = load_model_config(args.model)
@@ -137,10 +141,11 @@ def main() -> int:
     if args.max_turns is not None:
         print(f"  WARNING  : --max-turns {args.max_turns} — SMOKE ONLY, not a benchmark result")
 
-    # Fails now (missing key, unknown provider) rather than after kit start.
-    provider = build_provider(args.model)
+    # Fail fast on a missing key or an unknown provider — WITHOUT importing the
+    # vendor SDK, which must not be imported before kit starts (see below).
+    preflight_provider(args.model)
 
-    # Heavy imports last, and only after the provider is known good.
+    # Heavy imports last, and only after the provider config is known good.
     from duck_embody.agent.loop import EpisodeRunner, TrialLog
     from duck_embody.agent.tools import ToolContext
     from duck_embody.env.camera import HeadCamera
@@ -151,6 +156,21 @@ def main() -> int:
         task_id=TASK_ID, checkpoint=args.checkpoint, headless=not args.headed
     )
     print("  kit up; resetting to the seed's spawn pose")
+
+    # THE PROVIDER IS BUILT HERE, AFTER kit, AND THAT ORDER IS LOAD-BEARING.
+    #
+    # MEASURED (T3.5, first sanity run): importing the `anthropic` SDK BEFORE
+    # `AppLauncher` leaves it unable to strip its own unset-parameter defaults.
+    # Twelve `omit` sentinels — cache_control, container, inference_geo,
+    # metadata, output_config, service_tier, stop_sequences, stream,
+    # temperature, tool_choice, top_k, top_p — then survive into the request
+    # body and the first call dies with
+    #   TypeError: Object of type Omit is not JSON serializable
+    # Import the SDK after kit and they are stripped correctly.
+    #
+    # This kills the trial on turn 1, so it cannot corrupt results — but it
+    # would have killed all 12 of them, one cold start at a time.
+    provider = build_provider(args.model)
     session.reset(
         seed=args.seed,
         spawn=SpawnPose(spawn_xy[0], spawn_xy[1], spawn_heading),

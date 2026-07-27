@@ -538,11 +538,51 @@ class TestRequestBodies:
         self, anthropic_adapter, message
     ):
         kwargs = anthropic_adapter.request_kwargs("SYS", [message], CANONICAL_TOOLS)
-        assert kwargs["system"] == "SYS"
+        # The system prompt is a BLOCK LIST, not a bare string, because it
+        # carries the prompt-cache breakpoint. The text must survive verbatim —
+        # caching is a billing change and must never alter what the model reads.
+        assert kwargs["system"] == [
+            {"type": "text", "text": "SYS", "cache_control": {"type": "ephemeral"}}
+        ]
         assert [t["name"] for t in kwargs["tools"]] == ["get_observation", "move"]
         assert kwargs["model"] == "claude-fable-5"
         assert kwargs["max_tokens"] == 16000
         assert kwargs["thinking"] == {"type": "adaptive", "display": "summarized"}
+
+    def test_the_cache_breakpoint_is_present_and_covers_system_plus_tools(
+        self, anthropic_adapter, message
+    ):
+        """The system+tools prefix is 3,919 MEASURED tokens, byte-identical on
+        every call of a trial — 22% of all input tokens.
+
+        Marking the system block caches everything earlier in Anthropic's prompt
+        hierarchy (tools, then system), so one breakpoint covers both. Without
+        the marker the whole prefix is re-billed at full rate every turn; the
+        adapter already reads `cache_read_tokens` back, so a silent regression
+        here would show up only as a larger invoice.
+        """
+        kwargs = anthropic_adapter.request_kwargs("SYS", [message], CANONICAL_TOOLS)
+        blocks = kwargs["system"]
+        assert isinstance(blocks, list), "system must be blocks to carry cache_control"
+        marked = [b for b in blocks if b.get("cache_control")]
+        assert len(marked) == 1, f"expected exactly one breakpoint, got {blocks}"
+        assert marked[0]["cache_control"] == {"type": "ephemeral"}
+        # Tools must still be sent, since the breakpoint's value is that it
+        # covers them too.
+        assert kwargs["tools"], "tools must accompany the cached system prefix"
+
+    def test_caching_does_not_change_what_the_model_reads(
+        self, anthropic_adapter, message
+    ):
+        """The fairness half of the caching change (AGENTS.md rule 4).
+
+        Whatever the billing, the assembled prompt text must be identical to the
+        uncached form — otherwise 'we enabled caching' would quietly be 'we
+        changed the two Anthropic contestants' prompt'.
+        """
+        kwargs = anthropic_adapter.request_kwargs("SYS", [message], CANONICAL_TOOLS)
+        text = "".join(b["text"] for b in kwargs["system"])
+        assert text == "SYS"
 
     def test_openai_driving_request_carries_instructions_and_tools(
         self, openai_adapter, message
@@ -619,3 +659,111 @@ class TestBlankTextIsRejectedProviderNeutrally:
             if p.get("type") == "input_text" and not str(p.get("text", "")).strip()
         ]
         assert not blank, f"OpenAI adapter emitted a blank text part: {o_parts}"
+
+
+class TestCostIncludesCacheTerms:
+    """Enabling prompt caching without fixing cost accounting silently
+    understates every reported cost.
+
+    MEASURED on a live call before the fix: with caching on, `input_tokens`
+    counts only the UNCACHED remainder (84) while the 3,856-token prefix lands
+    in `cache_write_tokens` / `cache_read_tokens`. Summing only input+output
+    reported the cache-write call and the cache-read call at exactly the same
+    $0.0010 — the tell that both cache columns were being ignored.
+
+    Cost is a published per-model column, so this is a wrong number in the
+    write-up, not a crash.
+    """
+
+    def _cfg(self):
+        return _cfg("anthropic", "claude-fable-5")  # $10 in / $50 out per MTok
+
+    def test_a_cache_write_costs_more_than_the_same_tokens_uncached(self):
+        cfg = self._cfg()
+        write = cfg.cost(Usage(input_tokens=0, output_tokens=0, cache_write_tokens=1_000_000))
+        plain = cfg.cost(Usage(input_tokens=1_000_000, output_tokens=0))
+        assert write == pytest.approx(plain * 1.25)
+
+    def test_a_cache_read_costs_a_tenth_of_the_same_tokens_uncached(self):
+        cfg = self._cfg()
+        read = cfg.cost(Usage(input_tokens=0, output_tokens=0, cache_read_tokens=1_000_000))
+        plain = cfg.cost(Usage(input_tokens=1_000_000, output_tokens=0))
+        assert read == pytest.approx(plain * 0.1)
+
+    def test_the_write_call_and_the_read_call_do_not_cost_the_same(self):
+        """The exact symptom that exposed the bug on the live API."""
+        cfg = self._cfg()
+        first = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_write_tokens=3856))
+        second = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_read_tokens=3856))
+        assert first > second, "a cache write must cost more than a cache read"
+        assert second > cfg.cost(Usage(input_tokens=84, output_tokens=4)), (
+            "a cache read is cheap but NOT free — ignoring it understates the bill"
+        )
+
+    def test_caching_actually_saves_money_over_the_uncached_equivalent(self):
+        """Sanity on the direction: 50 calls sharing a 3,919-token prefix should
+        cost less cached than paying full rate for it every time."""
+        cfg = self._cfg()
+        prefix, calls = 3919, 50
+        uncached = sum(
+            cfg.cost(Usage(input_tokens=prefix + 84, output_tokens=4)) for _ in range(calls)
+        )
+        cached = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_write_tokens=prefix)) + sum(
+            cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_read_tokens=prefix))
+            for _ in range(calls - 1)
+        )
+        assert cached < uncached
+
+
+class TestPreflightDoesNotNeedTheVendorSDK:
+    """`preflight_provider` exists so run_trial.py can fail fast on a bad model
+    name or a missing key WITHOUT importing the vendor SDK — which must not be
+    imported before AppLauncher (measured T3.5: the SDK then leaks a dozen
+    `omit` sentinels into the request body and every trial dies on turn 1).
+
+    Two things have to hold together, and the first attempt got the second
+    wrong: preflight must not pull in the SDK, AND it must still see the key.
+    `.env` used to be loaded only as a side effect of importing an adapter
+    module, so skipping that import made a perfectly good key look missing.
+    """
+
+    def test_preflight_loads_dotenv_itself(self, monkeypatch):
+        import duck_embody.agent.providers.base as base
+
+        called = {"n": 0}
+        monkeypatch.setattr(base, "load_env", lambda: called.__setitem__("n", called["n"] + 1))
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+        base.preflight_provider("fable5")
+        assert called["n"] == 1, "preflight must load .env, not inherit it from an import"
+
+    def test_preflight_does_not_import_the_vendor_sdk(self, monkeypatch):
+        import sys
+
+        import duck_embody.agent.providers.base as base
+
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+        for mod in ("anthropic", "duck_embody.agent.providers.anthropic"):
+            monkeypatch.delitem(sys.modules, mod, raising=False)
+        base.preflight_provider("fable5")
+        assert "duck_embody.agent.providers.anthropic" not in sys.modules, (
+            "preflight imported the adapter module — the SDK import must wait for kit"
+        )
+
+    def test_preflight_still_rejects_a_missing_key(self, monkeypatch):
+        import duck_embody.agent.providers.base as base
+
+        monkeypatch.setattr(base, "load_env", lambda: None)  # simulate no .env
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+            base.preflight_provider("fable5")
+
+    def test_preflight_rejects_an_unknown_provider(self, monkeypatch, tmp_path):
+        import duck_embody.agent.providers.base as base
+
+        cfg = ModelConfig(
+            name="bogus", provider="acme", model_id="x",
+            max_tokens=1, price_in_per_mtok=0.0, price_out_per_mtok=0.0,
+        )
+        monkeypatch.setattr(base, "load_model_config", lambda _n: cfg)
+        with pytest.raises(ValueError, match="Unknown provider"):
+            base.preflight_provider("bogus")
