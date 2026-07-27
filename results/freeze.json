@@ -1,0 +1,40 @@
+{
+  "schema": "duck-embody-freeze-v1",
+  "frozen_at": "2026-07-27T08:30:41Z",
+  "freeze_commit": "8eceaf26ec4370026f5f4e821e0c6fc27f5ee6f6",
+  "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
+  "matrix": {
+    "models": [
+      "fable5",
+      "opus5",
+      "gpt56sol"
+    ],
+    "seeds": [
+      101,
+      102,
+      103,
+      104
+    ]
+  },
+  "files": {
+    "duck_embody/agent/prompts.py": "9d8e6891a526c2f01a6f8a6d375d29def63345255b4bac727e2bf7e6a60b899d",
+    "duck_embody/agent/tools.py": "0d5236b03c9511ed236e65d1d71a8a1a610f0ae6366d41bd38a95c06a30c84a0",
+    "duck_embody/agent/memory.py": "7a201cdfaa9fb41711d921d1035ffaadaa44f86f583f9a5afad680b63cd77fcf",
+    "duck_embody/agent/loop.py": "6ddb7f60ce07921f9e10ac128855621f6d16388cc3639216ba43d5490e039095",
+    "duck_embody/agent/providers/base.py": "1b86b79e444d5132ec4658708a354ae36e4a1c783285680841e3371967f95135",
+    "duck_embody/agent/providers/anthropic.py": "5c7e223f558378ddbc131889744beb48e9e053306f62b270f9ab0f7294ff99f1",
+    "duck_embody/agent/providers/openai.py": "ad42a79115612aad928cfc2590b488c7424e8882d09576dc8298724f649ba441",
+    "duck_embody/sim/policy_wrapper.py": "5fe1eba796cd59e7a6d87dedfdbf3e8e44a0994c49f923363eff9e5366191c4e",
+    "duck_embody/sim/recorder.py": "5eae143ced79154ddda1c56db07f2904de160531eb35312eb84a2cc87aa0cb25",
+    "duck_embody/sim/session.py": "afeb49d073974be1330eb58b12b27fdc5b8b46464fc209e9cca1bd7f978327e1",
+    "duck_embody/env/embody_env_cfg.py": "92ddbf1f3503ed251af36cd39e68799f2b97927ca8ad1a7ba6280a366ea4cc5b",
+    "duck_embody/env/scene_builder.py": "9e5d5c5c272957cb3824403c264bf11aaebb40d537ddb39c4ff522048f738d3f",
+    "duck_embody/env/camera.py": "3a307e09980dac6ef8e45698626f22f7b819f69f9870a03a613b16bad11bd945",
+    "duck_embody/env/apartment_layout.py": "1d04ee229789ac8fdc1bfa92f8c5b0fc724fad092ea3633204aa37a720ca2d20",
+    "duck_embody/tasks/find_kitchen.py": "ed3d710c27bedfc819200432a691dbe800990b31394c2848f768d19dcfdbdfd3",
+    "configs/benchmark.yaml": "f1ff483d9f52e60d268c0b537069c075f9d45328e0f96f101501810b476b6b87",
+    "configs/models/fable5.yaml": "4fbe54c7a8474110c4f50dfc08eb53ab55b23896508510d8541ba065408a7e24",
+    "configs/models/opus5.yaml": "b9bc5f28fab92f23e906e54aa289412fa295c3ef7e5d971731594c15dbcd1657",
+    "configs/models/gpt56sol.yaml": "0aa454b77d1062d0735412d826689aaf96c492a754b1c4920cd5c003e9466dd3"
+  }
+}
