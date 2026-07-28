@@ -57,7 +57,9 @@ the paper's protocol). Per turn the model receives one camera frame, compass
 heading, a drifting dead-reckoned position, and its own re-injected map; it acts
 through closed-loop motion macros (`turn_to_heading`, `move`) and memory tools
 (`update_room`, `mark_exit`, `correct_position`, …). Details: [`AGENTS.md`](AGENTS.md)
-(design decisions + full technical context) and [`docs/PLAN.md`](docs/PLAN.md).
+(design decisions + full technical context), the low-level design docs
+([live](https://xiaohuichen-personal.github.io/duck-embody/designs/) ·
+[in-repo](docs/designs/index.html)), and [`docs/PLAN.md`](docs/PLAN.md).
 
 ## Results
 
