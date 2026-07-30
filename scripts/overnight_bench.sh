@@ -39,7 +39,11 @@ say "odometry physics smoke PASS"
 # 3. provenance: candidate must not be the baseline
 CSHA=$(sha256sum "$V5D" | cut -d' ' -f1); BSHA=$(sha256sum "$BASELINE" | cut -d' ' -f1)
 if [ "$CSHA" = "$BSHA" ]; then say "ABORT: candidate == baseline checkpoint"; exit 1; fi
-printf '{"candidate":"%s","candidate_sha256":"%s","baseline_sha256":"%s"}\n' "$V5D" "$CSHA" "$BSHA" > "$RAW/provenance.json"
+# NOT inside $RAW: the runner's freeze guard treats every *.json there as a
+# trial file and refuses on anything outside the matrix ("a glob-based
+# aggregator would fold it into the comparison"). It was right to refuse — the
+# raw dir is results, not notes.
+printf '{"candidate":"%s","candidate_sha256":"%s","baseline_sha256":"%s"}\n' "$V5D" "$CSHA" "$BSHA" > "$REPO/results/logs/provenance_$(basename "$RAW").json"
 say "provenance recorded (candidate sha ${CSHA:0:12})"
 # 5. REFREEZE, then dry-run. The first version had no --freeze call at all while
 # its own header promised one, and results/freeze.json still hashed
