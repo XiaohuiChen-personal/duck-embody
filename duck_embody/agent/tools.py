@@ -73,6 +73,7 @@ import math
 from dataclasses import dataclass, field
 
 from duck_embody.agent.memory import (
+    quantise_direction,
     STAGE_FIND_KITCHEN,
     Counters,
     Memory,
@@ -86,7 +87,6 @@ from duck_embody.agent.providers.base import ImageBlock, ToolCall, ToolResultBlo
 from duck_embody.env.camera import encode_b64
 from duck_embody.sim.policy_wrapper import (
     CONTROL_DT,
-    credited_distance_m,
     MOVE_MAX_DISTANCE_M,
     MOVE_SPEED_MPS,
     shortest_angle_diff_deg,
@@ -272,18 +272,27 @@ TOOL_SCHEMAS: list[dict] = [
     {
         "name": "correct_position",
         "description": (
-            "Reset the dead-reckoning integrator to (x, y) because you "
-            "re-recognized a landmark (cognitive loop closure). Give the reason; "
+            "Loop closure: snap your position estimate back to a place you "
+            "recognize. EITHER pass `place` — a mapped room name, or a doorway "
+            "written room@bearing as YOUR MAP prints it — OR pass explicit x "
+            "and y. A doorway anchor pins you tightest. Costs no motion; "
             "every correction is logged."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
+                "place": {
+                    "type": "string",
+                    "description": (
+                        "a mapped room name, or a doorway as room@bearing "
+                        "exactly as YOUR MAP prints it: name, @, bearing"
+                    ),
+                },
                 "x": {"type": "number"},
                 "y": {"type": "number"},
                 "reason": {"type": "string"},
             },
-            "required": ["x", "y", "reason"],
+            "required": ["reason"],
         },
     },
     {
@@ -862,9 +871,15 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
 
     heading_before = context.playback.compass_deg()
     result = context.playback.turn_to_heading(target)
-    # No integrator feed: the macro commands vx = vy = 0, so a rotation in place
-    # displaces the estimate by exactly zero. Real slip during the turn is drift
-    # the integrator is *supposed* not to see (doc 05 §5.1).
+    # 2026-07-30: the integrator now feeds on measured leg odometry, so a turn
+    # contributes the small real wander the legs measured (a few cm) instead of
+    # exactly zero. This REPLACES doc 05 §5.1's "rotation displaces the estimate
+    # by exactly zero" — under commanded-velocity reckoning turn slip was drift
+    # the integrator deliberately could not see; under odometry it is drift the
+    # legs genuinely measure, and hiding it would make turns a free
+    # error-laundering step. Reported distance stays 0.0: doc 06 §5.6's bump
+    # and distance accounting counts translation commands only.
+    context.integrator.apply_delta(*result.odom_dxy)
     #
     # `counts_bump=False`: doc 06 §5.6 counts `move` and `send_velocity` only.
     # See `_record_motion` for why counting rotations inflates the metric.
@@ -975,13 +990,13 @@ def _move(context: ToolContext, args: dict) -> ToolOutcome:
     # distance by the commanded speed recovers the DRIVING seconds exactly,
     # because every chunk is a whole number of 50 Hz steps and
     # `duration_to_steps` round-trips it.
-    if travelled > 0.0:
-        # Zero only if not one driving step ran, in which case
-        # `duration_to_steps`' floor of 1 step would integrate motion that never
-        # happened.
-        context.integrator.integrate(
-            MOVE_SPEED_MPS, 0.0, held_heading, travelled / MOVE_SPEED_MPS
-        )
+    # 2026-07-30: the estimate advances by MEASURED leg odometry, not by the
+    # commanded arc. This is the fix for the wedge inflation (49 calls credited
+    # 27.09 m against 1.99 m true in the aborted batch) that survives any gait:
+    # odometry is ~zero whenever true motion is, however the contact force
+    # oscillates. The k-servo above still TARGETS by commanded arc — aiming and
+    # measuring are different jobs.
+    context.integrator.apply_delta(*result.odom_dxy)
     execution = _record_motion(
         context,
         result,
@@ -1035,23 +1050,20 @@ def _send_velocity(context: ToolContext, args: dict) -> ToolOutcome:
     # `PositionIntegrator.integrate_arc`). `policy_seconds`, never the requested
     # duration: a fall cuts the command short and the estimate must not walk on
     # without the robot (PLAN T3.2 (b) — correct as written for this tool).
-    # `moving_s` excludes confirmed sustained contact, so the ESTIMATE stops
-    # accumulating metres the robot never travelled. Heading still integrates
-    # over the full duration (see integrate_arc).
-    _moving_s = max(0.0, result.policy_seconds - result.contact_steps * CONTROL_DT)
-    context.integrator.integrate_arc(
-        cvx, cvy, cwz, heading, result.policy_seconds, moving_s=_moving_s
-    )
-    # Arc length of the commanded motion: speed x time, the same rule `move`
-    # reports (doc 04 §6.2 — "dead-reckoned distance actually covered by the
-    # most recent motion command"). Pinned into doc 05 §4.2, which named the
-    # field but not its formula.
-    # Charged only for the seconds the robot was NOT in confirmed sustained
-    # contact — see policy_wrapper.credited_distance_m for the measurement that
-    # forced this. Previously `speed x policy_seconds` unconditionally, which
-    # credited a wedged duck 0.60 m for 0.01 m of real motion, 49 times in one
-    # trial, and produced ~95% of an apparent 26 m "drift".
-    travelled = credited_distance_m(math.hypot(cvx, cvy), result)
+    # 2026-07-30: measured leg odometry, same rule as `move`. Supersedes the
+    # contact-time discount (which was measured ineffective for v4's bouncing
+    # contact — force above 1 N on only 6.9% of wedged steps). Heading needs no
+    # integration here: the compass is absolute and re-read next turn.
+    context.integrator.apply_delta(*result.odom_dxy)
+    # LEG-ODOMETRY distance (2026-07-30), superseding doc 04 §6.2's
+    # "speed x time" formula and the interim contact-time discount. History of
+    # this line, because it carried the batch-breaking bug twice: the original
+    # `speed x policy_seconds` credited a wedged duck 0.60 m for 0.01 m of real
+    # motion, 49 times in one trial (~95% of an apparent 26 m of "drift"); the
+    # contact-discount replacement was then measured ineffective for v4's
+    # bouncing contact (force above 1 N on only 6.9% of wedged steps). The
+    # odometry measurement is gait-independent: no motion, no distance.
+    travelled = result.odom_distance_m
     execution = _record_motion(
         context,
         result,
@@ -1100,7 +1112,11 @@ def _memory_outcome(ack: dict) -> ToolOutcome:
 
 
 def _update_room(context: ToolContext, args: dict) -> ToolOutcome:
-    return _memory_outcome(context.memory.update_room(args["name"], args["description"]))
+    # First-assertion position becomes the room's anchor (integrator estimate,
+    # never ground truth) — the coordinate source correct_position never had.
+    return _memory_outcome(context.memory.update_room(
+        args["name"], args["description"], anchor_xy=context.integrator.xy
+    ))
 
 
 def _add_landmark(context: ToolContext, args: dict) -> ToolOutcome:
@@ -1109,7 +1125,10 @@ def _add_landmark(context: ToolContext, args: dict) -> ToolOutcome:
 
 def _mark_exit(context: ToolContext, args: dict) -> ToolOutcome:
     return _memory_outcome(
-        context.memory.mark_exit(args["room"], args["direction_deg"], args["status"])
+        context.memory.mark_exit(
+            args["room"], args["direction_deg"], args["status"],
+            anchor_xy=context.integrator.xy,
+        )
     )
 
 
@@ -1121,13 +1140,77 @@ def _correct_position(context: ToolContext, args: dict) -> ToolOutcome:
     # A module-level function, not a `Memory` method: it needs the integrator
     # and the stage-local turn index, both of which live in loop state. They are
     # threaded from the context rather than synthesised here.
+    #
+    # `place` (2026-07-30): resolves a mapped room's anchor so the argument the
+    # model must supply is a NAME — the thing place recognition actually yields.
+    # Zero uptake across 13 trials traced primarily to this tool being the only
+    # one whose required arguments (absolute x, y) no payload ever provided.
+    x, y = args.get("x"), args.get("y")
+    place = args.get("place")
+    if place is not None:
+        place = str(place)
+        # `room@bearing` resolves a DOORWAY anchor. Rooms alone were not enough:
+        # the prompt tells the model to re-anchor on passing through a doorway
+        # (a 0.35 m gap pins position ~5x tighter than a room centroid), but
+        # only room anchors were resolvable, so that instruction silently
+        # snapped to a room anchor metres away — advertising the precise
+        # affordance and delivering the imprecise one.
+        exit_anchor = None
+        if "@" in place:
+            room_name, _, bearing_text = place.partition("@")
+            try:
+                bearing = quantise_direction(float(bearing_text))
+            except (TypeError, ValueError):
+                bearing = None
+            if bearing is not None:
+                for e in context.memory.exits:
+                    if e.room == room_name and e.direction_deg == bearing:
+                        exit_anchor = e.anchor_xy
+                        break
+        if exit_anchor is not None:
+            x, y = exit_anchor
+            return _memory_outcome(
+                correct_position(
+                    context.memory, context.integrator, context.turn, x, y,
+                    args["reason"],
+                )
+            )
+        room = context.memory.rooms.get(place)
+        anchored = [
+            (name, r.anchor_xy) for name, r in context.memory.rooms.items()
+            if r.anchor_xy is not None
+        ] + [
+            (f"{e.room}@{e.direction_deg:g}", e.anchor_xy)
+            for e in context.memory.exits if e.anchor_xy is not None
+        ]
+        if room is None or room.anchor_xy is None:
+            return ToolOutcome(payload={
+                "error": "invalid_args",
+                "detail": (
+                    f"place {place!r} is not a mapped room with an anchor"
+                    if room is None else
+                    f"room {place!r} was mapped before anchors existed and has none"
+                ),
+                "hint": "anchored places: " + (
+                    ", ".join(f"{n} (x={a[0]:g}, y={a[1]:g})" for n, a in anchored)
+                    or "none yet — update_room a place first, or pass x and y"
+                ),
+            }, is_error=True)
+        x, y = room.anchor_xy
+    if x is None or y is None:
+        return ToolOutcome(payload={
+            "error": "invalid_args",
+            "detail": "correct_position needs either `place` or both `x` and `y`",
+            "hint": "pass place=<mapped room name> to snap to its [anchor] "
+                    "from YOUR MAP, or copy explicit coordinates",
+        }, is_error=True)
     return _memory_outcome(
         correct_position(
             context.memory,
             context.integrator,
             context.turn,
-            args["x"],
-            args["y"],
+            x,
+            y,
             args["reason"],
         )
     )

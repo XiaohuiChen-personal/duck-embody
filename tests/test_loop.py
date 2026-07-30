@@ -2660,14 +2660,14 @@ class TestRunTrialCli:
 
     def test_the_required_arguments_are_model_and_seed(self):
         parser = self._module().build_parser()
-        args = parser.parse_args(["--model", "fable5", "--seed", "101"])
-        assert args.model == "fable5" and args.seed == 101
+        args = parser.parse_args(["--model", "sonnet5", "--seed", "101"])
+        assert args.model == "sonnet5" and args.seed == 101
         assert args.task == "find_kitchen"
         assert args.no_video is False and args.video_every_n == 1
         with pytest.raises(SystemExit):
             parser.parse_args(["--seed", "101"])
         with pytest.raises(SystemExit):
-            parser.parse_args(["--model", "fable5"])
+            parser.parse_args(["--model", "sonnet5"])
 
     def test_the_scoring_artifact_is_written_before_the_video_artifacts(self):
         """Source-level, because the trial body needs a kit process — but the
@@ -2737,7 +2737,7 @@ class TestRunTrialCli:
     def test_every_seed_and_model_in_the_frozen_matrix_is_accepted(self):
         parser = self._module().build_parser()
         for seed in LAYOUT["spawn_points"]:
-            for model in ("fable5", "opus5", "gpt56sol"):
+            for model in ("sonnet5", "opus5", "gpt56sol"):
                 args = parser.parse_args(["--model", model, "--seed", str(seed)])
                 assert (args.model, args.seed) == (model, seed)
 

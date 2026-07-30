@@ -283,7 +283,13 @@ closed-loop (or fixed-duration) stepping loop over the frozen policy. Shared mat
 (<code>sim.dt=0.005 s × decimation 4</code> <span class="src">source: parent env_cfg.py:189&ndash;190</span>),
 so <code>duration_s</code> maps to <code>N = round(50 × duration_s)</code> control steps. Commands are
 injected via section 4's <code>set_command()</code>; every loop iteration checks the fall flag and the
-bump sensor. "Dead reckoning" = estimating position by integrating commanded velocity over time; it drifts,
+bump sensor. <strong>SUPERSEDED 2026-07-30 &mdash; this section describes the RETIRED
+commanded-velocity scheme.</strong> The integrator now consumes simulated leg odometry
+(<code>ExecResult.odom_dxy</code>: the call's true displacement through a seeded error model), because
+commanded-velocity reckoning credited motion to a robot that could not move &mdash; 27.09 m reported
+against 1.99 m true in one trial. The pseudocode and the "NO k" rationale below remain accurate as a
+record of what was retired and why; see AGENTS.md rule 5 and docs/METRICS.md &sect;2.8 for the current
+contract. "Dead reckoning" = estimating position by integrating motion over time; it drifts,
 and that drift is a measured feature of the study, not a bug to hide.</p>
 
 <h3>6.1 turn_to_heading(heading_deg)</h3>

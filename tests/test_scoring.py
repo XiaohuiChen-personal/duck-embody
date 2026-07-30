@@ -2810,7 +2810,7 @@ class TestChartsSkeleton:
         from duck_embody import charts
 
         assert "matplotlib" not in sys.modules
-        assert charts.MODEL_ORDER == ("fable5", "opus5", "gpt56sol")
+        assert charts.MODEL_ORDER == ("fable5", "sonnet5", "opus5", "gpt56sol")
 
     def test_the_figure_entry_points_keep_the_pinned_signatures(self):
         import inspect

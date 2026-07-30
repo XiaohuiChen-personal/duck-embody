@@ -178,11 +178,24 @@ def number_arg(value: object, field: str, tool: str) -> tuple[float | None, dict
 
 @dataclass
 class Room:
-    """A place the model says it saw. Created only by ``update_room``."""
+    """A place the model says it saw. Created only by ``update_room``.
+
+    ``anchor_xy`` is the INTEGRATOR's estimate at the moment the model first
+    asserted this room — declared-exception class (b), the same as breadcrumbs:
+    it records what the robot believed, never ground truth. It exists because
+    the 2026-07-30 investigation found `correct_position` was called ZERO times
+    across 3 models x 13 trials, and the primary mechanical cause was that its
+    required (x, y) had no source anywhere in the payloads: the map stored
+    names, the tool demanded coordinates, and nothing bridged them. The anchor
+    is that bridge — SLAM's data-association step. Correcting to an anchor
+    restores MAP-FRAME consistency, not world truth: if the anchor itself was
+    laid down with drift, that offset survives, exactly as in real SLAM.
+    """
 
     name: str
     description: str
     landmarks: list[str] = field(default_factory=list)
+    anchor_xy: tuple[float, float] | None = None
 
 
 @dataclass
@@ -201,6 +214,11 @@ class Exit:
     room: str
     direction_deg: float  # absolute compass direction of the doorway
     status: str  # "unexplored" | "leads_to:<room>"
+    #: Integrator estimate when the exit was marked (see Room.anchor_xy).
+    #: Doorways are the highest-value anchors: a 0.35 m gap bounds the true
+    #: position to ~0.175 m — inside the success radius — where a room-sized
+    #: anchor leaves metres of ambiguity.
+    anchor_xy: tuple[float, float] | None = None
 
 
 @dataclass
@@ -269,7 +287,7 @@ class Memory:
 
     # -- model-asserted writes (doc 05 §4.3) --------------------------------
 
-    def update_room(self, name: str, description: str) -> dict:
+    def update_room(self, name: str, description: str, anchor_xy=None) -> dict:
         """Upsert a room node. Overwriting a description is legal — the model
         may revise what it thinks a place looks like (doc 05 §4.3)."""
         for value, field_name in ((name, "name"), (description, "description")):
@@ -290,7 +308,15 @@ class Memory:
             )
         room = self.rooms.get(name)
         if room is None:
-            self.rooms[name] = Room(name=name, description=description)
+            # The anchor is stamped ONCE, at creation: it means "where the
+            # integrator believed the robot stood when this place was first
+            # asserted". Re-describing the room later must not move it, or a
+            # drifted revisit would silently corrupt the map frame.
+            self.rooms[name] = Room(
+                name=name, description=description,
+                anchor_xy=(round(anchor_xy[0], 2), round(anchor_xy[1], 2))
+                if anchor_xy is not None else None,
+            )
             action = "created"
         else:
             # The upsert keeps the room's original dict slot, so its `Place N`
@@ -321,7 +347,7 @@ class Memory:
             "landmarks": len(target.landmarks),
         }
 
-    def mark_exit(self, room: str, direction_deg: float, status: str) -> dict:
+    def mark_exit(self, room: str, direction_deg: float, status: str, anchor_xy=None) -> dict:
         """Record or update an exit, keyed on (room, direction snapped to 15°)."""
         error = text_error(room, "room", "mark_exit")
         if error is not None:
@@ -348,7 +374,11 @@ class Memory:
         snapped = quantise_direction(bearing)
         existing = self._find_exit(room, snapped)
         if existing is None:
-            self.exits.append(Exit(room=room, direction_deg=snapped, status=clean))
+            self.exits.append(Exit(
+                room=room, direction_deg=snapped, status=clean,
+                anchor_xy=(round(anchor_xy[0], 2), round(anchor_xy[1], 2))
+                if anchor_xy is not None else None,
+            ))
             action = "recorded"
         else:
             existing.status = clean
@@ -680,6 +710,21 @@ class PositionIntegrator:
                 self.step(vx, vy, heading)
             heading += per_step_deg
         return heading
+
+    def apply_delta(self, dx: float, dy: float) -> None:
+        """Advance the estimate by a measured (leg-odometry) world-frame delta.
+
+        The 2026-07-30 redesign: motion tools feed this with
+        ``ExecResult.odom_dxy`` instead of integrating commanded velocity. The
+        estimate therefore tracks what the legs MEASURED, not what was asked —
+        a wedged robot's estimate stays put. Error accumulates through the
+        odometry noise model (a few percent of distance), which is what keeps
+        `correct_position` worth calling. ``integrate``/``integrate_arc`` below
+        model the retired commanded-velocity scheme; they remain for reference
+        and for tests that characterise it.
+        """
+        self.x += float(dx)
+        self.y += float(dy)
 
     def correct(self, x: float, y: float) -> tuple[float, float]:
         """Overwrite (x, y); return the old estimate. Heading is never reset —

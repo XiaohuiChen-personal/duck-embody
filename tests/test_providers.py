@@ -16,6 +16,10 @@ import json
 
 import pytest
 
+import pathlib
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+
 from duck_embody.agent.prompts import DERAILMENT_NUDGE
 from duck_embody.agent.providers.base import (
     AssistantMessage,
@@ -519,10 +523,14 @@ class TestModelConfigs:
     @pytest.mark.parametrize(
         "name,provider,model_id",
         [
+            # fable5 stays: retired from the matrix 2026-07-30 but its bytes
+            # still certify the published v4 batch, so its ID must not drift.
             ("fable5", "anthropic", "claude-fable-5"),
+            ("sonnet5", "anthropic", "claude-sonnet-5"),
             ("opus5", "anthropic", "claude-opus-5"),
             ("gpt56sol", "openai", "gpt-5.6-sol"),
-            ("judge", "anthropic", "claude-sonnet-5"),
+            # Judge moved off claude-sonnet-5 when that became a contestant.
+            ("judge", "anthropic", "claude-sonnet-4-6"),
         ],
     )
     def test_configs_load_with_the_locked_ids(self, name, provider, model_id):
@@ -536,16 +544,43 @@ class TestModelConfigs:
         """temperature/top_p/top_k return HTTP 400 on the locked models."""
         from duck_embody.agent.providers.base import load_model_config
 
-        for name in ("fable5", "opus5"):
-            params = load_model_config(name).params
-            assert not ({"temperature", "top_p", "top_k"} & set(params))
+        import yaml
+
+        matrix = yaml.safe_load(
+            (REPO_ROOT / "configs" / "benchmark.yaml").read_text()
+        )["models"]
+        # Live matrix + the retired fable5, not a literal pair: the 2026-07-30
+        # swap added claude-sonnet-5 (which also 400s on non-default sampling
+        # params) and a hardcoded tuple left the one LIVE Anthropic contestant
+        # unchecked.
+        checked = 0
+        for name in [*matrix, "fable5", "judge"]:
+            cfg = load_model_config(name)
+            if cfg.provider != "anthropic":
+                continue
+            checked += 1
+            assert not ({"temperature", "top_p", "top_k"} & set(cfg.params)), name
+        assert checked >= 3, f"expected >=3 anthropic configs, checked {checked}"
 
     def test_the_judge_is_not_a_contestant(self):
         """doc 04 §8: tuning the scene to a contestant is an integrity defect."""
         from duck_embody.agent.providers.base import load_model_config
 
-        contestants = {load_model_config(n).model_id for n in ("fable5", "opus5", "gpt56sol")}
-        assert load_model_config("judge").model_id not in contestants
+        # Read the LIVE matrix, never a literal. Pinned to ("fable5", "opus5",
+        # "gpt56sol") this guard passed vacuously through the 2026-07-30 swap
+        # that put claude-sonnet-5 on BOTH judge.yaml and the new sonnet5
+        # contestant — it asserted a property that had become false.
+        import yaml
+
+        matrix = yaml.safe_load(
+            (REPO_ROOT / "configs" / "benchmark.yaml").read_text()
+        )["models"]
+        contestants = {load_model_config(n).model_id for n in matrix}
+        judge_id = load_model_config("judge").model_id
+        assert judge_id not in contestants, (
+            f"judge model {judge_id!r} is also a contestant in {matrix} — "
+            "doc 04 §8 requires an out-of-benchmark judge"
+        )
 
 
 class TestRequestBodies:

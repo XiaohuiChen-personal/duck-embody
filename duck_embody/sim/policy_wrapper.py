@@ -25,6 +25,7 @@ it without a kit process.
 from __future__ import annotations
 
 import math
+import random
 from dataclasses import dataclass, field
 
 # --- Constants -------------------------------------------------------------
@@ -98,6 +99,47 @@ KP_HEADING = 1.5
 TURN_TOLERANCE_DEG = 5.0
 TURN_TIMEOUT_S = 8.0
 
+# --- Simulated leg odometry (2026-07-30 redesign) ---------------------------
+#: The dead-reckoning integrator no longer consumes COMMANDED velocity. It
+#: consumes simulated LEG ODOMETRY: the robot's true per-call displacement with
+#: a seeded error model. Rationale, measured the hard way:
+#:
+#:   * Commanded-velocity reckoning credited motion to a wedged robot. Batch
+#:     trial fable5_seed101: 49 send_velocity calls credited 27.09 m against
+#:     1.99 m of true displacement — the belief left the building (26.65 m off
+#:     in a 4.8 x 3.6 m flat) and ~95% of it was this accounting, not drift.
+#:   * The contact-time discount that tried to fix it is POLICY-DEPENDENT and
+#:     was measured ineffective: v4 bounces off furniture (contact force above
+#:     1 N on only 6.9% of wedged steps — an impulse train, nothing to latch),
+#:     while v5d leans in (100% duty once pressed). A crediting rule that works
+#:     for one gait fails for the other.
+#:
+#: Leg odometry is what the REAL robot can honestly compute: 14 joint encoders
+#: + foot contact switches -> stance-leg forward kinematics. Published legged
+#: odometry lands at a few percent of distance travelled; the constants below
+#: sit in that band. The sim models the OUTPUT of that stack (true displacement
+#: x seeded noise) rather than re-deriving FK, which is a recorded deviation,
+#: not a secret: the estimate the model sees still drifts a few percent of
+#: distance — enough that loop closure genuinely matters against the 0.35 m
+#: success radius — but a robot that does not move no longer believes it moved.
+#: Heading remains the absolute compass (BNO055), unchanged.
+ODOM_SCALE_STD = 0.04          #: per-trial systematic scale error (std dev)
+ODOM_SCALE_CLIP = (0.90, 1.10)
+ODOM_NOISE_FRAC = 0.03         #: per-call white noise, fraction of call distance
+#: Standing/slipping odometry error per SECOND, not per call. It MUST be a rate:
+#: `attach_recorder` patches execute() so every command is sliced into 0.04 s
+#: pieces whenever video is on — which is every batch trial — and
+#: merge_exec_results SUMS per-piece path lengths. A per-CALL floor therefore
+#: accrued ~25x/s: a wedged 3 s command reported 0.094 m recorded vs 0.0013 m
+#: unrecorded, i.e. 4.6 m of phantom distance over the 49-call wedge episode
+#: this redesign exists to fix, and it made the model-facing distance depend on
+#: whether video was being captured. As a rate the expectation is
+#: chunking-invariant (sigma is linear in dt, and E|noise| is linear in sigma,
+#: so N pieces sum to the same expectation as one call). Caught by adversarial
+#: review, not by the first physics smoke — which ran WITHOUT the recorder and
+#: so validated a code path the batch never takes.
+ODOM_NOISE_FLOOR_RATE_MPS = 0.001
+
 #: MEASURED velocity realisation factor (T1.3): net displacement / commanded.
 #: Used ONLY here — for the `move` servo target and its timeout margin — and by
 #: wall-clock forecasting. The dead-reckoning integrator the model sees uses
@@ -147,30 +189,6 @@ def move_servo_plan(distance_m: float) -> tuple[float, float, int]:
     ideal_s = target_dist / MOVE_SPEED_MPS if MOVE_SPEED_MPS else 0.0
     n_chunks = max(1, int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)))
     return distance, target_dist, n_chunks
-
-
-def credited_distance_m(speed_mps: float, result: "ExecResult") -> float:
-    """Commanded arc length, charged only for time the robot was NOT wedged.
-
-    THE BUG THIS FIXES. Dead reckoning credited `speed x policy_seconds`
-    unconditionally, so a duck pressed against a sofa with its legs cycling was
-    told it had walked. Measured on the v5d benchmark trial
-    (results/raw_v5d/fable5_seed101.json): 49 `send_velocity` calls reported
-    27.09 m against 1.99 m of true displacement; the worst credited 0.60 m for
-    0.01 m of real motion, `bumped=True` for the entire 3 s. Of a 26.65 m final
-    position error, 25.10 m came from this one tool — so ~95% of the apparent
-    "dead-reckoning drift" was an accounting bug, not odometry. Genuine
-    policy-tracking error over the same trial's clean moves was 0.13 m.
-
-    Only CONFIRMED sustained contact is discounted (past BUMP_DEBOUNCE_STEPS),
-    so a glancing brush while still walking still earns its distance; a wedge
-    earns nothing. This uses proprioception the robot has (a torso bump sensor),
-    never ground-truth displacement, so the estimate the model sees stays an
-    honest dead-reckoned quantity that can still drift — it just no longer
-    accumulates metres the robot never travelled.
-    """
-    moving_s = max(0.0, result.policy_seconds - result.contact_steps * CONTROL_DT)
-    return speed_mps * moving_s
 
 
 def clamp_command(
@@ -240,6 +258,12 @@ class ExecResult:
     #: accounted for 25.10 m of a 26.65 m position error — i.e. ~95% of what
     #: looked like "drift" was this accounting bug, not odometry.
     contact_steps: int = 0
+    #: Simulated leg-odometry displacement for THIS call, world frame, noise
+    #: applied. What the dead-reckoning integrator consumes. (0, 0) while
+    #: wedged, because odometry measures motion, not intent.
+    odom_dxy: tuple[float, float] = (0.0, 0.0)
+    #: Path length of the same measurement (for `distance_moved_m` reporting).
+    odom_distance_m: float = 0.0
     #: True base XY sampled at 5 Hz during the motion, bracketed by the exact
     #: start and end poses. SCORING ONLY — never shown to the model (doc 06 §4).
     pose_trace: list[tuple[float, float]] = field(default_factory=list)
@@ -313,6 +337,21 @@ def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecR
     # boolean. A drive that scrapes through eight 0.2 s chunks accumulated eight
     # chunks' worth of contact, and the reported distance is computed from it.
     total.contact_steps += part.contact_steps
+    total.odom_dxy = (
+        total.odom_dxy[0] + part.odom_dxy[0],
+        total.odom_dxy[1] + part.odom_dxy[1],
+    )
+    # NET displacement of the accumulated vector — NOT a sum of per-part
+    # magnitudes. Magnitude-sum is not chunking-invariant: the recorder slices
+    # a command into 0.04 s pieces (every batch trial), and a duck vibrating
+    # against furniture has a small true displacement in a RANDOM direction
+    # each slice, so the magnitudes accumulate as path length. Measured on real
+    # physics: a wedged 3 s command reported 0.72 m of "travel" for 0.09 m of
+    # net motion, purely from summed jitter. The vector sum cancels that
+    # exactly, at any slicing. Semantics the model needs from
+    # `distance_moved_m` is "how far did I actually get", which is net
+    # displacement; a there-and-back excursion honestly reports ~0.
+    total.odom_distance_m = math.hypot(*total.odom_dxy)
     for group in part.contact_groups:
         if group not in total.contact_groups:
             total.contact_groups.append(group)
@@ -376,6 +415,11 @@ class PolicyPlayback:
         # per-call counter could never reach BUMP_DEBOUNCE_STEPS=3 inside a
         # 2-step chunk, so bumps would have been undetectable in exactly the
         # runs that record video — including T2.4's physics gate.
+        # Leg-odometry error model: seeded per trial in reset(seed=...), so a
+        # trial's odometry is reproducible from its seed alone.
+        self._odom_rng = random.Random(0)
+        self._odom_scale = 1.0
+        self._last_seed = None
         self._bump_run = 0
         self._fall_diagnostics: dict | None = None
         # Likewise a persistent control-step counter for pose_trace sampling.
@@ -554,9 +598,19 @@ class PolicyPlayback:
 
     # -- execution ----------------------------------------------------------
 
-    def reset(self):
+    def reset(self, seed: int | None = None):
         self._obs, _ = self.env.reset()
         self._fell = False
+        # Per-trial odometry error: one systematic scale draw plus a fresh
+        # white-noise stream. Seeded so a trial replays identically.
+        # Remembered so the lazy `self.reset()` inside execute() (the _obs-is-None
+        # path) cannot silently replace a trial's seeded error model with the
+        # seed-0 one mid-trial — a re-seed that would be invisible in every
+        # artifact.
+        self._last_seed = seed if seed is not None else getattr(self, "_last_seed", None)
+        self._odom_rng = random.Random(0 if self._last_seed is None else int(self._last_seed))
+        lo, hi = ODOM_SCALE_CLIP
+        self._odom_scale = min(hi, max(lo, self._odom_rng.gauss(1.0, ODOM_SCALE_STD)))
         # Cleared with `_fell`, or a fallback read could serve the PREVIOUS
         # trial's fall to this one.
         self._fall_diagnostics = None
@@ -596,6 +650,8 @@ class PolicyPlayback:
         bumped = False
         contact_groups: list[str] = []
         contact_steps = 0
+        in_contact = False
+        release_run = 0
         stopped_early = False
         stop_reason = ""
         steps_done = 0
@@ -684,7 +740,9 @@ class PolicyPlayback:
 
             if self.bump_contact_force() > BUMP_FORCE_N:
                 self._bump_run += 1
+                release_run = 0
                 if self._bump_run >= BUMP_DEBOUNCE_STEPS:
+                    in_contact = True
                     bumped = True
                     # Sampled DURING confirmed contact, never at the end of the
                     # call: by then the robot has usually separated and the
@@ -700,16 +758,30 @@ class PolicyPlayback:
                     for group in self.contact_groups():
                         if group not in contact_groups:
                             contact_groups.append(group)
-                    # One step of confirmed contact. Counted even when
-                    # stop_on_bump breaks below, so the partial chunk is charged
-                    # for the contact it actually experienced.
-                    contact_steps += 1
                     if stop_on_bump:
                         stopped_early = True
                         stop_reason = "bump"
                         break
             else:
                 self._bump_run = 0
+                # HYSTERESIS. Contact LATCHES until sustained release. Counting
+                # only steps where the rising debounce is already satisfied
+                # under-counts catastrophically: a duck pressed into a sofa
+                # oscillates its contact force as the gait cycles, so
+                # `_bump_run` keeps resetting and re-arming. Measured against
+                # real physics (scripts/smoke_wedge_fix.py, first run): a 2.32 s
+                # full-speed press that truly moved 15 mm registered only 4
+                # confirmed-contact steps of ~116, so 0.448 m of 0.464 m
+                # commanded was still credited — the fix was inert in exactly
+                # the case it exists for. Mock tests could not see this because
+                # FakePlayback reported contact for the whole call.
+                release_run += 1
+                if release_run >= BUMP_DEBOUNCE_STEPS:
+                    in_contact = False
+
+            # Charged for every latched step, not just the confirming one.
+            if in_contact:
+                contact_steps += 1
 
             if self._step_counter % POSE_TRACE_EVERY == 0:
                 sampled_xy.append(last_live_xy)
@@ -731,6 +803,21 @@ class PolicyPlayback:
             end_heading = self.compass_deg()
         pose_trace = [start_xy, *sampled_xy, end_xy]
 
+        # Simulated leg odometry for this call: the true displacement (from the
+        # same live-pose guard the scoring fields use) through the per-trial
+        # error model. A wedged call has ~zero true displacement, so odometry
+        # reports ~zero — motion is measured, not assumed from the command.
+        _tdx = end_xy[0] - start_xy[0]
+        _tdy = end_xy[1] - start_xy[1]
+        _tdist = math.hypot(_tdx, _tdy)
+        # Both terms scale with the SLICE (distance and duration), so summing
+        # across recorder chunks matches a single unrecorded call.
+        _sigma = ODOM_NOISE_FRAC * _tdist + ODOM_NOISE_FLOOR_RATE_MPS * (
+            steps_done * CONTROL_DT
+        )
+        _ox = _tdx * self._odom_scale + self._odom_rng.gauss(0.0, _sigma)
+        _oy = _tdy * self._odom_scale + self._odom_rng.gauss(0.0, _sigma)
+
         return ExecResult(
             commanded=(cvx, cvy, cwz),
             duration_s=duration_s,
@@ -748,6 +835,8 @@ class PolicyPlayback:
             stopped_early=stopped_early,
             stop_reason=stop_reason,
             contact_steps=contact_steps,
+            odom_dxy=(_ox, _oy),
+            odom_distance_m=math.hypot(_ox, _oy),
         )
 
     def settle(self, duration_s: float = 0.4) -> None:
@@ -874,16 +963,13 @@ class PolicyPlayback:
             if on_chunk is not None:
                 on_chunk()
 
-            # Dead reckoning integrates the COMMANDED velocity — the same
-            # honest, drifting estimate the model is shown — but only for the
-            # part of the chunk the robot was not wedged. `move` aborts after
-            # MOVE_ABORT_SUSTAINED_CHUNKS=2 sustained-contact chunks, so without
-            # this it still credits up to 2 chunks (0.08 m) of pressing per
-            # call: measured 1.24 m of inflation over 19 move calls in the v5d
-            # trial, against send_velocity's 25.10 m. Smaller, same bug — and a
-            # partial fix here would leave `move` and `send_velocity` reporting
-            # by different rules.
-            travelled += credited_distance_m(MOVE_SPEED_MPS, part)
+            # SERVO PROGRESS ONLY: commanded arc, the deterministic quantity
+            # the k-adjusted target is defined over. What the model is TOLD it
+            # moved — and what the estimate integrates — is the leg-odometry
+            # measurement (`merged.odom_*`), set after this loop. Aiming and
+            # measuring are deliberately different quantities; conflating them
+            # is what produced the wedge-inflation bug.
+            travelled += MOVE_SPEED_MPS * part.policy_seconds
             last_pose = part.true_pose
 
             if part.fell:
@@ -935,5 +1021,8 @@ class PolicyPlayback:
         #: the true displacement and so shrank the drift doc 06 §5.8 exists to
         #: measure. Fixed by T3.1, which implements the same pin in
         #: `agent/memory.py::PositionIntegrator`; the two must not disagree.
-        merged.dead_reckoned_distance_m = travelled
+        # Reported distance is the ODOMETRY path length, not the commanded
+        # credit: `travelled` (commanded arc) still drives the servo loop above,
+        # but what the model is told it moved is what the legs measured.
+        merged.dead_reckoned_distance_m = merged.odom_distance_m
         return merged

@@ -1,0 +1,41 @@
+# Benchmark contestant 1 of 3 — Anthropic's best speed/intelligence balance.
+# FROZEN before the batch (doc 06 §2). Model IDs are configured values, never
+# hardcoded in the loop, so results/freeze.json can hash exactly what ran.
+#
+# REPLACES fable5 in the matrix (owner decision 2026-07-30, cost-driven:
+# $3/$15 per MTok vs fable5's $10/$50 — a non-falling trial that runs to the
+# caps cost $4.87 on fable5, so a 12-trial batch was $50-60; sonnet5 cuts that
+# roughly 3x). CONSEQUENCE FOR COMPARABILITY: the frozen v4-policy batch has a
+# fable5 column, not a sonnet5 one, so this contestant's scores have no
+# same-model v4 baseline; opus5 and gpt56sol remain same-model comparisons.
+# KNOWN CAVEAT: claude-sonnet-5 is also the scene-recognizability judge
+# (configs/models/judge.yaml). The judge gate ran once against the frozen v4
+# batch and is not re-run here (the scene is unchanged), so there is no live
+# judge-contestant interaction — but the overlap is recorded rather than hidden.
+provider: anthropic
+model_id: claude-sonnet-5
+
+# max_tokens caps thinking AND response text together — same sizing rationale
+# as the other Anthropic contestants (16k non-streaming ceiling).
+max_tokens: 16000
+
+# USD per million tokens. STANDARD rates, deliberately not the introductory
+# $2/$10 (valid through 2026-08-31): cost tracking and the batch spend watchdog
+# should over-estimate, never under-estimate, and the standard rate is the
+# durable one.
+price_in_per_mtok: 3.0
+price_out_per_mtok: 15.0
+
+# No sampling parameters: non-default temperature/top_p/top_k are REJECTED on
+# this model. `effort` deliberately unset (API default applies), matching the
+# other Anthropic contestant so no arbitrary constant differs across 2 of 3.
+params: {}
+
+notes: >
+  Adaptive thinking is the default on this model (omitting `thinking` runs
+  adaptive); the adapter requests {"type":"adaptive","display":"summarized"} so
+  the transcript records the reasoning summary for the qualitative audit —
+  identical adapter behaviour to the other Anthropic contestants. Assistant
+  turns are echoed back verbatim because thinking blocks must be replayed
+  unchanged. Unlike fable5 there is no zero-data-retention restriction and no
+  always-on-thinking constraint.

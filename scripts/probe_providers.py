@@ -107,7 +107,11 @@ def main() -> int:
             )
         ]
 
-    for name in ("fable5", "opus5", "gpt56sol"):
+    import yaml as _yaml
+    _matrix = _yaml.safe_load(
+        (Path(__file__).resolve().parent.parent / "configs" / "benchmark.yaml").read_text()
+    )["models"]
+    for name in _matrix:
         cfg = load_model_config(name)
         print(f"\n== {name} ({cfg.model_id}) ==")
         entry: dict = {"model_id": cfg.model_id}

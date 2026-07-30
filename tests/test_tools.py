@@ -304,8 +304,17 @@ class FakePlayback:
         self.move_ends_on_compass: float | None = None
         #: Set to make `move()` terminate in a fall.
         self.move_falls = False
-        #: Share of a bumped call spent in CONFIRMED contact (1.0 = fully wedged).
+        #: Share of a bumped call spent in CONFIRMED contact (diagnostics only).
         self.contact_fraction = 1.0
+        #: Leg-odometry realisation for fake motions: 1.0 = the legs measured
+        #: exactly the served motion (perfect odometry, no noise — noise is a
+        #: real-physics property, exercised by scripts/smoke_odometry.py on the
+        #: GPU); 0.0 = wedged, no true motion despite the command. The fakes
+        #: synthesize `odom_dxy`/`odom_distance_m` from this because the tools
+        #: now integrate MEASURED odometry, and a fake without it would leave
+        #: every dispatch-level distance assertion exercising nothing.
+        self.odom_factor = 1.0
+        self._last_turn_result = None
         #: What `compass_deg()` reads AFTER a fall. Isaac Lab auto-resets a
         #: terminated env INSIDE `env.step()` and teleports the robot back to
         #: spawn before the call returns (`policy_wrapper.execute` lines
@@ -355,11 +364,16 @@ class FakePlayback:
             # the result — otherwise `status.fell` and `result.fell` disagree.
             self._fell = True
             stop_reason = "fell"
+        _cvx, _cvy, _ = commanded
+        _dist = math.hypot(_cvx, _cvy) * steps * CONTROL_DT * self.odom_factor
+        _ang = math.radians(self._compass) + math.atan2(_cvy, _cvx)
         result = _exec_result(
             commanded=commanded,
             duration_s=duration_s,
             steps=steps,
             policy_seconds=steps * CONTROL_DT,
+            odom_dxy=(_dist * math.cos(_ang), _dist * math.sin(_ang)),
+            odom_distance_m=_dist,
             bumped=self.bumped,
             # Mirror the real execute(): a confirmed-contact call charges its
             # steps as contact, which is what the reported distance is now
@@ -376,7 +390,18 @@ class FakePlayback:
         )
         if stop_reason == "fell":
             self._teleport_to_spawn()
+        self._last_exec_result = result
         return result
+
+    def last_turn_result(self):
+        """Most recent ExecResult returned from turn_to_heading()."""
+        return self._last_turn_result
+
+    def last_exec_result(self):
+        """The most recent ExecResult this fake returned from execute() — so a
+        test can assert the integrator consumed exactly what the tool was
+        given, without re-deriving the fake's arithmetic in the test."""
+        return self._last_exec_result
 
     def turn_to_heading(self, heading_deg, **kwargs):
         self.calls.append(("turn_to_heading", dict(heading_deg=heading_deg, **kwargs)))
@@ -389,11 +414,18 @@ class FakePlayback:
         )
         if fell:
             self._fell = True
+        # A real turn does not pivot perfectly: the legs measure a few cm of
+        # wander, which since 2026-07-30 reaches the integrator. Without this
+        # the fake reports (0, 0) and the tool-level feed is untestable —
+        # deleting the apply_delta line in tools.py left the whole suite green.
+        _wander = 0.03 * self.odom_factor
         result = _exec_result(
             commanded=(0.0, 0.0, 0.3),
             duration_s=MACRO_CHUNK_S,  # stale on macro results — never reported
             steps=duration_to_steps(drive_s + settle_s),
             policy_seconds=drive_s + settle_s,
+            odom_dxy=(_wander, -_wander / 2),
+            odom_distance_m=math.hypot(_wander, _wander / 2),
             bumped=self.bumped,
             contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=self._fell,
@@ -401,6 +433,7 @@ class FakePlayback:
         )
         if fell:
             self._teleport_to_spawn()
+        self._last_turn_result = result
         return result
 
     def move(self, distance_m, hold_heading=True, stop_on_bump=True, on_chunk=None):
@@ -431,6 +464,7 @@ class FakePlayback:
         chunks = ideal if self.stop_after_chunks is None else self.stop_after_chunks
         drive_s = chunks * MACRO_CHUNK_S
         travelled = MOVE_SPEED_MPS * drive_s
+        held = self._compass  # move holds the entry heading; odom points along it
         fell = self._fell or self.move_falls
         self._fell = fell
         if self.move_ends_on_compass is not None:
@@ -439,6 +473,8 @@ class FakePlayback:
         # but contributes nothing to `travelled` (and is skipped after a fall).
         settle_s = 0.0 if fell else MACRO_CHUNK_S
         reason = "fell" if self.move_falls else ("bump" if self.bumped else "reached")
+        _odist = travelled * self.odom_factor
+        _hrad = math.radians(held)
         result = _exec_result(
             commanded=(MOVE_SPEED_MPS, 0.0, 0.0),
             duration_s=MACRO_CHUNK_S,  # stale on macro results — never reported
@@ -448,7 +484,11 @@ class FakePlayback:
             contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=fell,
             stop_reason=reason,
-            dead_reckoned_distance_m=travelled,
+            # The real move() now reports the odometry path length, and the
+            # integrator consumes odom_dxy — mirror both.
+            dead_reckoned_distance_m=_odist,
+            odom_dxy=(_odist * math.cos(_hrad), _odist * math.sin(_hrad)),
+            odom_distance_m=_odist,
         )
         if self.move_falls:
             self._teleport_to_spawn()
@@ -578,10 +618,20 @@ class TestSchemaMatchesTheDesignDoc:
         assert body["type"] == "object"
         assert isinstance(body["properties"], dict)
         assert isinstance(body["required"], list)
-        # Doc 05 §4 has ZERO optional parameters: every declared property is
-        # required. A property that slipped out of `required` would be a
-        # silently optional argument the handlers still index into.
-        assert sorted(body["required"]) == sorted(body["properties"])
+        # Doc 05 §4 had ZERO optional parameters until 2026-07-30. The one
+        # amendment: `correct_position` takes EITHER `place` (a mapped room
+        # name, resolved to its anchor) OR explicit x/y — an either-or that
+        # JSON Schema's flat `required` cannot express, so those three are
+        # optional at schema level and the handler enforces the combination
+        # with a structured error (`_correct_position`, tested below). Every
+        # other tool keeps the all-required invariant, and any NEW optional
+        # parameter must be added here deliberately or this fails.
+        declared_optional = {"correct_position": {"place", "x", "y"}}
+        optional = declared_optional.get(schema["name"], set())
+        assert sorted(body["required"]) == sorted(
+            set(body["properties"]) - optional
+        )
+        assert optional <= set(body["properties"])
         for name, spec in body["properties"].items():
             assert spec["type"] in ("number", "string"), name
 
@@ -1432,6 +1482,14 @@ class TestAfterAFall:
 
 
 class TestDeadReckoningFeed:
+    """NOTE (2026-07-30): several tests in this class characterise the RETIRED
+    commanded-velocity scheme. They are kept because that scheme's arithmetic
+    is still reachable (`PositionIntegrator.integrate`/`integrate_arc`) and
+    because they document what the odometry redesign replaced and why. Tests
+    describing the LIVE contract say so in their own docstrings; when the two
+    disagree, the live one wins.
+    """
+
     def test_move_integrates_the_driving_seconds_not_the_settled_ones(self):
         """PLAN T3.2 (b) says to feed `integrate()` the `policy_seconds` ACTUALLY
         RUN. That is right for `send_velocity` and WRONG for `move`:
@@ -1548,50 +1606,53 @@ class TestDeadReckoningFeed:
         assert len(context.memory.breadcrumbs) == 1
         assert context.last_distance_moved_m == pytest.approx(0.2 * 0.5, abs=1e-3)
 
-    def test_turning_in_place_moves_the_position_estimate_by_exactly_zero(self):
-        """`turn_to_heading` commands vx = vy = 0. Real slip during the turn is
-        drift the integrator is SUPPOSED not to see (doc 05 §5.1) — an
-        integrator that "helpfully" accounted for it would be measuring our
-        model of the robot instead of the model's cognition."""
-        context = make_context()
-        before = context.integrator.xy
-        dispatch(call("turn_to_heading", heading_deg=180.0), context)
-        assert context.integrator.xy == before
+    def test_turning_in_place_moves_the_estimate_only_by_measured_wander(self):
+        """SUPERSEDED CONTRACT, kept as the record of a deliberate change.
 
-    def test_send_velocity_integrates_the_arc_not_a_straight_line(self):
-        """`send_velocity` is the only tool that can translate and rotate at
-        once. Doc 02 §6.3's pseudocode integrates such a command in ONE call at
-        ONE heading; for `send_velocity(0.222, 0, 0.5, 3.0)` — 86 deg of sweep
-        over 0.67 m — that misplaces the estimate by ~0.45 m, against a 0.35 m
-        `find_kitchen` success radius. That error is the harness's arithmetic,
-        not the robot's slip. Recorded in doc 02 §6.3 / doc 05 §4.2."""
+        Was: `test_turning_in_place_moves_the_position_estimate_by_exactly_zero`
+        — under commanded-velocity reckoning a turn commanded vx = vy = 0, so
+        the estimate could not move, and doc 05 §5.1 called real turn slip
+        "drift the integrator is supposed not to see".
+
+        Under leg odometry (2026-07-30) the legs MEASURE that slip, so it
+        reaches the estimate. Keeping the old assertion would have made
+        turning a free error-laundering step — spin in place to erase
+        accumulated error, which no real robot can do. The invariant that
+        survives is the narrower one: the estimate moves by the MEASUREMENT and
+        by nothing else, and a perfect pivot still moves it exactly zero.
+        """
+        playback = FakePlayback()
+        playback.odom_factor = 0.0  # a perfect pivot: no measurable translation
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.4, 0.6)
+
+        dispatch(call("turn_to_heading", heading_deg=270.0), context)
+        assert context.integrator.xy == pytest.approx((0.4, 0.6))
+    def test_send_velocity_feeds_the_estimate_the_measured_odometry_delta(self):
+        """2026-07-30 rewrite of test_send_velocity_integrates_the_arc_not_a_
+        straight_line. Under commanded-velocity reckoning, a translate+rotate
+        command had to be integrated as an ARC (one-heading integration was off
+        by ~0.45 m over 3 s — bigger than the 0.35 m success radius), and this
+        test pinned that arithmetic. Under leg odometry the arc problem is
+        structural, not arithmetic: the legs measure the path the robot
+        actually swept, curves included, and the integrator consumes exactly
+        that measurement. So the tool-level contract to pin is: the estimate
+        advances by precisely `ExecResult.odom_dxy`, nothing else — no k, no
+        commanded-velocity term, no second integration. Arc FIDELITY is a
+        physics property now, asserted against real Isaac physics by
+        scripts/smoke_odometry.py (curved-drive case), where it belongs.
+        """
         vx, wz, duration = 0.222, 0.5, 3.0
-        context = make_context(playback=FakePlayback(compass_deg=0.0))
+        playback = FakePlayback(compass_deg=0.0)
+        context = make_context(playback=playback)
         context.integrator = PositionIntegrator(0.0, 0.0)
         dispatch(
             call("send_velocity", vx=vx, vy=0.0, wz=wz, duration_s=duration), context
         )
-
-        # Independently re-derived here rather than asserted as a magic pair:
-        # the commanded heading advances by degrees(wz) * dt each control step.
-        expected_x = expected_y = 0.0
-        heading = 0.0
-        for _ in range(duration_to_steps(duration)):
-            expected_x += vx * math.cos(math.radians(heading)) * CONTROL_DT
-            expected_y += vx * math.sin(math.radians(heading)) * CONTROL_DT
-            heading += math.degrees(wz) * CONTROL_DT
-        assert context.integrator.x == pytest.approx(expected_x, abs=1e-12)
-        assert context.integrator.y == pytest.approx(expected_y, abs=1e-12)
-
-        # And the point of the exercise: a straight-line integration would land
-        # at (0.666, 0.0), which is further from the truth than the whole
-        # `find_kitchen` success radius (0.35 m, doc 06 §5.3) — a harness-made
-        # error big enough to swamp what doc 06 §5.8 is trying to measure.
-        straight_line_error = math.dist(
-            (expected_x, expected_y), (vx * duration, 0.0)
-        )
-        assert straight_line_error > 0.35
-
+        result = playback.last_exec_result()
+        assert result.odom_distance_m > 0, "fake must have measured motion"
+        assert context.integrator.x == pytest.approx(result.odom_dxy[0], abs=1e-12)
+        assert context.integrator.y == pytest.approx(result.odom_dxy[1], abs=1e-12)
     def test_a_pure_translation_integrates_identically_to_the_plain_integrator(self):
         """With wz = 0 the arc feed must reduce, step for step, to
         `PositionIntegrator.integrate` — or `send_velocity` and `move` would
@@ -2160,36 +2221,34 @@ class TestMoveServoPlanIsGuarded:
             )
 
 
-class TestWedgedSendVelocityIsNotCreditedAtToolLevel:
-    """Drive the REAL send_velocity through dispatch with the robot wedged.
+class TestWedgedSendVelocityReportsOdometryAtToolLevel:
+    """Drive the REAL send_velocity through dispatch and assert what the model
+    is told it moved — which since 2026-07-30 is the LEG-ODOMETRY measurement.
 
-    The helper-level tests live in tests/test_memory.py; this one exists because
-    those alone would be mock-blind — the same trap that hid a broken
-    `move_servo_plan` behind FakePlayback until a mutation test exposed it. This
-    asserts the value the MODEL actually receives in `status.distance_moved_m`.
+    Exists at dispatch level because helper-only tests were mock-blind twice
+    (a broken move_servo_plan and an inert contact-discount both hid behind
+    green suites). `odom_factor` models the legs' realisation of the command:
+    1.0 = perfect tracking, 0.0 = wedged (motion commanded, none happened).
     """
 
-    def test_a_fully_wedged_send_velocity_reports_no_travel(self):
+    def test_a_wedged_send_velocity_reports_no_travel_and_freezes_the_estimate(self):
         playback = FakePlayback()
         playback.bumped = True
-        playback.contact_fraction = 1.0
+        playback.odom_factor = 0.0
         context = make_context(playback=playback)
         context.integrator = PositionIntegrator(0.0, 0.0)
 
         out = dispatch(
             call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
         )
-        moved = out.payload["status"]["distance_moved_m"]
-        assert moved == pytest.approx(0.0, abs=1e-9), (
+        assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.0, abs=1e-9), (
             "a wedged duck must not be told it walked 0.6 m"
         )
-        # And the ESTIMATE must not advance either — the report and the belief
-        # are separate code paths and both were wrong.
+        # Report and belief are separate code paths and both were wrong once.
         assert context.integrator.xy == pytest.approx((0.0, 0.0))
 
-    def test_a_clean_send_velocity_is_unchanged(self):
+    def test_a_clean_send_velocity_reports_the_full_measured_distance(self):
         playback = FakePlayback()
-        playback.bumped = False
         context = make_context(playback=playback)
         context.integrator = PositionIntegrator(0.0, 0.0)
 
@@ -2197,15 +2256,183 @@ class TestWedgedSendVelocityIsNotCreditedAtToolLevel:
             call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
         )
         assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.6, abs=1e-6)
+        # And the estimate advanced by exactly the measured delta, along the
+        # compass heading the fake held during the call (read it, don't assume
+        # the spawn constant — the fake's initial compass differs from it).
+        h = math.radians(playback.compass_deg())
+        expect = (0.6 * math.cos(h), 0.6 * math.sin(h))
+        assert context.integrator.xy == pytest.approx(expect, abs=1e-9)
 
-    def test_a_half_wedged_call_is_credited_pro_rata(self):
+    def test_partial_realisation_is_reported_pro_rata(self):
+        """Slipping/obstructed motion: legs measured half the commanded arc."""
         playback = FakePlayback()
         playback.bumped = True
-        playback.contact_fraction = 0.5
+        playback.odom_factor = 0.5
         context = make_context(playback=playback)
         context.integrator = PositionIntegrator(0.0, 0.0)
 
         out = dispatch(
             call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
         )
-        assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.3, abs=0.02)
+        assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.3, abs=1e-6)
+
+
+class TestCorrectPositionByPlaceName:
+    """The 2026-07-30 data-association bridge: `correct_position(place=...)`.
+
+    Zero uptake across 3 models x 13 trials traced primarily to the tool
+    demanding an (x, y) that no payload supplied — recognition yields a NAME.
+    These drive the real dispatch path.
+    """
+
+    def _context_with_anchored_room(self):
+        playback = FakePlayback()
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+        # Map a room the way the tools do: anchor stamped from the estimate.
+        context.integrator.x, context.integrator.y = 1.20, 0.80
+        dispatch(call("update_room", name="kitchen", description="counters"), context)
+        return context
+
+    def test_place_resolves_to_the_rooms_anchor(self):
+        context = self._context_with_anchored_room()
+        # Drift the estimate away from the anchor.
+        context.integrator.x, context.integrator.y = 3.00, 3.00
+        out = dispatch(
+            call("correct_position", place="kitchen", reason="back at the counters"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.integrator.xy == pytest.approx((1.20, 0.80))
+
+    def test_unknown_place_returns_a_structured_error_listing_anchors(self):
+        context = self._context_with_anchored_room()
+        out = dispatch(
+            call("correct_position", place="ballroom", reason="lost"), context
+        )
+        assert out.is_error
+        assert out.payload["error"] == "invalid_args"
+        assert "kitchen" in out.payload["hint"], (
+            "the hint must list the anchored places the model CAN use"
+        )
+        # A failed correction must not move the estimate.
+        assert context.integrator.xy == pytest.approx((1.20, 0.80))
+
+    def test_neither_place_nor_xy_is_a_structured_error(self):
+        context = self._context_with_anchored_room()
+        out = dispatch(call("correct_position", reason="vibes"), context)
+        assert out.is_error
+        assert "place" in out.payload["hint"]
+
+    def test_explicit_xy_still_works_unchanged(self):
+        context = self._context_with_anchored_room()
+        out = dispatch(
+            call("correct_position", x=0.5, y=0.6, reason="recognized the rug"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.integrator.xy == pytest.approx((0.5, 0.6))
+
+
+class TestTurnFeedsMeasuredWanderToTheEstimate:
+    """`turn_to_heading` applies its measured odom delta (2026-07-30).
+
+    Under commanded-velocity reckoning a rotation displaced the estimate by
+    EXACTLY zero (vx = vy = 0), and doc 05 §5.1 called turn slip "drift the
+    integrator is supposed not to see". Under leg odometry the legs genuinely
+    measure that wander, so hiding it would make turning a free
+    error-laundering step: spin to erase accumulated error. This had no
+    coverage at all — deleting the `apply_delta` line in `_turn_to_heading`
+    left 1573 tests and the physics smoke green.
+    """
+
+    def test_the_estimate_advances_by_exactly_the_measured_wander(self):
+        playback = FakePlayback()
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(1.0, 2.0)
+
+        dispatch(call("turn_to_heading", heading_deg=180.0), context)
+        result = playback.last_turn_result()
+        assert result.odom_dxy != (0.0, 0.0), "fake must measure some wander"
+        assert context.integrator.xy == pytest.approx(
+            (1.0 + result.odom_dxy[0], 2.0 + result.odom_dxy[1]), abs=1e-12
+        )
+
+    def test_a_perfect_pivot_moves_the_estimate_not_at_all(self):
+        """odom_factor=0 models a turn with no measurable translation."""
+        playback = FakePlayback()
+        playback.odom_factor = 0.0
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(1.0, 2.0)
+
+        dispatch(call("turn_to_heading", heading_deg=180.0), context)
+        assert context.integrator.xy == pytest.approx((1.0, 2.0))
+
+    def test_the_reported_distance_stays_zero(self):
+        """doc 06 §5.6 counts translation commands only; the wander reaches the
+        estimate but must not be billed as distance travelled."""
+        playback = FakePlayback()
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+
+        out = dispatch(call("turn_to_heading", heading_deg=180.0), context)
+        assert out.payload["status"]["distance_moved_m"] == 0.0
+        assert context.integrator.xy != pytest.approx((0.0, 0.0))
+
+
+class TestDoorwayAnchorResolution:
+    """`correct_position(place="name@bearing")` — the doorway affordance.
+
+    The prompt tells the model a doorway pins position tightest (a 0.35 m gap
+    versus a room centroid metres away), but before 2026-07-30 only ROOM
+    anchors resolved, so following that instruction silently snapped to the
+    wrong anchor. Exit anchors also vanished from the rendered map the moment
+    the exit flipped to `leads_to:` — i.e. on walking through it.
+    """
+
+    def _ctx_with_doorway(self):
+        playback = FakePlayback()
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+        dispatch(call("update_room", name="hall", description="narrow"), context)
+        context.integrator.x, context.integrator.y = 2.55, 2.70
+        dispatch(
+            call("mark_exit", room="hall", direction_deg=270, status="unexplored"),
+            context,
+        )
+        return context
+
+    def test_a_doorway_anchor_resolves_by_name_at_bearing(self):
+        context = self._ctx_with_doorway()
+        context.integrator.x, context.integrator.y = 4.0, 4.0  # drift away
+        out = dispatch(
+            call("correct_position", place="hall@270", reason="back in the doorway"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.integrator.xy == pytest.approx((2.55, 2.70)), (
+            "snapped to the room anchor instead of the doorway anchor"
+        )
+
+    def test_the_doorway_anchor_survives_the_exit_being_explored(self):
+        """The exact moment the model is told to re-anchor."""
+        context = self._ctx_with_doorway()
+        dispatch(
+            call("mark_exit", room="hall", direction_deg=270, status="leads_to:kitchen"),
+            context,
+        )
+        context.integrator.x, context.integrator.y = 4.0, 4.0
+        out = dispatch(
+            call("correct_position", place="hall@270", reason="walked back through"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.integrator.xy == pytest.approx((2.55, 2.70))
+
+    def test_an_unknown_doorway_lists_the_resolvable_anchors(self):
+        context = self._ctx_with_doorway()
+        out = dispatch(
+            call("correct_position", place="hall@999", reason="lost"), context
+        )
+        assert out.is_error
+        assert "hall@270" in out.payload["hint"], out.payload["hint"]

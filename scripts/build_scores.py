@@ -47,13 +47,34 @@ REPO = Path(__file__).resolve().parents[1]
 # scored from results/raw, silently publishing v4 numbers as the v5d result.)
 RAW = pathlib.Path(os.environ.get("DUCK_EMBODY_RAW_DIR") or (REPO / "results" / "raw"))
 
-MODELS = ("fable5", "opus5", "gpt56sol")
+#: True only for the batch the hardcoded narrative below actually describes.
+#: write_table()'s headline and Notes name specific trials, counts, and outcomes
+#: from the 2026-07-27 fable5/opus5/gpt56sol batch. Emitted unconditionally they
+#: would attach that story to ANY redirected batch — a report with correct
+#: tables and a false narrative, naming a model not even in the file. Numbers
+#: are matrix-driven; prose cannot be, so prose is gated.
+IS_DESCRIBED_BATCH = RAW.resolve() == (REPO / "results" / "raw").resolve()
+
+# The matrix comes from the FROZEN benchmark config, not a hardcoded tuple
+# (2026-07-30, when the owner swapped fable5 -> sonnet5): a scorer pinned to
+# one matrix would either mis-score or silently skip a batch run under the
+# other. Scoring a RAW dir that does not match the current config's matrix
+# fails the completeness check below — which is the correct outcome, because
+# the frozen artifacts for the OLD matrix (results/scores.json et al.) are
+# committed and must not be regenerated under a different config.
+import yaml as _yaml
+
+MODELS = tuple(
+    _yaml.safe_load((REPO / "configs" / "benchmark.yaml").read_text())["models"]
+)
 SEEDS = (101, 102, 103, 104)
 STAGE1, STAGE2 = STAGES  # find_kitchen, return_home
 
 #: Short config name -> the API model id the trial JSONs carry.
+#: Superset across matrix revisions, so historical raw files stay resolvable.
 _API_IDS = {
     "fable5": "claude-fable-5",
+    "sonnet5": "claude-sonnet-5",
     "opus5": "claude-opus-5",
     "gpt56sol": "gpt-5.6-sol",
 }
@@ -167,7 +188,12 @@ def build():
         "trials": trial_dicts,
         "per_model": per_model,
     }
-    out = REPO / "results" / "scores.json"
+    default_raw = REPO / "results" / "raw"
+    out = (
+        REPO / "results" / "scores.json"
+        if RAW.resolve() == default_raw.resolve()
+        else RAW.parent / f"scores_{RAW.name}.json"
+    )
     out.write_text(
         json.dumps(scores, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
         encoding="utf-8",
@@ -222,10 +248,15 @@ def write_table(scores: dict) -> None:
     lines = [
         "# Duck Embody — 12-trial benchmark results",
         "",
-        f"Batch: 3 models x 4 seeds (101-104), config_hash `{scores['config_hash'][:12]}`, "
+        f"Batch: {len(MODELS)} models x {len(SEEDS)} seeds ({SEEDS[0]}-{SEEDS[-1]}), config_hash `{scores['config_hash'][:12]}`, "
         f"freeze commit `{scores['freeze_commit'][:12]}`, last trial turn at "
         f"{scores['batch_last_turn_timestamp']} (read from the trial logs).",
         "",
+        # PROSE GATE (2026-07-30). These sentences describe the 2026-07-27
+        # batch specifically — trial names, fall counts, the criterion-widening
+        # history. Correct there, false anywhere else, and the tables around
+        # them are now matrix-driven so nothing else would look wrong.
+        *([
         "**Headline: 1/12 find_kitchen successes under criterion v2 (any counter face); "
         "0/12 under the pre-registered point-disc criterion.** 10 trials ended in a fall "
         "(the audit-corrected decomposition, results/audit_notes.md: 5 hull-limit spin "
@@ -248,10 +279,17 @@ def write_table(scores: dict) -> None:
         f"resamples, seed {boot['seed']} (configs/benchmark.yaml `scoring:`); \"—\" = "
         "undefined, excluded from means, never coerced to 0; no CI when n_defined < 3.",
         "",
+        ] if IS_DESCRIBED_BATCH else [
+            f"**Headline:** generated from `{RAW.name}` — {len(MODELS)} models "
+            f"x {len(SEEDS)} seeds. The interpretive narrative in the default "
+            "report describes the 2026-07-27 batch only and is omitted here; "
+            "read the tables below plus the per-trial audits.",
+            "",
+        ]),
         "## Per-model aggregate (N=4 trials each)",
         "",
-        "| Metric | fable5 (claude-fable-5) | opus5 (claude-opus-5) | gpt56sol (gpt-5.6-sol) |",
-        "|---|---|---|---|",
+        "| Metric | " + " | ".join(f"{m} ({_API_IDS[m]})" for m in MODELS) + " |",
+        "|---|" + "---|" * len(MODELS),
         row("find_kitchen SR (v2: any counter face)", lambda s: _sr(s[STAGE1]["success_rate"])),
         row(
             "find_kitchen SR (pre-registered point disc)",
@@ -301,6 +339,9 @@ def write_table(scores: dict) -> None:
             ),
         ),
         "",
+        # Batch-specific Notes: same gate as the headline. These name
+        # gpt56sol_seed103 and the v4 batch's criterion history.
+        *([
         "Notes: time-to-kitchen is defined only on the published (v2) success (doc 06 "
         "§5.4). SPL is 0.0 (not —) on failure by definition (§5.3); its stage-1 oracle "
         "`l` is the shortest path to the v2 SUCCESS REGION (disc ∪ counter band, "
@@ -315,6 +356,13 @@ def write_table(scores: dict) -> None:
         "fable5_seed104 is a failure under both criteria — consistent with the videos "
         "(rule 11: video is authoritative; no metric-vs-video disagreement found).",
         "",
+        ] if IS_DESCRIBED_BATCH else [
+            "Notes: definitions per doc 06 §§5.3-5.4 (SPL is 0.0 on failure; "
+            "time-to-kitchen defined only on success). Batch-specific "
+            "commentary is omitted for a redirected results dir — see the "
+            "per-trial audit files alongside the raw JSONs.",
+            "",
+        ]),
         "## Per-trial results",
         "",
     ]
@@ -362,12 +410,18 @@ def write_table(scores: dict) -> None:
         "the return_home rows are in `results/scores.json`; raw evidence is "
         "`results/raw/<trial>.json` and `results/videos/<trial>.mp4`.",
         "",
-        "Generated by `scripts/build_scores.py` from `results/raw/*.json` via "
+        f"Generated by `scripts/build_scores.py` from "
+        f"`{RAW.relative_to(REPO) if RAW.is_relative_to(REPO) else RAW}/*.json` via "
         "`duck_embody.scoring` (no frozen file touched).",
         "",
     ]
 
-    out = REPO / "results" / "summary_table.md"
+    default_raw = REPO / "results" / "raw"
+    out = (
+        REPO / "results" / "summary_table.md"
+        if RAW.resolve() == default_raw.resolve()
+        else RAW.parent / f"summary_table_{RAW.name}.md"
+    )
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {out}", file=sys.stderr)
 

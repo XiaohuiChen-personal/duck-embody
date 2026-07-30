@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import random
 import copy
 
 from duck_embody.sim.policy_wrapper import (
@@ -256,6 +257,10 @@ class TestSettleFallReporting:
     @staticmethod
     def _playback(compass_deg: float, fake_execute):
         pb = PolicyPlayback.__new__(PolicyPlayback)
+        # Real execute() consumes the leg-odometry error model that
+        # __init__ seeds; a __new__-built instance must supply it.
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
         pb.compass_deg = lambda: compass_deg
         pb.true_xy = lambda: (0.0, 0.0)
         # Instance attribute shadows the bound method — the same seam
@@ -307,6 +312,10 @@ class TestMergeContactGroups:
         report must not silently lose the head contact. `_merge` currently
         replaces the list wholesale, so the earlier region vanishes."""
         pb = PolicyPlayback.__new__(PolicyPlayback)
+        # Real execute() consumes the leg-odometry error model that
+        # __init__ seeds; a __new__-built instance must supply it.
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
         total = _res(bumped=True, contact_groups=["head"])
         part = _res(bumped=True, contact_groups=["torso"])
         merged = pb._merge(total, part)
@@ -337,6 +346,10 @@ class TestExecuteTerminationOrdering:
     @staticmethod
     def _playback(terminated: bool):
         pb = PolicyPlayback.__new__(PolicyPlayback)
+        # Real execute() consumes the leg-odometry error model that
+        # __init__ seeds; a __new__-built instance must supply it.
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
         pb._torch = _FakeTorch
         pb._obs = object()
         pb.policy = lambda obs: "actions"
@@ -425,6 +438,10 @@ class TestSustainedContactAbort:
     @staticmethod
     def _playback(fake_execute):
         pb = PolicyPlayback.__new__(PolicyPlayback)
+        # Real execute() consumes the leg-odometry error model that
+        # __init__ seeds; a __new__-built instance must supply it.
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
         pb.compass_deg = lambda: 0.0
         pb.true_xy = lambda: (0.0, 0.0)
         pb.execute = fake_execute

@@ -30,7 +30,7 @@ is ~12,000 frames at peak; pass ``--video-every-n 2`` to halve that, or
 ``--no-video`` to skip it (which forfeits the rule-11 evidence).
 
 Run:  PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p scripts/run_trial.py \\
-          --model fable5 --seed 101
+          --model sonnet5 --seed 101
 """
 
 from __future__ import annotations

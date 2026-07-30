@@ -92,12 +92,15 @@ from duck_embody.scoring import (
 
 #: One colour per model, fixed so a reader can follow a model across every
 #: figure in the write-up (short keys; ``config.model`` holds the API ids).
-MODEL_ORDER: tuple[str, ...] = ("fable5", "opus5", "gpt56sol")
+MODEL_ORDER: tuple[str, ...] = ("fable5", "sonnet5", "opus5", "gpt56sol")
+# fable5 stays for the frozen v4-batch figures; sonnet5 joined the matrix
+# 2026-07-30. Figures render only the models present in the scored data.
 
 #: Short key -> the API id the batch logged in ``config.model``. Figures label
 #: models by API id (the honest, unambiguous name).
 MODEL_API_IDS: dict[str, str] = {
     "fable5": "claude-fable-5",
+    "sonnet5": "claude-sonnet-5",
     "opus5": "claude-opus-5",
     "gpt56sol": "gpt-5.6-sol",
 }
@@ -107,6 +110,7 @@ _API_TO_SHORT: dict[str, str] = {api: short for short, api in MODEL_API_IDS.item
 #: slots that pass the all-pairs CVD gate on the light surface.
 MODEL_COLORS: dict[str, str] = {
     "fable5": "#2a78d6",  # blue
+    "sonnet5": "#7c4fd0",  # violet
     "opus5": "#eb6834",  # orange
     "gpt56sol": "#1baf7a",  # aqua (sub-3:1 on light surface -> direct labels)
 }

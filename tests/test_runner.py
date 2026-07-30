@@ -249,11 +249,14 @@ class TestFreezeManifest:
         root = make_root(tmp_path)
         config = root / "configs" / "benchmark.yaml"
         text = config.read_text()
-        config.write_text(
-            text.replace("seeds: [101, 102, 103, 104]", "seeds: [7, 8]").replace(
-                "models: [fable5, opus5, gpt56sol]", "models: [fable5]"
-            )
-        )
+        import re as _re
+        text = text.replace("seeds: [101, 102, 103, 104]", "seeds: [7, 8]")
+        # Regex, not a literal: the models line carries an amendment comment
+        # since 2026-07-30 and a literal pinned to one revision no-ops silently
+        # (which is exactly how this test broke once).
+        text, n = _re.subn(r"^models: \[[^\]]*\][^\n]*", "models: [fable5]", text, count=1, flags=_re.M)
+        assert n == 1, "did not find the models line to stub"
+        config.write_text(text)
         assert freeze_manifest(root)["matrix"] == {"models": ["fable5"], "seeds": [7, 8]}
         models, seeds = load_matrix(root)
         assert trial_matrix(models, seeds) == [("fable5", 7, "fable5_seed7"), ("fable5", 8, "fable5_seed8")]
@@ -268,7 +271,7 @@ class TestFreezeManifest:
         the files on disk, and now doc 06 §4's example)."""
         models, seeds = load_matrix(REPO_ROOT)
         ids = [tid for _, _, tid in trial_matrix(models, seeds)]
-        assert "fable5_seed101" in ids and "gpt56sol_seed104" in ids
+        assert "sonnet5_seed101" in ids and "gpt56sol_seed104" in ids
 
     def test_the_order_is_model_major(self):
         models, seeds = load_matrix(REPO_ROOT)
@@ -569,10 +572,14 @@ def snapshot(root: Path) -> dict[str, bytes]:
 
 class TestDryRunAndRunGuard:
     def seed_results(self, root: Path) -> None:
+        # Named from the live matrix, not a hardcoded model: the matrix is an
+        # amendable config (fable5 -> sonnet5, 2026-07-30) and a fixture pinned
+        # to a retired model would silently stop exercising the skip/rerun path.
         live = config_hash(FROZEN_FILES, root)
+        models, seeds = load_matrix(root)
         raw = root / "results" / "raw"
-        write_trial(raw / "fable5_seed101.json", hash_value=live)          # skip
-        write_trial(raw / "fable5_seed102.json", hash_value=live, final=False)  # rerun
+        write_trial(raw / f"{models[0]}_seed{seeds[0]}.json", hash_value=live)          # skip
+        write_trial(raw / f"{models[0]}_seed{seeds[1]}.json", hash_value=live, final=False)  # rerun
 
     def test_dry_run_lists_every_trial_and_touches_nothing(self, tmp_path, capsys):
         root = make_root(tmp_path)
@@ -621,10 +628,10 @@ class TestDryRunAndRunGuard:
         root = make_root(tmp_path)
         git_freeze(root)
         write_freeze(root)
-        write_trial(root / "results" / "raw" / "fable5_seed101.json", hash_value="b" * 64)
+        write_trial(root / "results" / "raw" / "sonnet5_seed101.json", hash_value="b" * 64)
         code = cmd_run(run_args(root), root)
         out = capsys.readouterr().out
-        assert code == 2 and "fable5_seed101.json" in out and "pre-freeze" in out
+        assert code == 2 and "sonnet5_seed101.json" in out and "pre-freeze" in out
 
     def test_format_dry_run_flags_the_refusing_statuses_loudly(self, tmp_path):
         plans = [
@@ -1073,3 +1080,49 @@ class TestSetupPhaseInfraBoundary:
         reset = min(n for n, t in enumerate(code) if t.startswith("session.reset("))
         guard = min(n for n, t in enumerate(code) if t.startswith("except BaseException"))
         assert log_ctor < reset < guard
+
+
+class TestEveryModelConfigIsAccountedFor:
+    """No `configs/models/*.yaml` may sit unguarded and undeclared.
+
+    `judge.yaml` already had an explicit exclusion test. `fable5.yaml` acquired
+    the same status silently on 2026-07-30 when the matrix swapped and it left
+    FROZEN_FILES — its bytes still certify the PUBLISHED v4 batch, so drift
+    there would quietly invalidate results that are already in the repo, with
+    nothing failing.
+    """
+
+    #: Not frozen, deliberately, each with the reason it is exempt.
+    RETIRED_OR_EXCLUDED = {
+        "judge.yaml": "out-of-benchmark scene judge (doc 04 §8)",
+        "fable5.yaml": (
+            "retired contestant (matrix swap 2026-07-30); bytes certify the "
+            "published v4 batch via results/freeze_v4_baseline.json"
+        ),
+    }
+
+    def test_each_model_config_is_frozen_or_explicitly_exempt(self):
+        frozen = {
+            Path(rel).name
+            for rel in FROZEN_FILES
+            if rel.startswith("configs/models/")
+        }
+        on_disk = {p.name for p in (REPO_ROOT / "configs" / "models").glob("*.yaml")}
+        unaccounted = on_disk - frozen - set(self.RETIRED_OR_EXCLUDED)
+        assert not unaccounted, (
+            f"model configs neither frozen nor declared exempt: {sorted(unaccounted)} "
+            "— add to FROZEN_FILES or to RETIRED_OR_EXCLUDED with a reason"
+        )
+
+    def test_every_live_matrix_entry_is_frozen(self):
+        models, _ = load_matrix(REPO_ROOT)
+        frozen = {
+            Path(rel).name
+            for rel in FROZEN_FILES
+            if rel.startswith("configs/models/")
+        }
+        for model in models:
+            assert f"{model}.yaml" in frozen, (
+                f"{model} is in the live matrix but its config is not frozen — "
+                "the batch would run against an unhashed contestant config"
+            )

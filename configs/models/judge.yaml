@@ -7,7 +7,19 @@
 # probe passes, so using a contestant would tune the world to that contestant —
 # a benchmark-integrity defect. The judge is named in the methods write-up.
 provider: anthropic
-model_id: claude-sonnet-5
+# MOVED 2026-07-30 (claude-sonnet-5 -> claude-sonnet-4-6). The matrix swap that
+# day made claude-sonnet-5 a CONTESTANT (configs/models/sonnet5.yaml), which
+# would have put the judge and a contestant on the same model and broken the
+# §8 property above. The guard that should have caught this passed vacuously
+# because it hardcoded the retired contestant set; it now reads the live matrix.
+#
+# The HISTORICAL gate result stands: the T2.3 survey ran under claude-sonnet-5
+# on 2026-07-2x, when that model was not a contestant, so it satisfied §8 as it
+# stood at the time. Any RE-RUN of the survey uses claude-sonnet-4-6, and the
+# methods write-up names both with their dates. Sonnet 4.6 is a full VLM and
+# the task is a one-word room question, so capability is not the binding
+# constraint here — non-collision is.
+model_id: claude-sonnet-4-6
 
 # One-word room answers; no tool use, no thinking budget needed.
 max_tokens: 64

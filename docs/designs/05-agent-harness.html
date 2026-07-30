@@ -94,7 +94,7 @@ discard the raw stream):</p>
 
 <table>
 <tr><th>SLAM service</th><th>Classical implementation</th><th>Duck Embody implementation</th><th>Keep / replace / drop</th></tr>
-<tr><td>Localization</td><td>Filter fusing odometry + vision</td><td>Harness integrates commanded velocity into an (x,&nbsp;y) estimate (dead reckoning — declared exception); compass gives heading</td><td><strong>Keep</strong> as breadcrumb position log</td></tr>
+<tr><td>Localization</td><td>Filter fusing odometry + vision</td><td>Harness integrates commanded velocity <em>(retired 2026-07-30 &rarr; simulated leg odometry; see AGENTS.md rule 5)</em> into an (x,&nbsp;y) estimate (dead reckoning — declared exception); compass gives heading</td><td><strong>Keep</strong> as breadcrumb position log</td></tr>
 <tr><td>Mapping</td><td>Occupancy grid / feature map</td><td>Model-authored room / exit / landmark graph stored as text, rendered back every turn</td><td><strong>Replace</strong>: landmark memory as language</td></tr>
 <tr><td>Loop closure</td><td>Place recognition + pose-graph optimization</td><td>Model re-recognizes a landmark and calls <code>correct_position(x, y, reason)</code> — cognitive loop closure</td><td><strong>Replace</strong>: cognition instead of optimization</td></tr>
 <tr><td>Geometric optimization</td><td>Bundle adjustment, pose-graph solvers</td><td>—</td><td><strong>Drop</strong></td></tr>
@@ -344,11 +344,14 @@ is the enforcer.</p>
      "properties": {"name": {"type": "string"}}, "required": ["name"]}},
 
   {"name": "correct_position",
-   "description": "Reset the dead-reckoning integrator to (x, y) because you re-recognized a landmark (cognitive loop closure). Give the reason; every correction is logged.",
+   "description": "Loop closure: snap your position estimate back to a place you recognize. EITHER pass `place` \u2014 a mapped room name, or a doorway written room@bearing as YOUR MAP prints it \u2014 OR pass explicit x and y. A doorway anchor pins you tightest. Costs no motion; every correction is logged.",
    "input_schema": {"type": "object",
-     "properties": {"x": {"type": "number"}, "y": {"type": "number"},
-                    "reason": {"type": "string"}},
-     "required": ["x", "y", "reason"]}},
+     "properties": {
+       "place": {"type": "string",
+         "description": "a mapped room name, or a doorway as room@bearing exactly as YOUR MAP prints it: name, @, bearing"},
+       "x": {"type": "number"}, "y": {"type": "number"},
+       "reason": {"type": "string"}},
+     "required": ["reason"]}},
 
   {"name": "update_plan",
    "description": "Replace your standing plan. It is carried forward and re-injected every turn until you change it.",
@@ -743,21 +746,24 @@ adjacency lines, a one-line trajectory, and a separate unexplored-exits list (th
 better over an explicit textual map than over raw history). Example, mid-trial:</p>
 
 <pre><code>== YOUR MAP (authored by you; rendered verbatim by the harness) ==
-Place 1: living_room -- sofa along the west wall, armchair opposite, blue rug in center
+Place 1: living_room -- sofa along the west wall, armchair opposite, blue rug in center [anchor x=0.50, y=0.50]
   landmarks: coffee table; armchair by the south wall
-Place 2: hallway -- narrow, wooden floor, doorways along the south side
+Place 2: hallway -- narrow, wooden floor, doorways along the south side [anchor x=0.88, y=2.56]
 Connections: living_room &lt;-&gt; hallway
 Trajectory: living_room -&gt; hallway
+Doorways you have used (anchors for correct_position):
+  - living_room@90 [anchor x=0.53, y=1.11]
 Unexplored exits:
-  - hallway: exit at 0 deg (unexplored)
-  - hallway: exit at 270 deg (unexplored)
-  - living_room: exit at 0 deg (unexplored)
+  - hallway: exit at 0 deg (unexplored) [anchor x=0.90, y=2.75]
+  - hallway: exit at 270 deg (unexplored) [anchor x=0.90, y=2.75]
+  - living_room: exit at 0 deg (unexplored) [anchor x=0.50, y=0.50]
 
 == STATE (sensor-derived; the declared exceptions) ==
-Position estimate: x=0.90, y=2.75  (dead-reckoned from commanded velocity; drifts)
+Position estimate: x=0.90, y=2.75  (leg-odometry dead reckoning; error grows with distance walked)
 Compass heading: 88 deg
 Current room (your assertion): hallway
 Breadcrumbs (last 5): (0.50,0.50,90) (0.53,1.11,88) (0.85,1.95,68) (0.88,2.56,87) (0.90,2.75,88)
+Re-anchored: never — if the view disagrees with the estimate, correct_position with a mapped anchor
 Budget: turns 12/40, policy-seconds 63.4/240
 
 == YOUR PLAN (update_plan to change; carried forward otherwise) ==

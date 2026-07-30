@@ -244,11 +244,23 @@ of you for the rest of the episode. Camera frames and older turns do not: only
 the first turn and the last 10 turns are kept, and their images are dropped as
 they age out. If a detail matters, record it before it scrolls away.
 
-Your position estimate is integrated from the velocities you *commanded*, not
-from any measurement of where the robot actually went. It drifts — further with
-every metre walked, every turn taken, and every bump. The compass does not
-drift; it is absolute. When you recognize a place you already mapped, re-anchor
-with `correct_position` instead of trusting the drifting number.
+Your position estimate is leg-odometry dead reckoning: the robot's joints and
+foot contacts measure how far it actually moved, and those measurements are
+integrated. The error is small per step but it compounds — over a long
+excursion expect the estimate to be off by a few tenths of a metre, worst after
+a long one-way leg without re-anchoring. The compass
+does not drift; it is absolute. Fight the drift with `correct_position`, and do
+not wait for certainty — a rough re-anchor now beats a precise one you never
+make:
+- Places and doorways in YOUR MAP show an [anchor x, y]: the estimate at the
+  moment you first recorded it. `correct_position(place=...)` snaps you back to
+  one by name — pass a room name, or a doorway written as the map prints it:
+  the place name, then `@`, then the bearing. No arithmetic needed.
+- The moment you pass through a doorway you marked, re-anchor. Doorways are
+  0.35 m wide, so standing in one pins you tighter than anywhere else.
+- If what you see contradicts your numbers — a landmark nearer or further than
+  the estimate implies, or your position claims to be outside the rooms you
+  know — re-anchor to the nearest recognized place THAT TURN.
 
 Headings everywhere — compass, breadcrumbs, exit directions, `turn_to_heading`
 — are degrees counter-clockwise from east: 0 = east, 90 = north, 180 = west,
@@ -303,8 +315,10 @@ request; these are the notes that are not in them.
    - A rejected call (unknown room, malformed exit status) comes back as a
      structured error with a `hint`, not an exception. Read it and fix the next
      call; like every turn, it counts against your turn budget.
-   - Distances you are told you moved are dead-reckoned, not measured. Treat
-     them the same way you treat your position estimate.
+   - Distances you are told you moved come from leg odometry: measured, but a
+     few percent off, and a blocked robot correctly reports ~0 m moved. If a
+     move reports far less than you asked for, you are obstructed — do not
+     assume you advanced.
 
 3. **Navigation doctrine — a CogNav-style state machine.** Operate in three
 explicit modes and name your current mode in your plan: *broad search* (sweep
@@ -326,8 +340,9 @@ you are about to do next.
 
 6. **Honesty rules.** Record only what you observed: never invent a room you
 haven't entered; mark uncertain exits `unexplored` rather than guessing
-`leads_to`; when lost, say so in the plan and navigate to a mapped landmark to
-re-anchor. An entry you are unsure of is worth less to you than an absent one:
+`leads_to`; when lost, say so in the plan, navigate to a mapped place, and call
+`correct_position(place=...)` when you arrive — arriving is not re-anchoring
+until the tool is called. An entry you are unsure of is worth less to you than an absent one:
 this map is the only thing you will still have in forty turns, and it is only
 useful if you can trust it.
 """
@@ -439,9 +454,16 @@ def render_memory_block(
 
     if memory.rooms:
         for number, room in enumerate(memory.rooms.values(), start=1):
+            # The anchor is rendered so `correct_position` finally has an
+            # argument the model can copy: zero uptake across 13 trials traced
+            # primarily to the tool demanding an (x, y) no payload supplied.
+            anchor = (
+                f" [anchor x={_fmt_m(room.anchor_xy[0])}, y={_fmt_m(room.anchor_xy[1])}]"
+                if room.anchor_xy is not None else ""
+            )
             lines.append(
                 f"Place {number}: {_one_line(room.name)} -- "
-                f"{_one_line(room.description)}"
+                f"{_one_line(room.description)}{anchor}"
             )
             if room.landmarks:
                 # The one empty case doc 05 §5.2 pins: no landmarks, no line.
@@ -459,16 +481,41 @@ def render_memory_block(
             "Trajectory: " + " -> ".join(_one_line(r) for r in memory.room_sequence)
         )
 
+    # ALL exits with anchors are listed, not just unexplored ones (2026-07-30).
+    # Previously an exit's [anchor] disappeared the moment it was upgraded to
+    # leads_to:<room> — i.e. the moment the model walked through the doorway,
+    # which is precisely when the prompt tells it to re-anchor. The affordance
+    # was advertised and then withdrawn at the point of use.
+    explored_anchored = sorted(
+        (e for e in memory.exits
+         if e.anchor_xy is not None and not e.status.startswith("unexplored")),
+        key=lambda e: (e.room, e.direction_deg),
+    )
+    if explored_anchored:
+        lines.append("Doorways you have used (anchors for correct_position):")
+        for exit_ in explored_anchored:
+            # Status is deliberately NOT repeated here: adjacency belongs to the
+            # Connections line (doc 06 §5.7 keeps frontier and adjacency
+            # separate). This list exists only to expose the anchor handle.
+            lines.append(
+                f"  - {_one_line(exit_.room)}@{_fmt_deg(exit_.direction_deg)} "
+                f"[anchor x={_fmt_m(exit_.anchor_xy[0])}, y={_fmt_m(exit_.anchor_xy[1])}]"
+            )
+
     unexplored = sorted(
         memory.unexplored_exits(), key=lambda e: (e.room, e.direction_deg)
     )
     if unexplored:
         lines.append("Unexplored exits:")
         for exit_ in unexplored:
+            ex_anchor = (
+                f" [anchor x={_fmt_m(exit_.anchor_xy[0])}, y={_fmt_m(exit_.anchor_xy[1])}]"
+                if exit_.anchor_xy is not None else ""
+            )
             lines.append(
                 f"  - {_one_line(exit_.room)}: "
                 f"exit at {_fmt_deg(exit_.direction_deg)} deg "
-                f"({_one_line(exit_.status)})"
+                f"({_one_line(exit_.status)}){ex_anchor}"
             )
 
     x, y = position_estimate
@@ -485,14 +532,24 @@ def render_memory_block(
     lines += [
         "",
         "== STATE (sensor-derived; the declared exceptions) ==",
-        # The double space before "(dead-reckoned" is verbatim from doc 05 §5.2.
+        # The double space before "(leg-odometry" is verbatim from doc 05 §5.2
+        # (the suffix text changed 2026-07-30; the double space is still the pin).
         # It is not a typo to tidy: the golden test compares against the doc.
         f"Position estimate: x={_fmt_m(x)}, y={_fmt_m(y)}  "
-        "(dead-reckoned from commanded velocity; drifts)",
+        "(leg-odometry dead reckoning; error grows with distance walked)",
         f"Compass heading: {_fmt_deg(compass_deg)} deg",
         f"Current room (your assertion): {current_room}",
         f"Breadcrumbs (last {BREADCRUMB_WINDOW}): {crumb_text}",
     ]
+    if not memory.corrections:
+        # ALWAYS rendered (2026-07-30). The old conditional made the null
+        # action self-reinforcing: the one line that mentioned re-anchoring
+        # appeared only after a correction had already happened, so from a cold
+        # start nothing ever surfaced it. Zero uptake across 13 trials.
+        lines.append(
+            "Re-anchored: never — if the view disagrees with the estimate, "
+            "correct_position with a mapped anchor"
+        )
     if memory.corrections:
         # Why this line exists: correct_position re-anchors the estimate without
         # rewriting the breadcrumbs already recorded (they are the honest

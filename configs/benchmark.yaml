@@ -9,7 +9,13 @@
 
 # --- Trial matrix -----------------------------------------------------------
 seeds: [101, 102, 103, 104]          # DESIGN doc 06 §2; identical for every model
-models: [fable5, opus5, gpt56sol]    # DESIGN AGENTS.md §2 (locked 2026-07-26)
+models: [sonnet5, opus5, gpt56sol]  # AMENDED 2026-07-30 (owner directive):
+                                     # fable5 -> sonnet5 to cut batch cost ~3x.
+                                     # Original matrix locked 2026-07-26 had
+                                     # fable5; the frozen v4 batch keeps its
+                                     # fable5 column, so sonnet5 has no
+                                     # same-model v4 baseline (see
+                                     # configs/models/sonnet5.yaml).
 
 # --- Caps (per stage) -------------------------------------------------------
 caps:

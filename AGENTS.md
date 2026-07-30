@@ -44,7 +44,7 @@ the parent robot project.
 | Memory | Single **max-scaffold** config (no ablation in MVP): LLM-authored room/exit/landmark graph re-injected every turn, breadcrumbs, dead-reckoned (x,y), `correct_position` loop closure | "Most robust LLM-as-SLAM"; ablation cells are stretch |
 | Motion | Closed-loop macros `turn_to_heading` / `move` (+ raw `send_velocity`) | Motor precision is not the capability under test |
 | Camera | Head-mounted egocentric, ~512 px, ~90–100° HFOV, frozen for all models | Matches planned hardware (IMX219 CSI in head); fairness requires one config |
-| Models | **Fable 5, Opus 5, GPT 5.6 sol** (locked 2026-07-26; add more only as needed later) | Two Anthropic tiers (generational comparison, mirrors the paper) + one cross-lab point; dropping the open-weight VLM removes all local vLLM serving work — providers = Anthropic + OpenAI only |
+| Models | **Sonnet 5, Opus 5, GPT 5.6 sol** (locked 2026-07-26 as Fable 5/Opus 5/GPT 5.6 sol; Fable 5 → Sonnet 5 on 2026-07-30, owner-directed, cost: $10/$50 → $3/$15 per MTok, ~3x cheaper batch). Two caveats carried: Sonnet 5 has **no same-model v4 baseline** (the frozen v4 batch has a Fable 5 column), and claude-sonnet-5 was the scene judge — the judge moved to claude-sonnet-4-6 the same day to keep doc 04 §8's out-of-benchmark property; the historical scene gate ran under claude-sonnet-5 while it was not a contestant. | Two Anthropic tiers (generational comparison, mirrors the paper) + one cross-lab point; dropping the open-weight VLM removes all local vLLM serving work — providers = Anthropic + OpenAI only |
 | Protocol | Paused sim between LLM calls; 1 obs/turn (+ `look_around` panorama); context = first turn + last K + memory block | Paper's protocol; measures capability, not latency |
 | Repo | This dedicated public repo; parent robot repo is a read-only pinned dependency | Portfolio readability |
 | Trials | N=3–5 per model, fixed seed set, `find_kitchen` + `return_home` continuation | Comparison, not statistical paper |
@@ -126,8 +126,25 @@ deviate, update the doc in the same commit:
 5. **The harness stores and formats; the LLM perceives, estimates, and decides.**
    No geometric fact enters memory unless the model asserted it from its own
    observations. Exceptions (declared in docs): dead-reckoning integration of
-   commanded velocity, compass heading, and closed-loop motion macros — these mirror
-   the real robot's IMU + command interface and are sensor-realistic.
+   **simulated leg odometry**, compass heading, and closed-loop motion macros —
+   these mirror the real robot's encoders + IMU + command interface and are
+   sensor-realistic.
+   AMENDED 2026-07-30. Until then the integrator consumed COMMANDED velocity.
+   That was abandoned because it credited motion to a robot that could not
+   move: one trial reported 27.09 m travelled against 1.99 m of true
+   displacement, ~95% of a 26.65 m belief error inside a 4.8 x 3.6 m flat. It
+   now consumes `ExecResult.odom_dxy` — the call's true displacement through a
+   seeded error model (per-trial scale draw + per-call noise), which is what a
+   real duck computes from stance-leg forward kinematics. The estimate still
+   drifts and is still never ground truth.
+   RECORDED DEVIATION (be skeptical of this): the model injects no SLIP term,
+   so a robot wedged against furniture measures ~0 m and therefore *knows* it
+   did not move. Real leg odometry with slipping feet would integrate some
+   phantom forward motion, so the simulated duck's certainty while blocked is
+   optimistic. Left deliberately: the owner's acceptance criterion for the
+   2026-07-30 redesign was that serious drift during collision no longer
+   exist, and a slip term reintroduces exactly that error class. Revisit if
+   the benchmark ever claims to characterise odometry quality itself.
 6. **Secrets**: API keys come from `.env` (gitignored; template `.env.example`),
    loaded via `python-dotenv` `load_dotenv()` at provider import — shell
    alternative `set -a && source .env && set +a`. Never write a key into a
@@ -406,8 +423,10 @@ results/         raw JSON · figures · videos (committed)
       rules 10–11)
 - [x] Vendor policy artifacts into `policy/` (T0.1; provenance in `policy/README.md`)
 - [x] Smoke tests (camera PNG, net displacement, asset inspection)
-- [x] Apartment scene + survey renders (T2.3 judge gate passed; judge = out-of-benchmark
-      `claude-sonnet-5`)
+- [x] Apartment scene + survey renders (T2.3 judge gate passed; judge was out-of-benchmark
+      `claude-sonnet-5` at the time — that model became a CONTESTANT on
+      2026-07-30, so the judge-of-record moved to `claude-sonnet-4-6` for any
+      re-run; the historical gate result stands)
 - [x] Agent loop + tools + memory + providers (T3.1–T3.4; `bash
       scripts/run_tests.sh tests/ -q` → 1068 passed, 3 skipped). Single-trial
       entry point is `scripts/run_trial.py --model --seed`; it writes doc 06 §4's

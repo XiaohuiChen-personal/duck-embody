@@ -112,7 +112,7 @@ class SimSession:
         if seed is not None:
             base_env.seed(seed)
 
-        obs = self.playback.reset()
+        obs = self.playback.reset(seed=seed)
 
         # Settle briefly so the first observation shows a standing duck rather
         # than one mid-drop from the spawn pose.

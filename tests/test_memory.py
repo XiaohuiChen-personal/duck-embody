@@ -171,20 +171,27 @@ def seed_101_fixture() -> tuple[Memory, Counters]:
     which is the block's first breadcrumb.
     """
     memory = Memory()
+    # anchor_xy mirrors what the tools stamp since 2026-07-30: the integrator
+    # estimate at the moment of first assertion. Values follow the breadcrumb
+    # story below (mapped the living room at spawn, the hallway on arrival).
     memory.update_room(
         "living_room",
         "sofa along the west wall, armchair opposite, blue rug in center",
+        anchor_xy=(0.50, 0.50),
     )
     memory.set_current_room("living_room")
     memory.add_landmark("living_room", "coffee table")
     memory.add_landmark("living_room", "armchair by the south wall")
-    memory.mark_exit("living_room", 0, STATUS_UNEXPLORED)
-    memory.mark_exit("living_room", 90, "leads_to:hallway")
+    memory.mark_exit("living_room", 0, STATUS_UNEXPLORED, anchor_xy=(0.50, 0.50))
+    memory.mark_exit("living_room", 90, "leads_to:hallway", anchor_xy=(0.53, 1.11))
 
-    memory.update_room("hallway", "narrow, wooden floor, doorways along the south side")
+    memory.update_room(
+        "hallway", "narrow, wooden floor, doorways along the south side",
+        anchor_xy=(0.88, 2.56),
+    )
     memory.set_current_room("hallway")
-    memory.mark_exit("hallway", 0, STATUS_UNEXPLORED)
-    memory.mark_exit("hallway", 270, STATUS_UNEXPLORED)
+    memory.mark_exit("hallway", 0, STATUS_UNEXPLORED, anchor_xy=(0.90, 2.75))
+    memory.mark_exit("hallway", 270, STATUS_UNEXPLORED, anchor_xy=(0.90, 2.75))
 
     for x, y, heading in (
         (0.50, 0.50, 90),
@@ -1046,17 +1053,24 @@ class TestRenderMemoryBlock:
         block = render_memory_block(memory, Counters(), integrator.xy, 90.0)
         assert "Re-anchored: 2 times (latest moved the estimate 0.00 m" in block
 
-    def test_no_correction_no_line(self):
-        """It is a conditional line like `Connections:` and `Trajectory:` — doc
-        05 §5.2's worked example has no corrections, and the golden test is
-        byte-exact."""
-        assert "Re-anchored" not in render_memory_block(
-            Memory(), Counters(), (0.0, 0.0), 0.0
-        )
-        memory, counters = seed_101_fixture()
-        assert "Re-anchored" not in render_memory_block(
-            memory, counters, (0.90, 2.75), 88.0
-        )
+    def test_no_correction_renders_the_never_line(self):
+        """Inverted 2026-07-30. The line used to render only AFTER a correction
+        had happened, which made the null action self-reinforcing: from a cold
+        start nothing in the block ever mentioned re-anchoring, and uptake was
+        zero across 3 models x 13 trials. Now the no-corrections state renders
+        an explicit `Re-anchored: never` nudge, and the post-correction state
+        keeps the count-and-magnitude line."""
+        block = render_memory_block(Memory(), Counters(), (0.0, 0.0), 0.0)
+        never = [ln for ln in block.splitlines() if ln.startswith("Re-anchored")]
+        assert never == [
+            "Re-anchored: never — if the view disagrees with the estimate, "
+            "correct_position with a mapped anchor"
+        ]
+        # (First attempt asserted `"time" not in line` to exclude the
+        # post-correction "N time(s)" render — and failed on the substring
+        # inside "es-time-ate". Exact-line comparison is the honest check.)
+        # The seed-101 fixture (no corrections) renders the same never-line —
+        # already pinned byte-exact by the golden test above.
 
     def test_model_authored_text_cannot_forge_a_block_section(self):
         """A newline inside a landmark or description would otherwise let the
@@ -1092,7 +1106,7 @@ class TestRenderMemoryBlock:
         estimates = [ln for ln in block.splitlines() if ln.startswith("Position estimate:")]
         assert estimates == [
             "Position estimate: x=1.00, y=1.00  "
-            "(dead-reckoned from commanded velocity; drifts)"
+            "(leg-odometry dead reckoning; error grows with distance walked)"
         ]
         assert len([ln for ln in block.splitlines() if ln.startswith("Place ")]) == 1
         assert len([ln for ln in block.splitlines() if ln.startswith("Connections:")]) == 1
@@ -1371,95 +1385,201 @@ class TestCapsAgreeWithTheFrozenConfig:
         assert float(seconds.group(1)) == POLICY_SECONDS_CAP
 
 
-class TestWedgedRobotEarnsNoDistance:
-    """The 2026-07-30 fix: contact time must not be credited as travel.
+class TestOdometryIsWhatTheEstimateConsumes:
+    """The 2026-07-30 redesign: the estimate advances by MEASURED leg odometry.
 
-    Measured bug (results/raw_v5d/fable5_seed101.json): 49 `send_velocity` calls
-    reported 27.09 m travelled against 1.99 m of true displacement, the worst
-    crediting 0.60 m for 0.01 m of real motion while `bumped=True` for the whole
-    3 s. Of a 26.65 m final position error, 25.10 m came from that one tool — so
-    ~95% of the apparent dead-reckoning "drift" was this accounting, not odometry
-    (genuine tracking error over the same trial's clean moves was 0.13 m).
+    Replaces TestWedgedRobotEarnsNoDistance, whose subject —
+    ``credited_distance_m``, the contact-time discount — was retired after
+    real-physics measurement showed it inert for v4's bouncing contact (force
+    above 1 N on only 6.9% of wedged steps; scripts/smoke_odometry.py now owns
+    the physics-level assertions). The property these tests keep alive is the
+    same one: a robot that did not move must not believe it moved. Under
+    odometry that is structural — a wedged call MEASURES ~zero — so the unit
+    tests pin the plumbing: merge arithmetic and the integrator feed.
     """
 
-    def _result(self, policy_seconds, contact_steps):
+    def _result(self, odom_dxy, policy_seconds=3.0, bumped=False):
         from duck_embody.sim.policy_wrapper import ExecResult
+        import math as _math
 
         return ExecResult(
             commanded=(0.2, 0.0, 0.0), duration_s=policy_seconds, steps=0,
-            policy_seconds=policy_seconds, bumped=contact_steps > 0, fell=False,
-            contact_steps=contact_steps,
+            policy_seconds=policy_seconds, bumped=bumped, fell=False,
+            odom_dxy=odom_dxy,
+            odom_distance_m=_math.hypot(*odom_dxy),
         )
 
-    def test_clean_motion_is_credited_in_full(self):
-        """No contact must behave exactly as before the fix."""
-        from duck_embody.sim.policy_wrapper import credited_distance_m
+    def test_apply_delta_moves_the_estimate_by_exactly_the_measurement(self):
+        from duck_embody.agent.memory import PositionIntegrator
 
-        assert credited_distance_m(0.2, self._result(3.0, 0)) == pytest.approx(0.6)
+        integ = PositionIntegrator(1.0, 2.0)
+        integ.apply_delta(0.35, -0.1)
+        assert integ.xy == pytest.approx((1.35, 1.9))
 
-    def test_a_fully_wedged_command_earns_nothing(self):
-        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
+    def test_a_wedged_call_measures_nothing_so_the_estimate_stays_put(self):
+        """The exact call that used to credit 0.60 m for 0.01 m of motion.
 
-        wedged = self._result(3.0, int(round(3.0 / CONTROL_DT)))
-        assert credited_distance_m(0.2, wedged) == pytest.approx(0.0, abs=1e-9)
-
-    def test_partial_contact_is_credited_pro_rata(self):
-        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
-
-        half = self._result(3.0, int(round(1.5 / CONTROL_DT)))
-        assert credited_distance_m(0.2, half) == pytest.approx(0.3, abs=1e-6)
-
-    def test_credit_is_never_negative(self):
-        from duck_embody.sim.policy_wrapper import credited_distance_m
-
-        assert credited_distance_m(0.2, self._result(1.0, 10_000)) == 0.0
-
-    def test_the_real_worst_case_call_from_the_v5d_trial(self):
-        """Replay the exact call that credited 0.60 m for 0.01 m of motion."""
-        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
-
-        # send_velocity(0.2, 0, 0) held 3.0 s, bumped for its entire duration.
-        wedged = self._result(3.0, int(round(3.0 / CONTROL_DT)))
-        before = 0.2 * 3.0            # the old formula: speed x policy_seconds
-        after = credited_distance_m(0.2, wedged)
-        assert before == pytest.approx(0.60)
-        assert after < 0.01, "the wedge must no longer earn half a metre"
-
-    def test_contact_steps_sum_across_merged_chunks(self):
-        """A macro/recorder chunk boundary must not lose contact time."""
-        from duck_embody.sim.policy_wrapper import merge_exec_results
-
-        total = merge_exec_results(None, self._result(0.2, 5))
-        total = merge_exec_results(total, self._result(0.2, 7))
-        assert total.contact_steps == 12
-        assert total.policy_seconds == pytest.approx(0.4)
-
-    def test_integrator_does_not_translate_while_wedged_but_still_turns(self):
-        """Position freezes during contact; commanded heading still advances.
-
-        Heading needs no discount: the compass is absolute and re-read before the
-        next command, so a commanded-vs-realised yaw gap shows up as honest
-        within-call drift rather than accumulating.
+        Batch trial fable5_seed101: send_velocity(0.2, 0, 0) held 3.0 s,
+        bumped throughout, true displacement 0.01 m. Under commanded-velocity
+        reckoning the estimate advanced 0.60 m; 49 such calls put the belief
+        26 m outside the apartment. Odometry reports the ~0.01 m that happened.
         """
         from duck_embody.agent.memory import PositionIntegrator
 
-        moving = PositionIntegrator(0.0, 0.0)
-        end_h = moving.integrate_arc(0.2, 0.0, 0.0, 90.0, 3.0)
-        assert moving.y == pytest.approx(0.6, abs=1e-6)
+        wedged = self._result((0.0, 0.01), bumped=True)
+        old_formula = 0.2 * wedged.policy_seconds
+        assert old_formula == pytest.approx(0.60)
+        integ = PositionIntegrator(0.0, 0.0)
+        integ.apply_delta(*wedged.odom_dxy)
+        assert math.dist((0, 0), integ.xy) == pytest.approx(0.01, abs=1e-9)
+        assert wedged.odom_distance_m < 0.02, "the wedge must not earn half a metre"
 
-        wedged = PositionIntegrator(0.0, 0.0)
-        end_h_w = wedged.integrate_arc(0.2, 0.0, 0.0, 90.0, 3.0, moving_s=0.0)
-        assert wedged.x == pytest.approx(0.0, abs=1e-9)
-        assert wedged.y == pytest.approx(0.0, abs=1e-9)
-        assert end_h_w == pytest.approx(end_h), "heading must still integrate"
+    def test_merge_sums_odometry_vectors_and_path_length(self):
+        """Chunk boundaries (macro 0.2 s and recorder 0.04 s) must not drop or
+        double the measurement — the same single-merge rule as policy_seconds."""
+        from duck_embody.sim.policy_wrapper import merge_exec_results
 
-    def test_default_moving_s_preserves_the_old_behaviour(self):
-        """Omitting moving_s must be identical to before the parameter existed."""
-        from duck_embody.agent.memory import PositionIntegrator
+        total = merge_exec_results(None, self._result((0.1, 0.0), policy_seconds=0.2))
+        total = merge_exec_results(total, self._result((0.0, 0.2), policy_seconds=0.2))
+        assert total.odom_dxy == pytest.approx((0.1, 0.2))
+        # NET displacement, not a sum of magnitudes. The first version summed
+        # magnitudes on the reasoning that "a there-and-back drive covered
+        # distance even if it ended where it started" — true of a path length,
+        # but it made the number depend on how finely the command was sliced.
+        # Real physics settled it: under the recorder's 0.04 s slicing a duck
+        # vibrating against a sofa reported 0.72 m of travel for 0.09 m of net
+        # motion, because random-direction jitter accumulates in a magnitude
+        # sum and cancels in a vector sum.
+        assert total.odom_distance_m == pytest.approx(math.hypot(0.1, 0.2))
+        assert total.policy_seconds == pytest.approx(0.4)
 
-        a = PositionIntegrator(0.0, 0.0)
-        b = PositionIntegrator(0.0, 0.0)
-        ha = a.integrate_arc(0.15, 0.05, 0.3, 20.0, 2.0)
-        hb = b.integrate_arc(0.15, 0.05, 0.3, 20.0, 2.0, moving_s=2.0)
-        assert (a.x, a.y) == pytest.approx((b.x, b.y))
-        assert ha == pytest.approx(hb)
+    def test_contact_steps_still_sum_as_diagnostics(self):
+        from duck_embody.sim.policy_wrapper import ExecResult, merge_exec_results
+
+        a = ExecResult(commanded=(0.2, 0, 0), duration_s=0.2, steps=10,
+                       policy_seconds=0.2, bumped=True, fell=False, contact_steps=5)
+        b = ExecResult(commanded=(0.2, 0, 0), duration_s=0.2, steps=10,
+                       policy_seconds=0.2, bumped=True, fell=False, contact_steps=7)
+        assert merge_exec_results(merge_exec_results(None, a), b).contact_steps == 12
+
+
+
+
+class TestOdometryNoiseIsChunkingInvariant:
+    """The reported distance must not depend on whether video is recording.
+
+    `attach_recorder` patches `execute()` so every command is sliced into
+    0.04 s pieces (recorder.RECORD_CHUNK_S), and every batch trial records.
+    Two separate defects were found here, the second only by real physics:
+
+    1. A per-CALL noise floor accrued ~25x/s under slicing (0.094 m reported
+       for a wedged 3 s command vs 0.0013 m unrecorded). Fixed by making the
+       floor a RATE.
+    2. `merge_exec_results` summed per-piece MAGNITUDES, so a duck vibrating
+       against furniture accumulated its jitter as travel: 0.72 m reported for
+       0.09 m of net motion on the GPU. Fixed by reporting the NET displacement
+       of the summed vector, which is exactly slicing-invariant.
+
+    These tests drive the real `merge_exec_results`, not a model of it.
+    """
+
+    @staticmethod
+    def _merged(total_dxy, n_slices):
+        """Merge `n_slices` equal parts summing to `total_dxy`."""
+        from duck_embody.sim.policy_wrapper import ExecResult, merge_exec_results
+
+        acc = None
+        for _ in range(n_slices):
+            part = ExecResult(
+                commanded=(0.2, 0.0, 0.0), duration_s=3.0 / n_slices, steps=2,
+                policy_seconds=3.0 / n_slices, bumped=False, fell=False,
+                odom_dxy=(total_dxy[0] / n_slices, total_dxy[1] / n_slices),
+                odom_distance_m=math.hypot(
+                    total_dxy[0] / n_slices, total_dxy[1] / n_slices
+                ),
+            )
+            acc = merge_exec_results(acc, part)
+        return acc
+
+    def test_the_report_is_identical_at_any_slicing(self):
+        one = self._merged((0.6, 0.2), 1)
+        seventyfive = self._merged((0.6, 0.2), 75)
+        assert seventyfive.odom_distance_m == pytest.approx(one.odom_distance_m)
+        assert seventyfive.odom_dxy == pytest.approx(one.odom_dxy)
+
+    def test_random_direction_jitter_does_not_accumulate_as_travel(self):
+        """The measured failure: a wedged duck vibrating in place.
+
+        75 slices of 9.6 mm in alternating directions is 0.72 m of summed
+        magnitude and ~0 m of net displacement. The model must be told ~0.
+        """
+        from duck_embody.sim.policy_wrapper import ExecResult, merge_exec_results
+
+        acc = None
+        for i in range(75):
+            sign = 1.0 if i % 2 == 0 else -1.0
+            part = ExecResult(
+                commanded=(0.2, 0.0, 0.0), duration_s=0.04, steps=2,
+                policy_seconds=0.04, bumped=True, fell=False,
+                odom_dxy=(sign * 0.0096, 0.0), odom_distance_m=0.0096,
+            )
+            acc = merge_exec_results(acc, part)
+        assert acc.odom_distance_m < 0.02, (
+            f"jitter accumulated as {acc.odom_distance_m:.3f} m of phantom travel"
+        )
+
+    def test_the_floor_is_a_rate_not_a_per_call_constant(self):
+        import duck_embody.sim.policy_wrapper as pw
+
+        assert hasattr(pw, "ODOM_NOISE_FLOOR_RATE_MPS")
+        assert not hasattr(pw, "ODOM_NOISE_FLOOR_M"), (
+            "per-call noise floor reintroduced — it is not chunking-invariant"
+        )
+
+
+class TestMemoryBlockStructureIndependentOfTheGolden:
+    """Non-circular checks on the block.
+
+    The doc 05 §5.2 golden is regenerated FROM this renderer whenever the
+    renderer legitimately changes, so on its own it cannot catch a bug
+    introduced in the same edit — it only pins the block against LATER drift.
+    These assertions are written against the intended contract instead, so a
+    renderer change has to satisfy something that was not derived from it.
+    """
+
+    def _block(self):
+        memory, counters = seed_101_fixture()
+        return render_memory_block(memory, counters, (0.90, 2.75), 88.0)
+
+    def test_a_used_doorway_exposes_its_anchor_handle(self):
+        """The prompt tells the model to re-anchor on passing a doorway; before
+        2026-07-30 the anchor vanished at exactly that moment (exits rendered
+        anchors only while `unexplored`)."""
+        lines = self._block().splitlines()
+        doorway = [ln for ln in lines if ln.startswith("  - living_room@90")]
+        assert doorway, "the used doorway lost its anchor line"
+        assert "[anchor x=0.53, y=1.11]" in doorway[0]
+
+    def test_adjacency_is_asserted_exactly_once(self):
+        """doc 06 §5.7 keeps frontier and adjacency separate; the doorway list
+        must not restate `leads_to`."""
+        block = self._block()
+        assert block.count("leads_to") == 0
+        assert block.count("Connections: living_room <-> hallway") == 1
+
+    def test_the_estimate_line_claims_no_unmeasured_magnitude(self):
+        """The block is frozen into the batch, so any number here is a claim the
+        harness makes to the model about its own sensor accuracy."""
+        line = next(
+            ln for ln in self._block().splitlines()
+            if ln.startswith("Position estimate:")
+        )
+        assert "leg-odometry" in line
+        assert "%" not in line, f"unmeasured accuracy claim in: {line}"
+
+    def test_every_rendered_anchor_is_two_decimal_places(self):
+        import re as _re
+
+        for value in _re.findall(r"anchor x=([\d.-]+), y=([\d.-]+)", self._block()):
+            for v in value:
+                assert len(v.split(".")[1]) == 2, f"anchor not 2dp: {v}"

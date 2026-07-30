@@ -353,10 +353,18 @@ measured **per stage** at the stage's last logged turn — which is the
 count of `correct_position` calls in that stage and the magnitude
 `‖old_xy − new_xy‖` of each.
 
-Dead reckoning integrates *commanded* velocity, so it drifts because the real
-robot slips, bumps and turns imperfectly. Final drift measures how honest the
-estimate ended up; the corrections series shows whether the model actively did
-cognitive loop closure or just rode the drift.
+Dead reckoning integrates **simulated leg odometry** (the call's true
+displacement through a seeded error model), so it drifts because measurement
+error compounds. Final drift measures how honest the estimate ended up; the
+corrections series shows whether the model actively did cognitive loop closure
+or just rode the drift.
+
+> **Not comparable across the 2026-07-30 redesign boundary.** Before that date
+> the integrator consumed COMMANDED velocity, so drift also absorbed every
+> metre credited to a robot that was blocked — in the v4 batch that accounting
+> artifact dominated the number (one trial: 25.10 m of a 26.65 m error). Drift
+> figures from the v4 batch and from later batches measure different things and
+> must not be plotted on one axis or differenced. Compare within a batch.
 
 **The two halves must be sampled at the same instant.** They are not stored that
 way. Inside one turn record, `obs.position_estimate` is captured *before* the
