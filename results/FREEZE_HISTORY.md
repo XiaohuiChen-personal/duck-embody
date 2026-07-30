@@ -19,3 +19,18 @@ Note the standing caveat: no policy artifact is in `FROZEN_FILES`, so the hash
 does not cover the checkpoint bytes. `scripts/auto_pipeline.sh` therefore writes
 `results/logs/provenance_<label>.json` with the checkpoint sha256 before spending,
 and refuses if the candidate's sha matches the baseline's.
+
+## 2026-07-30 — odometry redesign + matrix swap
+
+Superseded manifest archived as `freeze_pre_odometry_20260730.json`
+(`config_hash 6a65f335…`). It certifies the two orphaned fable5 trials in
+`results/raw_v5d/`, which are evidence only and were never a scored batch.
+
+The new freeze covers a different contestant set (`sonnet5` replaces `fable5`)
+and a changed motion contract (dead reckoning consumes simulated leg odometry,
+not commanded velocity — AGENTS.md rule 5). Because both the models and the
+mechanism changed, results across this boundary are **not** comparable; see
+`docs/METRICS.md` §2.8 for the drift caveat specifically.
+
+`freeze_v4_baseline.json` remains the manifest for the published v4 batch and
+is untouched.

@@ -59,7 +59,12 @@ fi
 if [ ! -f "$REPO/results/freeze_v4_baseline.json" ]; then
     say "ABORT: freeze_v4_baseline.json missing — refusing to overwrite the manifest that certifies the published v4 batch"; exit 1
 fi
-cp "$REPO/results/freeze.json" "$REPO/results/freeze_pre_odometry_$(date +%Y%m%d).json" 2>/dev/null || true
+# IDEMPOTENT: only archive the first time. Re-copying on each attempt rewrote a
+# TRACKED file with the newly-frozen content, which dirtied the tree and made
+# the very next --freeze refuse — the archive is supposed to preserve the
+# SUPERSEDED manifest, so overwriting it defeats its purpose twice over.
+ARCHIVE="$REPO/results/freeze_pre_odometry_20260730.json"
+[ -f "$ARCHIVE" ] || cp "$REPO/results/freeze.json" "$ARCHIVE"
 if ! PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py --freeze > /tmp/overnight_freeze.log 2>&1; then
     say "ABORT: --freeze refused"; grep -iE "fatal|refus|dirty" /tmp/overnight_freeze.log | head -5; exit 1
 fi
