@@ -21,6 +21,8 @@ last turn's ``timestamp``); nothing here calls a clock.
 from __future__ import annotations
 
 import json
+import os
+import pathlib
 import statistics
 import sys
 from pathlib import Path
@@ -38,7 +40,12 @@ from duck_embody.scoring import (
 )
 
 REPO = Path(__file__).resolve().parents[1]
-RAW = REPO / "results" / "raw"
+# RAW is overridable so a candidate batch living outside results/raw can be
+# scored by THIS scorer rather than a reimplementation. Default unchanged, so
+# every existing invocation and the frozen v4 record behave identically.
+# (Found 2026-07-29: a v5d batch in results/raw_v5d would otherwise have been
+# scored from results/raw, silently publishing v4 numbers as the v5d result.)
+RAW = pathlib.Path(os.environ.get("DUCK_EMBODY_RAW_DIR") or (REPO / "results" / "raw"))
 
 MODELS = ("fable5", "opus5", "gpt56sol")
 SEEDS = (101, 102, 103, 104)

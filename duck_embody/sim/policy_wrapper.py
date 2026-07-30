@@ -103,7 +103,50 @@ TURN_TIMEOUT_S = 8.0
 #: wall-clock forecasting. The dead-reckoning integrator the model sees uses
 #: commanded velocity with NO k, so its drift stays honest and measurable
 #: (AGENTS.md rule 5 over doc 02 §6.2's pseudocode; pinned by PLAN T1.3).
-K_VELOCITY_REALISATION = 1.004
+#:
+#: THIS IS A PROPERTY OF THE POLICY, NOT OF THE HARNESS. Re-measure it with
+#: `scripts/smoke_displacement.py --checkpoint <policy>` and re-derive with
+#: `scripts/derive_calibration.py` whenever the shipped policy changes; the
+#: v4-vs-v5d gap is 4.3 %, which is ~16 cm over a 4 m path against a 0.35 m
+#: success radius. Note that configs/benchmark.yaml's `locomotion:` block is
+#: DOCUMENTATION ONLY — no Python reads it (verified 2026-07-29: zero hits for
+#: the yaml key outside the config, this file's docstring and the derivation
+#: script), so editing the yaml alone changes nothing at runtime. This line is
+#: the one that matters, and tests/test_tools.py pins the two behaviours that
+#: depend on it.
+#:
+#: 2026-07-29: 1.004 (v4_robust) -> 0.9617 (v5d_contact_wrench), measured
+#: 3.8470 m achieved / 4.0 m commanded, with the v4 control reproducing the old
+#: value to 1.0044 in the same session.
+K_VELOCITY_REALISATION = 0.9617
+
+
+def move_servo_plan(distance_m: float) -> tuple[float, float, int]:
+    """Servo plan for ``move(distance_m)``: (clamped distance, target, chunks).
+
+    Extracted from ``PolicyPlayback.move`` on 2026-07-29 because the arithmetic
+    existed in TWO places — here and re-implemented inside the test suite's
+    ``FakePlayback.move`` — with nothing keeping them in step. That was proved
+    the hard way: mutating the real ``move`` (``ceil`` -> ``floor``, and then
+    deleting the ``/ k`` entirely) left all 547 ``tests/test_tools.py`` tests
+    GREEN, because those tests drive the fake. The real servo was unguarded.
+
+    Being a pure function, this can be asserted on directly, so a mutation to
+    the arithmetic now fails a test instead of shipping. ``FakePlayback`` is
+    pinned against it by an agreement test.
+
+    ``k`` is consumed HERE (and only here + wall-clock forecasting): the servo
+    target is the commanded distance whose ACHIEVED distance equals the request.
+    With k < 1 the target therefore exceeds the request. The chunk count rounds
+    UP, so served distance is quantised up to a multiple of
+    ``MOVE_SPEED_MPS * MACRO_CHUNK_S`` (0.04 m) — the finest final-positioning
+    step a model has against the 0.35 m success radius.
+    """
+    distance = max(0.0, min(distance_m, MOVE_MAX_DISTANCE_M))
+    target_dist = distance / K_VELOCITY_REALISATION
+    ideal_s = target_dist / MOVE_SPEED_MPS if MOVE_SPEED_MPS else 0.0
+    n_chunks = max(1, int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)))
+    return distance, target_dist, n_chunks
 
 
 def clamp_command(
@@ -756,12 +799,7 @@ class PolicyPlayback:
         Auto-stops on collision (this is the tool that does; `send_velocity`
         deliberately does not — doc 05 §4.2).
         """
-        distance = max(0.0, min(distance_m, MOVE_MAX_DISTANCE_M))
-        # k is consumed HERE (and only here + forecasting): the servo target is
-        # the commanded distance the achieved distance corresponds to.
-        target_dist = distance / K_VELOCITY_REALISATION
-        ideal_s = target_dist / MOVE_SPEED_MPS if MOVE_SPEED_MPS else 0.0
-        n_chunks = max(1, int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)))
+        distance, target_dist, n_chunks = move_servo_plan(distance_m)
 
         held_heading = self.compass_deg()
         start_xy = self.true_xy()

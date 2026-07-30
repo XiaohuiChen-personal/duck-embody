@@ -52,6 +52,20 @@ The JSON report (per-scenario ``{id, pass, measurements, artifact_paths}``)
 lands in the run directory; S3 additionally rewrites
 ``results/figures/smoke/contact_side_report.json`` (superseding the crashed
 ``t3_5_contact_side.log`` run — G13).
+
+``--checkpoint`` points the whole gap hunt at a RETRAINED policy. Every scenario
+here except S0 is a claim about the *gait*: S2 asserts a full-hull press into
+the counter run topples the robot, S3 maps which body region feels a bump, S4
+asserts brushing furniture does not spuriously abort a ``move``. A new
+checkpoint invalidates all three, and re-running this script is how they get
+re-measured. Omitting the flag keeps the previous behaviour exactly —
+``session.py``'s ``DEFAULT_CHECKPOINT`` (``policy/model_2999.pt``, the
+v4_robust baseline the frozen batch ran) — so the four archived
+``gap_hunt_*`` runs stay reproducible. The report gains one ADDITIVE key,
+``checkpoint``, because a verdict about a gait must name the gait it measured.
+Note S2's verdict can legitimately FLIP on a more robust policy: a candidate
+that does NOT topple under a sustained press prints INCONCLUSIVE there, which
+is a result about the policy, not a broken gate.
 """
 
 from __future__ import annotations
@@ -333,8 +347,13 @@ ALLOWLISTED_ERROR_MARKERS = (
 # ---------------------------------------------------------------------------
 
 class Report:
-    def __init__(self, out_path: Path):
+    def __init__(self, out_path: Path, checkpoint: str | None = None):
         self.out_path = out_path
+        #: Which policy produced these verdicts. S2/S3/S4 are gait measurements,
+        #: so a report that cannot name its checkpoint cannot be compared with
+        #: another one. Additive: absent from the four archived pre-freeze runs,
+        #: which all used session.py's DEFAULT_CHECKPOINT.
+        self.checkpoint = checkpoint
         self.scenarios: list[dict] = []
 
     def record(self, sid: str, ok: bool, reason: str,
@@ -351,6 +370,7 @@ class Report:
         doc = {
             "script": "smoke_gap_hunt.py",
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "checkpoint": self.checkpoint,
             "complete": final,
             "scenarios": self.scenarios,
             "verdict": "PASS" if self.scenarios and all(s["pass"] for s in self.scenarios) else "FAIL",
@@ -1350,8 +1370,38 @@ def scenario_s5(report: Report, session, out_dir: Path) -> None:
 # main
 # ---------------------------------------------------------------------------
 
+def build_parser():
+    """Argument parser. Built outside ``main`` so ``--help`` needs no kit."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="smoke_gap_hunt.py",
+        description="Single-session pre-freeze smoke: SIM TEST PLAN S0-S5.",
+    )
+    parser.add_argument(
+        "--print-budget", action="store_true",
+        help="print the kill-switch wallclock budget (seconds) and exit, "
+             "without launching kit. Emitted as the LAST stdout line.",
+    )
+    parser.add_argument(
+        "--checkpoint", default=None,
+        help="policy .pt to run the scenarios against. Default: session.py's "
+             "DEFAULT_CHECKPOINT (policy/model_2999.pt, the v4_robust baseline) "
+             "— omit it to reproduce the archived gap_hunt runs.",
+    )
+    return parser
+
+
 def main() -> int:
-    if "--print-budget" in sys.argv:
+    # Parsed BEFORE anything launches, then stripped from argv: AppLauncher
+    # inside SimSession.launch() parses sys.argv for its own flags and dies on
+    # unknown ones (run_trial.py:151-155). This replaced a bare
+    # `"--print-budget" in sys.argv` check, which could not have coexisted with
+    # a second flag kit must not see.
+    args, kit_argv = build_parser().parse_known_args()
+    sys.argv = [sys.argv[0], *kit_argv]
+
+    if args.print_budget:
         # Pre-kit: pure layout math only. Prints the budget (seconds) as the
         # LAST stdout line — the isaaclab.sh wrapper prepends its own banner
         # to stdout, so the documented run line captures via `tail -n1`.
@@ -1370,14 +1420,21 @@ def main() -> int:
     out_dir = REPO_ROOT / "results" / "logs" / f"gap_hunt_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     capture_path = tee_process_output(out_dir / "session_output.log")
-    report = Report(out_dir / "gap_hunt_report.json")
+
+    from duck_embody.sim.session import DEFAULT_CHECKPOINT
+
+    checkpoint = str(args.checkpoint or DEFAULT_CHECKPOINT)
+    report = Report(out_dir / "gap_hunt_report.json", checkpoint=checkpoint)
     print(f"== smoke_gap_hunt {stamp} ==")
     print(f"  artifacts: {out_dir}")
+    print(f"  policy   : {checkpoint}")
     print(f"  estimated policy-seconds: {estimated_policy_seconds():.0f}")
 
     from duck_embody.sim.session import SimSession
 
-    session = SimSession.launch(task_id="DuckEmbody-Apartment-v0", headless=True)
+    session = SimSession.launch(
+        task_id="DuckEmbody-Apartment-v0", headless=True, checkpoint=args.checkpoint
+    )
     try:
         # A first reset so the startup noise (S0's subject) is fully emitted.
         from duck_embody.sim.session import SpawnPose

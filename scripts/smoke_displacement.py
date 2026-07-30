@@ -32,6 +32,7 @@ Run:
 from __future__ import annotations
 
 import json
+import pathlib
 import math
 from pathlib import Path
 
@@ -81,18 +82,42 @@ def summarize(name: str, results, t0_heading: float, playback) -> dict:
     }
 
 
+def build_parser():
+    """Parser built outside main so --help needs no kit."""
+    import argparse
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0] if __doc__ else "T1.3 displacement")
+    ap.add_argument(
+        "--checkpoint", default=None,
+        help="policy .pt to measure. Default: session.py's DEFAULT_CHECKPOINT "
+             "(v4_robust). REQUIRED when calibrating a retrained policy: the "
+             "constants this script measures — k_velocity_realisation, "
+             "turn_rate_realisation, open_loop_yaw_drift_deg_per_s — are "
+             "properties of the POLICY, not of the harness, and "
+             "configs/benchmark.yaml's values were measured on v4_robust.",
+    )
+    ap.add_argument(
+        "--out-json", default=None,
+        help="also write the report here (e.g. results/logs/calibration_<label>.json)",
+    )
+    return ap
+
+
 def main() -> int:
+    args = build_parser().parse_args()
+
     from duck_embody.sim.policy_wrapper import shortest_angle_diff_deg
     from duck_embody.sim.recorder import Recorder
     from duck_embody.sim.session import SimSession, SpawnPose
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    session = SimSession.launch(task_id="DuckEmbody-v0", headless=True)
+    session = SimSession.launch(
+        task_id="DuckEmbody-v0", headless=True, checkpoint=args.checkpoint
+    )
     playback = session.playback
     print("== session up ==")
 
-    report: dict = {"seed": SEED, "runs": {}}
+    report: dict = {"seed": SEED, "checkpoint": str(args.checkpoint or "DEFAULT(v4_robust)"), "runs": {}}
     failures: list[str] = []
 
     def run(name: str, script, every_n: int = 2) -> dict:
@@ -213,6 +238,13 @@ def main() -> int:
     out_json = OUT_DIR / "displacement_report.json"
     out_json.write_text(json.dumps(report, indent=2) + "\n")
     print(f"\n  wrote {out_json.relative_to(REPO_ROOT)}")
+    # A second, explicitly-named copy so a per-policy calibration can live
+    # outside the single-slot smoke directory (which the next run overwrites).
+    if args.out_json:
+        extra = pathlib.Path(args.out_json)
+        extra.parent.mkdir(parents=True, exist_ok=True)
+        extra.write_text(json.dumps(report, indent=2) + "\n")
+        print(f"  wrote {extra}")
 
     print("\n== summary ==")
     print(json.dumps({k2: v for k2, v in report.items() if k2 != "runs"}, indent=2))

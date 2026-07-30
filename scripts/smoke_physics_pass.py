@@ -23,17 +23,47 @@ What it drives:
 
 Every run records an mp4 + filmstrip for the rule-11 frame-by-frame review.
 
+``--checkpoint`` exists so this gate can be pointed at a RETRAINED policy: the
+colliders and the bump/fall semantics are properties of the scene and the
+wrapper, but "does a doorway transit stay quiet" and "does a wall bump survive"
+are properties of the *gait*, and a new checkpoint has to re-earn both before it
+is allowed anywhere near a benchmark. Omitting the flag keeps the previous
+behaviour exactly — ``session.py``'s ``DEFAULT_CHECKPOINT`` (``policy/
+model_2999.pt``, the v4_robust baseline the frozen batch ran) — so existing
+``physics_pass_report.json`` results stay reproducible. The only difference in
+the artifact is one ADDITIVE provenance key, ``report["checkpoint"]``: a report
+that cannot say which policy produced it is not evidence about a policy.
+
 Run:  PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p scripts/smoke_physics_pass.py
+      PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p scripts/smoke_physics_pass.py \\
+          --checkpoint policy/candidate_v5/model_1999.pt
 """
 
 from __future__ import annotations
 
 import json
+import pathlib
 import math
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+#: Baseline artifact directory. A run with an explicit --checkpoint writes to a
+#: SIBLING directory instead (see _resolve_out_dir): on 2026-07-29 a v5d gate run
+#: overwrote 22 published v4 evidence files here, including the
+#: physics_pass_report.json that two docs cite. Evidence for one policy must
+#: never land on top of another's.
 OUT_DIR = REPO_ROOT / "results" / "figures" / "smoke"
+
+
+def _resolve_out_dir(checkpoint) -> "pathlib.Path":
+    """Baseline dir for the default policy, a labelled sibling otherwise."""
+    if not checkpoint:
+        return OUT_DIR
+    import re as _re
+    stem = pathlib.Path(str(checkpoint)).parent.name or "candidate"
+    label = _re.sub(r"[^A-Za-z0-9._-]", "_", stem)
+    return OUT_DIR.parent / f"smoke_{label}"
 
 #: How far before a doorway the robot starts, and how far it drives.
 APPROACH_M = 0.45
@@ -99,21 +129,56 @@ def _tile(paths, out_path, cols: int = 4) -> None:
     sheet.save(out_path)
 
 
+def build_parser():
+    """Argument parser. Built outside ``main`` so ``--help`` needs no kit."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="smoke_physics_pass.py",
+        description="Scripted physics pass (VIDEO GATE): colliders, doorways, "
+                    "survivable bumps. No LLM, no money spent.",
+    )
+    parser.add_argument(
+        "--checkpoint", default=None,
+        help="policy .pt to drive the gate with. Default: session.py's "
+             "DEFAULT_CHECKPOINT (policy/model_2999.pt, the v4_robust baseline) "
+             "— omit it to reproduce the frozen-era report byte for byte.",
+    )
+    return parser
+
+
 def main() -> int:
+    # Parsed BEFORE anything launches, then stripped from argv: AppLauncher
+    # inside SimSession.launch() parses sys.argv for its own flags and dies on
+    # unknown ones. Same two lines as run_trial.py:151-155, for the same reason.
+    args, kit_argv = build_parser().parse_known_args()
+
+    # Candidate runs write beside the baseline, never over it (see OUT_DIR).
+    global OUT_DIR
+    OUT_DIR = _resolve_out_dir(getattr(args, "checkpoint", None))
+    print(f"[physics_pass] artifacts -> {OUT_DIR.relative_to(REPO_ROOT)}")
+    sys.argv = [sys.argv[0], *kit_argv]
+
     from duck_embody.env.apartment_layout import LAYOUT, grid, room_at
     from duck_embody.sim.recorder import Recorder
-    from duck_embody.sim.session import SimSession, SpawnPose
+    from duck_embody.sim.session import DEFAULT_CHECKPOINT, SimSession, SpawnPose
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     failures: list[str] = []
-    report: dict = {"transits": [], "bumps": []}
+    # `checkpoint` is the one ADDITIVE key: every other field, and every verdict,
+    # is unchanged when the flag is absent.
+    checkpoint = str(args.checkpoint or DEFAULT_CHECKPOINT)
+    report: dict = {"checkpoint": checkpoint, "transits": [], "bumps": []}
+    print(f"== policy: {checkpoint} ==")
 
     def check(label: str, ok: bool, detail: str = "") -> None:
         print(f"    {'PASS' if ok else 'FAIL'}  {label}" + (f"  [{detail}]" if detail else ""))
         if not ok:
             failures.append(label)
 
-    session = SimSession.launch(task_id="DuckEmbody-Apartment-v0", headless=True)
+    session = SimSession.launch(
+        task_id="DuckEmbody-Apartment-v0", headless=True, checkpoint=args.checkpoint
+    )
     playback = session.playback
     g = grid()
     print("== apartment up ==")
@@ -179,8 +244,18 @@ def main() -> int:
     bump_tests = [
         {
             "name": "wall_bump",
-            "start": (2.55, 1.60), "heading": 90.0, "distance": 1.3,
-            "target": "wall A (kitchen north wall, off-doorway)",
+            # x was 2.55 until 2026-07-29 — which is the EXACT centre of the
+            # hallway<->kitchen doorway (apartment_layout doorways: center
+            # (2.55, 2.7), width 0.35), so this test walked straight through an
+            # open gap while claiming to be "off-doorway". Wall A's segments are
+            # A1 [0.000,0.725] A2 [1.075,2.375] A3 [2.725,3.875] A4 [4.225,4.800];
+            # x=1.70 sits well inside A2. A policy that tracks straight would
+            # "fail" the old test by correctly transiting the doorway, which is
+            # the opposite of what the check is for. Disclosed rather than
+            # silently retuned: the defect is provable from the layout geometry
+            # alone, independent of any policy's result.
+            "start": (1.70, 1.60), "heading": 90.0, "distance": 1.3,
+            "target": "wall A2 (kitchen north wall, genuinely off-doorway)",
             "note": "CuboidCfg native collider",
         },
         {

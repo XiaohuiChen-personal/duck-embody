@@ -22,6 +22,7 @@ Run:  ~/IsaacLab/_isaac_sim/python.sh scripts/audit_trial.py results/raw/<trial>
 from __future__ import annotations
 
 import json
+import os
 import statistics
 import sys
 from datetime import datetime
@@ -83,7 +84,11 @@ def audit(path: Path, require_tool_coverage: bool = False) -> int:
     # parked in results/logs/) legitimately carry a stale hash there.
     freeze_path = REPO_ROOT / "results" / "freeze.json"
     stored_hash = (trial.get("config") or {}).get("config_hash")
-    in_raw = (REPO_ROOT / "results" / "raw") in path.resolve().parents
+    # A batch may legitimately live outside results/raw (a candidate policy
+    # must not overwrite the frozen baseline). Honour the same override
+    # build_scores.py uses, so the pooled-data check is not blind there.
+    _raw_root = Path(os.environ.get("DUCK_EMBODY_RAW_DIR") or (REPO_ROOT / "results" / "raw"))
+    in_raw = _raw_root.resolve() in path.resolve().parents
     if freeze_path.exists() and in_raw:
         frozen_hash = json.loads(freeze_path.read_text()).get("config_hash")
         check(stored_hash == frozen_hash,

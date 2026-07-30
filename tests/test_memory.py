@@ -315,23 +315,44 @@ class TestPositionIntegrator:
                 "the commanded-velocity integral, uncorrected (T1.3's pin)"
             )
 
+        # The servo target moved out of `move` into the pure helper
+        # `move_servo_plan` on 2026-07-29, so this guard follows it there. The
+        # invariant is unchanged and still enforced: k is divided in exactly
+        # once, in exactly one place. (The extraction happened because the
+        # arithmetic was duplicated in the test suite's FakePlayback and the
+        # real function was consequently unguarded — mutating it left every
+        # test green. See TestMoveServoPlanIsGuarded in tests/test_tools.py.)
+        servo_fn = next(
+            node
+            for node in ast.walk(module)
+            if isinstance(node, ast.FunctionDef) and node.name == "move_servo_plan"
+        )
+        servo = [
+            node
+            for node in ast.walk(servo_fn)
+            if isinstance(node, ast.BinOp)
+            and isinstance(node.op, ast.Div)
+            and _k_references(node.right)
+        ]
+        assert len(servo) == 1, (
+            "move_servo_plan() must divide by k exactly once (the servo target)"
+        )
+        assert len(_k_references(servo_fn)) == 1, (
+            "k appears in move_servo_plan() somewhere other than the servo "
+            "target — the only two legitimate consumers are that target and "
+            "wall-clock forecasting (PLAN T1.3)"
+        )
+
+        # `move` itself must no longer touch k: it delegates. If a future edit
+        # reintroduces a k reference there, the constant has two consumers again.
         move = next(
             node
             for node in ast.walk(module)
             if isinstance(node, ast.FunctionDef) and node.name == "move"
         )
-        servo = [
-            node
-            for node in ast.walk(move)
-            if isinstance(node, ast.BinOp)
-            and isinstance(node.op, ast.Div)
-            and _k_references(node.right)
-        ]
-        assert len(servo) == 1, "move()'s servo target must divide by k exactly once"
-        assert len(_k_references(move)) == 1, (
-            "k appears in move() somewhere other than the servo target — the "
-            "only two legitimate consumers are that target and wall-clock "
-            "forecasting (PLAN T1.3)"
+        assert not _k_references(move), (
+            "move() references k directly again — it must delegate to "
+            "move_servo_plan so the arithmetic stays in one testable place"
         )
 
     def test_step_count_matches_the_sim_step_count(self):

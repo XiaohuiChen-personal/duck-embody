@@ -57,6 +57,17 @@ context:
   k_turns: 10
 
 # --- Locomotion -------------------------------------------------------------
+# !! RECALIBRATED 2026-07-29 for v5d_contact_wrench !!
+# The locomotion block below is a MEASUREMENT OF THE SHIPPED POLICY, not harness
+# configuration. It was re-derived with scripts/smoke_displacement.py
+# --checkpoint <v5d> + scripts/derive_calibration.py, with a v4_robust control
+# run reproducing every previous value to within 0.1% (see
+# results/logs/derived_calibration.json).
+#
+# NOTE, verified: NO PYTHON READS THIS BLOCK. The single runtime consumer is
+# duck_embody/sim/policy_wrapper.py::K_VELOCITY_REALISATION, which is updated in
+# the same commit. Editing this file alone changes nothing at runtime — it is
+# kept in step so the documentation cannot contradict the code.
 locomotion:
   control_hz: 50                     # sim dt 0.005 x decimation 4
   # Training command hull. Read from policy/params/env.yaml (T0.1).
@@ -69,8 +80,8 @@ locomotion:
   # net displacement / (0.2 m/s x 20 s) on the empty plane.
   # This is the number the parent repo never measured — its velocity metric is
   # an instantaneous L2 error, which cannot see a systematic shortfall.
-  k_velocity_realisation: 1.004      # 4.018 m achieved vs 4.0 m commanded
-  measured_speed_mps: 0.201
+  k_velocity_realisation: 0.9617    # v5d: 3.8470 m achieved vs 4.0 m commanded (was 1.004 = v4_robust)
+  measured_speed_mps: 0.1923
   # k POLICY (pinned by PLAN T1.3; AGENTS.md rule 5 wins over doc 02 §6.2):
   # the dead-reckoning integrator uses COMMANDED velocity with NO k, so drift
   # stays honest and measurable. k is consumed ONLY by (i) time-cap/wall-clock
@@ -85,14 +96,14 @@ locomotion:
   send_velocity_duration_s: [0.2, 3.0]
 
   # MEASURED (T1.3 run b): commanded wz 0.3 rad/s -> 0.295 realised.
-  turn_rate_realisation: 0.982
+  turn_rate_realisation: 0.9372    # v5d: |161.09| deg over 10 s at 0.3 rad/s (was 0.982 = v4)
 
   # MEASURED (T1.3 runs a/d): the bare policy does NOT walk straight. Commanded
   # (0.2, 0, 0) yaws ~1.8 deg/s — 36.6 deg over 20 s / 4 m, and ~103 deg per
   # 100 s on the 120 s hold. This is consistent with the parent eval's own
   # wz tracking error (0.067 rad/s = 3.8 deg/s), i.e. a real property of the
   # policy rather than a harness bug.
-  open_loop_yaw_drift_deg_per_s: 1.83
+  open_loop_yaw_drift_deg_per_s: 1.3475   # v5d: |-26.95| deg / 20 s (was 1.83 = v4; v5d walks straighter)
 
   # MEASURED (T1.3 run f): closing wz on the compass during a drive removes it —
   # 0.39 deg of drift over the same 20 s / 4 m, with k essentially unchanged
@@ -101,7 +112,7 @@ locomotion:
     enabled: true
     kp: 1.5                          # heading error (rad) -> wz, clipped to hull
     chunk_s: 0.2                     # correction interval
-    residual_drift_deg_per_20s: 0.39
+    residual_drift_deg_per_20s: 0.04
 
   # Bump detection (doc 02 §6.2). Debounced so a graze while squeezing through
   # a 0.35 m doorway is not read as a collision.

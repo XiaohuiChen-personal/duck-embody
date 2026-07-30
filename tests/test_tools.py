@@ -1038,7 +1038,17 @@ class TestClampingIsEchoedNotSilent:
             )
             assert covered == pytest.approx(expected, abs=1e-9)
             assert covered >= requested - 1e-9, "a move must never fall short"
-            assert covered - requested < quantum + 1e-9
+            # Overshoot is bounded by ONE quantum above the k-adjusted servo
+            # target, not above the raw request. With k < 1 the servo
+            # deliberately commands further than requested because the robot
+            # under-travels, so `covered - requested` legitimately exceeds one
+            # quantum: at k=0.9617, move(1.5) targets 1.5598 m and rounds to
+            # 1.56 m, i.e. 0.06 m over the request but 0.0002 m over the target.
+            # (This bound read `covered - requested` while k was 1.004, where
+            # the two are indistinguishable — the 2026-07-29 v5d recalibration
+            # is what separated them.)
+            target = requested / K_VELOCITY_REALISATION
+            assert covered - target < quantum + 1e-9
 
     @pytest.mark.parametrize(
         "requested,wrapped", [(725.0, 5.0), (-30.0, 330.0), (360.0, 0.0)]
@@ -1474,8 +1484,17 @@ class TestDeadReckoningFeed:
         context.integrator = PositionIntegrator(0.0, 0.0)
         dispatch(call("move", distance_m=0.4), context)
         # Along 90 deg (+y), the heading held — NOT along the 0 deg it ended on.
+        # The integrator feeds on COMMANDED velocity with no k, so the value is
+        # the chunk-quantised servo target, not the request:
+        #   ceil(0.4 / 0.9617 / 0.04) = 11 chunks x 0.04 m = 0.44 m
+        # It read 0.4 while k was 1.004 (ceil(9.96) = 10 chunks); the 2026-07-29
+        # v5d recalibration moved it. Derived, not relaxed — the tolerance is
+        # still 1e-6, and the axis assertion is untouched.
+        expected_y = MOVE_SPEED_MPS * MACRO_CHUNK_S * math.ceil(
+            0.4 / K_VELOCITY_REALISATION / (MOVE_SPEED_MPS * MACRO_CHUNK_S)
+        )
         assert context.integrator.x == pytest.approx(0.0, abs=1e-9)
-        assert context.integrator.y == pytest.approx(0.4, abs=1e-6)
+        assert context.integrator.y == pytest.approx(expected_y, abs=1e-6)
 
     def test_a_send_velocity_cut_short_integrates_only_the_seconds_that_ran(self):
         """PLAN T3.2 (b) as CORRECTED, for the tool it is right for. `execute()`
@@ -2055,3 +2074,78 @@ class TestFallDiagnosticsNeverReachTheModel:
         blob = json.dumps(outcome.payload)
         for banned in ("fall_diagnostics", "tilt_deg", "height_m", "74.3", "0.061"):
             assert banned not in blob, f"{banned} leaked into the model payload"
+
+
+class TestMoveServoPlanIsGuarded:
+    """Pin ``policy_wrapper.move_servo_plan`` — the REAL servo arithmetic.
+
+    Added 2026-07-29. Every pre-existing test of move() distances drives
+    ``FakePlayback``, which re-implements the arithmetic, so the real function
+    was unguarded: mutating it (ceil -> floor, and removing the ``/ k``) left
+    all 547 tests in this file green. These tests assert on the real function,
+    so such a mutation now fails.
+    """
+
+    def test_target_divides_by_k_so_achieved_distance_matches_the_request(self):
+        """The servo must aim FURTHER than the request when k < 1."""
+        from duck_embody.sim.policy_wrapper import (
+            K_VELOCITY_REALISATION,
+            move_servo_plan,
+        )
+
+        for requested in (0.1, 0.4, 1.0, 1.5):
+            _, target, _ = move_servo_plan(requested)
+            assert target == pytest.approx(requested / K_VELOCITY_REALISATION, rel=1e-12)
+            # Guards the mutation "drop / k": with k != 1 the target must differ
+            # from the request, in the direction that compensates for the policy.
+            if K_VELOCITY_REALISATION < 1.0:
+                assert target > requested
+            elif K_VELOCITY_REALISATION > 1.0:
+                assert target < requested
+
+    def test_chunks_round_up_never_down(self):
+        """Guards the mutation ceil -> floor: served time never falls short."""
+        from duck_embody.sim.policy_wrapper import (
+            MACRO_CHUNK_S,
+            MACRO_TIME_MARGIN,
+            MOVE_SPEED_MPS,
+            move_servo_plan,
+        )
+
+        for requested in (0.05, 0.1, 0.37, 0.4, 0.83, 1.0, 1.5):
+            _, target, n_chunks = move_servo_plan(requested)
+            ideal_s = target / MOVE_SPEED_MPS
+            needed = ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S
+            assert n_chunks >= needed - 1e-12, "a move must never be served short"
+            assert n_chunks - needed < 1.0, "and never over-served by a whole chunk"
+            assert n_chunks >= 1
+
+    def test_distance_is_clamped_to_the_schema_domain(self):
+        from duck_embody.sim.policy_wrapper import MOVE_MAX_DISTANCE_M, move_servo_plan
+
+        assert move_servo_plan(99.0)[0] == pytest.approx(MOVE_MAX_DISTANCE_M)
+        assert move_servo_plan(-5.0)[0] == 0.0
+
+    def test_fake_playback_agrees_with_the_real_servo_plan(self):
+        """The fake re-implements this arithmetic; pin the two together.
+
+        Without this, ``FakePlayback`` and ``move_servo_plan`` can silently
+        diverge and every distance assertion in this file becomes a statement
+        about the fake alone.
+        """
+        from duck_embody.sim.policy_wrapper import (
+            MACRO_CHUNK_S,
+            MOVE_SPEED_MPS,
+            move_servo_plan,
+        )
+
+        quantum = MOVE_SPEED_MPS * MACRO_CHUNK_S
+        for requested in (1.5, 0.5, 0.1, 0.05):
+            covered = dispatch(
+                call("move", distance_m=requested), make_context()
+            ).payload["status"]["distance_moved_m"]
+            _, target, _ = move_servo_plan(requested)
+            # The fake quantises the same target up to the same 0.04 m grid.
+            assert covered == pytest.approx(
+                quantum * math.ceil(target / quantum), abs=1e-9
+            )

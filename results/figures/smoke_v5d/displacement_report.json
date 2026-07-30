@@ -1,0 +1,147 @@
+{
+  "seed": 42,
+  "checkpoint": "/home/xiaohui_chen/IsaacLab/logs/rsl_rl/open_duck_ppo_v5/2026-07-29_08-59-25/model_5998.pt",
+  "runs": {
+    "a_straight_20s": {
+      "name": "a_straight_20s",
+      "policy_seconds": 20.0,
+      "net_displacement_m": 3.847,
+      "path_length_m": 4.5417,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        3.6862,
+        -1.103
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 332.5,
+      "heading_change_deg": -26.95,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 102,
+      "video": "results/figures/smoke/displacement_a_straight_20s.mp4",
+      "height_at_end_m": 0.173
+    },
+    "b_turn_10s": {
+      "name": "b_turn_10s",
+      "policy_seconds": 10.0,
+      "net_displacement_m": 0.1034,
+      "path_length_m": 1.1363,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        -0.0841,
+        -0.0472
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 160.54,
+      "heading_change_deg": 161.09,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 52,
+      "video": "results/figures/smoke/displacement_b_turn_10s.mp4",
+      "height_at_end_m": 0.173
+    },
+    "c_stopstart": {
+      "name": "c_stopstart",
+      "policy_seconds": 24.0,
+      "net_displacement_m": 3.7496,
+      "path_length_m": 4.9577,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        3.3461,
+        -1.6901
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 310.22,
+      "heading_change_deg": -49.23,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 160,
+      "video": "results/figures/smoke/displacement_c_stopstart.mp4",
+      "height_at_end_m": 0.1741
+    },
+    "d_longhold_120s": {
+      "name": "d_longhold_120s",
+      "policy_seconds": 120.0,
+      "net_displacement_m": 18.7251,
+      "path_length_m": 27.3953,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        6.3136,
+        -17.6215
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 223.71,
+      "heading_change_deg": -135.74,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 602,
+      "video": "results/figures/smoke/displacement_d_longhold_120s.mp4",
+      "height_at_end_m": 0.1722
+    },
+    "e_turn_drive_turn": {
+      "name": "e_turn_drive_turn",
+      "policy_seconds": 16.0,
+      "net_displacement_m": 1.2031,
+      "path_length_m": 2.9498,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        1.0422,
+        0.6148
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 336.82,
+      "heading_change_deg": -22.63,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 88,
+      "video": "results/figures/smoke/displacement_e_turn_drive_turn.mp4",
+      "height_at_end_m": 0.1714
+    },
+    "f_heading_hold_20s": {
+      "name": "f_heading_hold_20s",
+      "policy_seconds": 20.0,
+      "net_displacement_m": 3.8615,
+      "path_length_m": 4.7827,
+      "start_xy": [
+        0.0032,
+        0.0083
+      ],
+      "end_xy": [
+        3.8638,
+        -0.076
+      ],
+      "start_heading_deg": 359.45,
+      "final_heading_deg": 359.41,
+      "heading_change_deg": -0.04,
+      "bumped": false,
+      "fell": false,
+      "n_trace_points": 300,
+      "video": "results/figures/smoke/displacement_f_heading_hold_20s.mp4",
+      "height_at_end_m": 0.1729
+    }
+  },
+  "k_velocity_realisation": 0.9617,
+  "measured_speed_mps": 0.1923,
+  "measured_turn_rate_radps_wrapped": 0.2812,
+  "yaw_creep_deg_per_100s": -113.117,
+  "k_with_heading_hold": 0.9654,
+  "open_loop_yaw_drift_deg_per_20s": 26.95,
+  "heading_hold_drift_deg_per_20s": 0.04,
+  "failures": [],
+  "acceptance": "PASS"
+}
