@@ -41,26 +41,6 @@ CSHA=$(sha256sum "$V5D" | cut -d' ' -f1); BSHA=$(sha256sum "$BASELINE" | cut -d'
 if [ "$CSHA" = "$BSHA" ]; then say "ABORT: candidate == baseline checkpoint"; exit 1; fi
 printf '{"candidate":"%s","candidate_sha256":"%s","baseline_sha256":"%s"}\n' "$V5D" "$CSHA" "$BSHA" > "$RAW/provenance.json"
 say "provenance recorded (candidate sha ${CSHA:0:12})"
-# 4. provider probe — pennies; catches sonnet5 config/auth before dollars
-# PYTHONPATH: probe_providers imports duck_embody, and the script is invoked
-# by absolute path from an arbitrary cwd, so the repo is not on sys.path.
-if ! (cd "$REPO" && PYTHONPATH="$REPO" python3 scripts/probe_providers.py) > /tmp/overnight_probe.log 2>&1; then
-    say "ABORT: provider probe failed"; tail -10 /tmp/overnight_probe.log; exit 1
-fi
-say "provider probe green (sonnet5/opus5/gpt56sol reachable)"
-# 4b. WATCHDOG SELF-TEST: prove the cost extractor returns non-zero on a real
-# trial JSON before trusting it to cap spend on an unattended run.
-WT=$(python3 - <<'PYT'
-import json, pathlib
-f = pathlib.Path("/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d/fable5_seed101.json")
-print(float(json.load(open(f)).get("final", {}).get("tokens", {}).get("cost_usd_estimate") or 0))
-PYT
-)
-if python3 -c "import sys; sys.exit(0 if float('$WT') > 0.5 else 1)"; then
-    say "watchdog extractor self-test OK (reads \$$WT from a known trial)"
-else
-    say "ABORT: watchdog cost extractor returned '$WT' on a known-nonzero trial — spend cap would fail open"; exit 1
-fi
 # 5. REFREEZE, then dry-run. The first version had no --freeze call at all while
 # its own header promised one, and results/freeze.json still hashed
 # configs/models/fable5.yaml — so the dry-run would have refused ("frozen file
@@ -81,6 +61,32 @@ if ! PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py --freez
 fi
 NEWHASH=$(python3 -c "import json;print(json.load(open('$REPO/results/freeze.json'))['config_hash'][:12])")
 say "refrozen: config_hash ${NEWHASH}"
+
+# NOTE ON ORDER: the freeze happens BEFORE the probe. The probe rewrites the
+# tracked results/figures/smoke/provider_probe.json, which would dirty the tree
+# and make --freeze refuse. Freezing first is also the correct semantics: the
+# manifest certifies the committed tree the batch runs against, and the probe
+# is evidence gathered against that tree.
+# 4. provider probe — pennies; catches sonnet5 config/auth before dollars
+# PYTHONPATH: probe_providers imports duck_embody, and the script is invoked
+# by absolute path from an arbitrary cwd, so the repo is not on sys.path.
+if ! (cd "$REPO" && PYTHONPATH="$REPO" python3 scripts/probe_providers.py) > /tmp/overnight_probe.log 2>&1; then
+    say "ABORT: provider probe failed"; tail -10 /tmp/overnight_probe.log; exit 1
+fi
+say "provider probe green (sonnet5/opus5/gpt56sol reachable)"
+# 4b. WATCHDOG SELF-TEST: prove the cost extractor returns non-zero on a real
+# trial JSON before trusting it to cap spend on an unattended run.
+WT=$(python3 - <<'PYT'
+import json, pathlib
+f = pathlib.Path("/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d/fable5_seed101.json")
+print(float(json.load(open(f)).get("final", {}).get("tokens", {}).get("cost_usd_estimate") or 0))
+PYT
+)
+if python3 -c "import sys; sys.exit(0 if float('$WT') > 0.5 else 1)"; then
+    say "watchdog extractor self-test OK (reads \$$WT from a known trial)"
+else
+    say "ABORT: watchdog cost extractor returned '$WT' on a known-nonzero trial — spend cap would fail open"; exit 1
+fi
 if ! PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py --dry-run --out-dir "$RAW" > /tmp/overnight_dry.log 2>&1; then
     say "ABORT: dry-run refused"; grep -E "FATAL|refus" /tmp/overnight_dry.log | head -5; exit 1
 fi
