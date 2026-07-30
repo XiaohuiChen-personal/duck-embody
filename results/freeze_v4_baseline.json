@@ -1,8 +1,8 @@
 {
   "schema": "duck-embody-freeze-v1",
-  "frozen_at": "2026-07-30T05:01:04Z",
-  "freeze_commit": "c4ed06070be666cfa004ebd1d4eefa7a81c714ce",
-  "config_hash": "6a65f33582eb717b341269ff6f4d3a61f709e1f76721fa5456181cdf31360665",
+  "frozen_at": "2026-07-27T08:30:41Z",
+  "freeze_commit": "8eceaf26ec4370026f5f4e821e0c6fc27f5ee6f6",
+  "config_hash": "cf29ec164676a5da2d00fc1b92980db787484d988040c103b28c8525b45124c1",
   "matrix": {
     "models": [
       "fable5",
@@ -24,7 +24,7 @@
     "duck_embody/agent/providers/base.py": "1b86b79e444d5132ec4658708a354ae36e4a1c783285680841e3371967f95135",
     "duck_embody/agent/providers/anthropic.py": "5c7e223f558378ddbc131889744beb48e9e053306f62b270f9ab0f7294ff99f1",
     "duck_embody/agent/providers/openai.py": "ad42a79115612aad928cfc2590b488c7424e8882d09576dc8298724f649ba441",
-    "duck_embody/sim/policy_wrapper.py": "a2dfb17a82369834dfd6b38054c7c1c7d118aa95dbf5173f66f73dbb4016a4af",
+    "duck_embody/sim/policy_wrapper.py": "5fe1eba796cd59e7a6d87dedfdbf3e8e44a0994c49f923363eff9e5366191c4e",
     "duck_embody/sim/recorder.py": "5eae143ced79154ddda1c56db07f2904de160531eb35312eb84a2cc87aa0cb25",
     "duck_embody/sim/session.py": "afeb49d073974be1330eb58b12b27fdc5b8b46464fc209e9cca1bd7f978327e1",
     "duck_embody/env/embody_env_cfg.py": "92ddbf1f3503ed251af36cd39e68799f2b97927ca8ad1a7ba6280a366ea4cc5b",
@@ -32,7 +32,7 @@
     "duck_embody/env/camera.py": "3a307e09980dac6ef8e45698626f22f7b819f69f9870a03a613b16bad11bd945",
     "duck_embody/env/apartment_layout.py": "1d04ee229789ac8fdc1bfa92f8c5b0fc724fad092ea3633204aa37a720ca2d20",
     "duck_embody/tasks/find_kitchen.py": "ed3d710c27bedfc819200432a691dbe800990b31394c2848f768d19dcfdbdfd3",
-    "configs/benchmark.yaml": "e2447040c6d58289badf92aa716c6da5b6eacc8bd6dfc7f7818447ebaa4164af",
+    "configs/benchmark.yaml": "f1ff483d9f52e60d268c0b537069c075f9d45328e0f96f101501810b476b6b87",
     "configs/models/fable5.yaml": "4fbe54c7a8474110c4f50dfc08eb53ab55b23896508510d8541ba065408a7e24",
     "configs/models/opus5.yaml": "b9bc5f28fab92f23e906e54aa289412fa295c3ef7e5d971731594c15dbcd1657",
     "configs/models/gpt56sol.yaml": "0aa454b77d1062d0735412d826689aaf96c492a754b1c4920cd5c003e9466dd3"
