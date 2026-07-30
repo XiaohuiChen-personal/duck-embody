@@ -1,7 +1,7 @@
 {
   "schema": "duck-embody-freeze-v1",
-  "frozen_at": "2026-07-30T08:33:10Z",
-  "freeze_commit": "11df0cf75b5eeec14b413ec2d904d54ca79c2766",
+  "frozen_at": "2026-07-30T08:43:31Z",
+  "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
   "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
   "matrix": {
     "models": [

@@ -1,0 +1,96 @@
+{
+  "trial_id": "sonnet5_seed104",
+  "config": {
+    "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+    "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+    "model": "claude-sonnet-5",
+    "model_config": "sonnet5",
+    "seed": 104,
+    "spawn": {
+      "xy": [
+        1.37,
+        2.27
+      ],
+      "heading_deg": 180.0
+    }
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-30T09:20:41Z",
+      "obs": {
+        "frame_paths": [
+          "frames/sonnet5_seed104/t001_0.jpg",
+          "frames/sonnet5_seed104/t001_1.jpg",
+          "frames/sonnet5_seed104/t001_2.jpg",
+          "frames/sonnet5_seed104/t001_3.jpg"
+        ],
+        "compass_deg": 179.2,
+        "position_estimate": {
+          "x": 1.37,
+          "y": 2.27
+        },
+        "status": {
+          "bumped": false,
+          "contact": [],
+          "fell": false,
+          "distance_moved_m": 0.0
+        }
+      },
+      "model_output": {
+        "thought": "I'm getting oriented with the problem first.",
+        "text": "",
+        "stop_reason": "tool_use",
+        "refusal": null,
+        "tool_calls": [
+          {
+            "name": "look_around",
+            "args": {}
+          }
+        ],
+        "dispatched": 1,
+        "parse_errors": [],
+        "nudged": false
+      },
+      "execution": {
+        "result": "no motion; look_around",
+        "policy_seconds_used": 0.0,
+        "pose_trace": [],
+        "motion_calls": 0,
+        "calls": []
+      },
+      "true_pose": {
+        "x": 1.3665,
+        "y": 2.2625,
+        "heading_deg": 179.19
+      },
+      "memory_snapshot": {
+        "rooms": {},
+        "exits": [],
+        "trajectory": [],
+        "current_room": null,
+        "plan": "",
+        "corrections": [],
+        "stage": "find_kitchen",
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.37, y=2.27  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 179 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nRe-anchored: never \u2014 if the view disagrees with the estimate, correct_position with a mapped anchor\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+      },
+      "budget": {
+        "stage_turns_used": 1,
+        "stage_turn_cap": 40,
+        "stage_policy_seconds_used": 0.0,
+        "stage_policy_seconds_cap": 240.0
+      },
+      "usage": {
+        "input_tokens": 312,
+        "output_tokens": 41,
+        "cache_read_tokens": 4586,
+        "cache_write_tokens": 0,
+        "cost_usd_estimate": 0.002927
+      },
+      "end_reason": null
+    }
+  ],
+  "video_path": null
+}
