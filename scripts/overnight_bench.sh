@@ -42,7 +42,9 @@ if [ "$CSHA" = "$BSHA" ]; then say "ABORT: candidate == baseline checkpoint"; ex
 printf '{"candidate":"%s","candidate_sha256":"%s","baseline_sha256":"%s"}\n' "$V5D" "$CSHA" "$BSHA" > "$RAW/provenance.json"
 say "provenance recorded (candidate sha ${CSHA:0:12})"
 # 4. provider probe — pennies; catches sonnet5 config/auth before dollars
-if ! python3 "$REPO/scripts/probe_providers.py" > /tmp/overnight_probe.log 2>&1; then
+# PYTHONPATH: probe_providers imports duck_embody, and the script is invoked
+# by absolute path from an arbitrary cwd, so the repo is not on sys.path.
+if ! (cd "$REPO" && PYTHONPATH="$REPO" python3 scripts/probe_providers.py) > /tmp/overnight_probe.log 2>&1; then
     say "ABORT: provider probe failed"; tail -10 /tmp/overnight_probe.log; exit 1
 fi
 say "provider probe green (sonnet5/opus5/gpt56sol reachable)"
