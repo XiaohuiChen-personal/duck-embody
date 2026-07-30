@@ -149,6 +149,30 @@ def move_servo_plan(distance_m: float) -> tuple[float, float, int]:
     return distance, target_dist, n_chunks
 
 
+def credited_distance_m(speed_mps: float, result: "ExecResult") -> float:
+    """Commanded arc length, charged only for time the robot was NOT wedged.
+
+    THE BUG THIS FIXES. Dead reckoning credited `speed x policy_seconds`
+    unconditionally, so a duck pressed against a sofa with its legs cycling was
+    told it had walked. Measured on the v5d benchmark trial
+    (results/raw_v5d/fable5_seed101.json): 49 `send_velocity` calls reported
+    27.09 m against 1.99 m of true displacement; the worst credited 0.60 m for
+    0.01 m of real motion, `bumped=True` for the entire 3 s. Of a 26.65 m final
+    position error, 25.10 m came from this one tool — so ~95% of the apparent
+    "dead-reckoning drift" was an accounting bug, not odometry. Genuine
+    policy-tracking error over the same trial's clean moves was 0.13 m.
+
+    Only CONFIRMED sustained contact is discounted (past BUMP_DEBOUNCE_STEPS),
+    so a glancing brush while still walking still earns its distance; a wedge
+    earns nothing. This uses proprioception the robot has (a torso bump sensor),
+    never ground-truth displacement, so the estimate the model sees stays an
+    honest dead-reckoned quantity that can still drift — it just no longer
+    accumulates metres the robot never travelled.
+    """
+    moving_s = max(0.0, result.policy_seconds - result.contact_steps * CONTROL_DT)
+    return speed_mps * moving_s
+
+
 def clamp_command(
     vx: float, vy: float, wz: float
 ) -> tuple[tuple[float, float, float], list[str]]:
@@ -203,6 +227,19 @@ class ExecResult:
     policy_seconds: float
     bumped: bool
     fell: bool
+    #: Control steps spent in CONFIRMED sustained contact (past the
+    #: BUMP_DEBOUNCE_STEPS debounce). Proprioception, not ground truth — a real
+    #: duck with foot switches and a torso bump sensor knows this too, so it is
+    #: on the same side of the observability boundary as `contact_groups`.
+    #:
+    #: Exists because dead reckoning was crediting commanded motion to a robot
+    #: that was wedged: measured on results/raw_v5d/fable5_seed101.json, 49
+    #: `send_velocity` calls reported 27.09 m travelled against 1.99 m of true
+    #: displacement, and the worst single calls credited 0.60 m for 0.01 m of
+    #: real motion while `bumped=True` for their whole 3 s. That single tool
+    #: accounted for 25.10 m of a 26.65 m position error — i.e. ~95% of what
+    #: looked like "drift" was this accounting bug, not odometry.
+    contact_steps: int = 0
     #: True base XY sampled at 5 Hz during the motion, bracketed by the exact
     #: start and end poses. SCORING ONLY — never shown to the model (doc 06 §4).
     pose_trace: list[tuple[float, float]] = field(default_factory=list)
@@ -272,6 +309,10 @@ def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecR
     total.steps += part.steps
     total.policy_seconds += part.policy_seconds
     total.bumped = total.bumped or part.bumped
+    # Contact steps SUM across chunks, like steps/policy_seconds and unlike the
+    # boolean. A drive that scrapes through eight 0.2 s chunks accumulated eight
+    # chunks' worth of contact, and the reported distance is computed from it.
+    total.contact_steps += part.contact_steps
     for group in part.contact_groups:
         if group not in total.contact_groups:
             total.contact_groups.append(group)
@@ -554,6 +595,7 @@ class PolicyPlayback:
         sampled_xy: list[tuple[float, float]] = []
         bumped = False
         contact_groups: list[str] = []
+        contact_steps = 0
         stopped_early = False
         stop_reason = ""
         steps_done = 0
@@ -658,6 +700,10 @@ class PolicyPlayback:
                     for group in self.contact_groups():
                         if group not in contact_groups:
                             contact_groups.append(group)
+                    # One step of confirmed contact. Counted even when
+                    # stop_on_bump breaks below, so the partial chunk is charged
+                    # for the contact it actually experienced.
+                    contact_steps += 1
                     if stop_on_bump:
                         stopped_early = True
                         stop_reason = "bump"
@@ -701,6 +747,7 @@ class PolicyPlayback:
             clamp_notes=notes,
             stopped_early=stopped_early,
             stop_reason=stop_reason,
+            contact_steps=contact_steps,
         )
 
     def settle(self, duration_s: float = 0.4) -> None:
@@ -828,8 +875,15 @@ class PolicyPlayback:
                 on_chunk()
 
             # Dead reckoning integrates the COMMANDED velocity — the same
-            # honest, drifting estimate the model is shown.
-            travelled += MOVE_SPEED_MPS * part.policy_seconds
+            # honest, drifting estimate the model is shown — but only for the
+            # part of the chunk the robot was not wedged. `move` aborts after
+            # MOVE_ABORT_SUSTAINED_CHUNKS=2 sustained-contact chunks, so without
+            # this it still credits up to 2 chunks (0.08 m) of pressing per
+            # call: measured 1.24 m of inflation over 19 move calls in the v5d
+            # trial, against send_velocity's 25.10 m. Smaller, same bug — and a
+            # partial fix here would leave `move` and `send_velocity` reporting
+            # by different rules.
+            travelled += credited_distance_m(MOVE_SPEED_MPS, part)
             last_pose = part.true_pose
 
             if part.fell:

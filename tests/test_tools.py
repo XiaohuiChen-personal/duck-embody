@@ -304,6 +304,8 @@ class FakePlayback:
         self.move_ends_on_compass: float | None = None
         #: Set to make `move()` terminate in a fall.
         self.move_falls = False
+        #: Share of a bumped call spent in CONFIRMED contact (1.0 = fully wedged).
+        self.contact_fraction = 1.0
         #: What `compass_deg()` reads AFTER a fall. Isaac Lab auto-resets a
         #: terminated env INSIDE `env.step()` and teleports the robot back to
         #: spawn before the call returns (`policy_wrapper.execute` lines
@@ -359,6 +361,13 @@ class FakePlayback:
             steps=steps,
             policy_seconds=steps * CONTROL_DT,
             bumped=self.bumped,
+            # Mirror the real execute(): a confirmed-contact call charges its
+            # steps as contact, which is what the reported distance is now
+            # discounted by. Without this the fake reports a wedged call as
+            # full-distance travel and every tool-level distance assertion is
+            # blind to the 2026-07-30 fix (`contact_fraction` lets a test model
+            # a partial wedge).
+            contact_steps=int(round(steps * self.contact_fraction)) if self.bumped else 0,
             contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=self._fell,
             fall_diagnostics=self.fall_diagnostics if stop_reason == "fell" else None,
@@ -2149,3 +2158,54 @@ class TestMoveServoPlanIsGuarded:
             assert covered == pytest.approx(
                 quantum * math.ceil(target / quantum), abs=1e-9
             )
+
+
+class TestWedgedSendVelocityIsNotCreditedAtToolLevel:
+    """Drive the REAL send_velocity through dispatch with the robot wedged.
+
+    The helper-level tests live in tests/test_memory.py; this one exists because
+    those alone would be mock-blind — the same trap that hid a broken
+    `move_servo_plan` behind FakePlayback until a mutation test exposed it. This
+    asserts the value the MODEL actually receives in `status.distance_moved_m`.
+    """
+
+    def test_a_fully_wedged_send_velocity_reports_no_travel(self):
+        playback = FakePlayback()
+        playback.bumped = True
+        playback.contact_fraction = 1.0
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+
+        out = dispatch(
+            call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
+        )
+        moved = out.payload["status"]["distance_moved_m"]
+        assert moved == pytest.approx(0.0, abs=1e-9), (
+            "a wedged duck must not be told it walked 0.6 m"
+        )
+        # And the ESTIMATE must not advance either — the report and the belief
+        # are separate code paths and both were wrong.
+        assert context.integrator.xy == pytest.approx((0.0, 0.0))
+
+    def test_a_clean_send_velocity_is_unchanged(self):
+        playback = FakePlayback()
+        playback.bumped = False
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+
+        out = dispatch(
+            call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
+        )
+        assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.6, abs=1e-6)
+
+    def test_a_half_wedged_call_is_credited_pro_rata(self):
+        playback = FakePlayback()
+        playback.bumped = True
+        playback.contact_fraction = 0.5
+        context = make_context(playback=playback)
+        context.integrator = PositionIntegrator(0.0, 0.0)
+
+        out = dispatch(
+            call("send_velocity", vx=0.2, vy=0.0, wz=0.0, duration_s=3.0), context
+        )
+        assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.3, abs=0.02)

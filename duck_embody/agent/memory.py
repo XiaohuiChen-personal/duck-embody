@@ -38,7 +38,12 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
-from duck_embody.sim.policy_wrapper import CONTROL_DT, duration_to_steps, wrap_deg
+from duck_embody.sim.policy_wrapper import (
+    CONTROL_DT,
+    CONTROL_HZ,
+    duration_to_steps,
+    wrap_deg,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -614,7 +619,13 @@ class PositionIntegrator:
             self.step(vx, vy, heading_deg)
 
     def integrate_arc(
-        self, vx: float, vy: float, wz: float, heading_deg: float, duration_s: float
+        self,
+        vx: float,
+        vy: float,
+        wz: float,
+        heading_deg: float,
+        duration_s: float,
+        moving_s: float | None = None,
     ) -> float:
         """Integrate a commanded velocity whose ``wz`` is turning the robot.
 
@@ -643,11 +654,30 @@ class PositionIntegrator:
         """
         heading = heading_deg
         per_step_deg = math.degrees(wz) * CONTROL_DT
-        for _ in range(duration_to_steps(duration_s)):
+        total_steps = duration_to_steps(duration_s)
+        # Steps during CONFIRMED sustained contact translate the estimate by
+        # nothing: a wedged robot is not travelling, however long it is
+        # commanded to. Measured need for this (v5d benchmark trial): 49
+        # send_velocity calls integrated 27.09 m of commanded arc while the base
+        # truly moved 1.99 m, putting the belief 26 m outside a 4.8 x 3.6 m
+        # apartment. Heading still advances through those steps — the commanded
+        # yaw is integrated for the full duration and the compass is absolute
+        # and re-read next turn, so rotation needs no discount.
+        # NOT duration_to_steps(): that floors at 1 step ("minimum 1", to keep a
+        # commanded motion from being a no-op), which for a fully wedged call
+        # leaked one step of translation per call — 0.004 m each, ~0.2 m over the
+        # v5d trial's 49 wedged commands. A caught-by-test off-by-one; 0 moving
+        # seconds must mean 0 translated steps.
+        moving_steps = (
+            total_steps if moving_s is None
+            else max(0, min(total_steps, round(moving_s * CONTROL_HZ)))
+        )
+        for i in range(total_steps):
             # Step at the heading valid at the START of the control step, then
             # advance — the same convention `execute()` uses, which writes the
             # command and then steps physics.
-            self.step(vx, vy, heading)
+            if i < moving_steps:
+                self.step(vx, vy, heading)
             heading += per_step_deg
         return heading
 

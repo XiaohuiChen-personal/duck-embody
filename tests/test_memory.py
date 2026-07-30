@@ -1369,3 +1369,97 @@ class TestCapsAgreeWithTheFrozenConfig:
         assert turns and seconds
         assert float(turns.group(1)) == float(TURN_CAP)
         assert float(seconds.group(1)) == POLICY_SECONDS_CAP
+
+
+class TestWedgedRobotEarnsNoDistance:
+    """The 2026-07-30 fix: contact time must not be credited as travel.
+
+    Measured bug (results/raw_v5d/fable5_seed101.json): 49 `send_velocity` calls
+    reported 27.09 m travelled against 1.99 m of true displacement, the worst
+    crediting 0.60 m for 0.01 m of real motion while `bumped=True` for the whole
+    3 s. Of a 26.65 m final position error, 25.10 m came from that one tool — so
+    ~95% of the apparent dead-reckoning "drift" was this accounting, not odometry
+    (genuine tracking error over the same trial's clean moves was 0.13 m).
+    """
+
+    def _result(self, policy_seconds, contact_steps):
+        from duck_embody.sim.policy_wrapper import ExecResult
+
+        return ExecResult(
+            commanded=(0.2, 0.0, 0.0), duration_s=policy_seconds, steps=0,
+            policy_seconds=policy_seconds, bumped=contact_steps > 0, fell=False,
+            contact_steps=contact_steps,
+        )
+
+    def test_clean_motion_is_credited_in_full(self):
+        """No contact must behave exactly as before the fix."""
+        from duck_embody.sim.policy_wrapper import credited_distance_m
+
+        assert credited_distance_m(0.2, self._result(3.0, 0)) == pytest.approx(0.6)
+
+    def test_a_fully_wedged_command_earns_nothing(self):
+        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
+
+        wedged = self._result(3.0, int(round(3.0 / CONTROL_DT)))
+        assert credited_distance_m(0.2, wedged) == pytest.approx(0.0, abs=1e-9)
+
+    def test_partial_contact_is_credited_pro_rata(self):
+        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
+
+        half = self._result(3.0, int(round(1.5 / CONTROL_DT)))
+        assert credited_distance_m(0.2, half) == pytest.approx(0.3, abs=1e-6)
+
+    def test_credit_is_never_negative(self):
+        from duck_embody.sim.policy_wrapper import credited_distance_m
+
+        assert credited_distance_m(0.2, self._result(1.0, 10_000)) == 0.0
+
+    def test_the_real_worst_case_call_from_the_v5d_trial(self):
+        """Replay the exact call that credited 0.60 m for 0.01 m of motion."""
+        from duck_embody.sim.policy_wrapper import CONTROL_DT, credited_distance_m
+
+        # send_velocity(0.2, 0, 0) held 3.0 s, bumped for its entire duration.
+        wedged = self._result(3.0, int(round(3.0 / CONTROL_DT)))
+        before = 0.2 * 3.0            # the old formula: speed x policy_seconds
+        after = credited_distance_m(0.2, wedged)
+        assert before == pytest.approx(0.60)
+        assert after < 0.01, "the wedge must no longer earn half a metre"
+
+    def test_contact_steps_sum_across_merged_chunks(self):
+        """A macro/recorder chunk boundary must not lose contact time."""
+        from duck_embody.sim.policy_wrapper import merge_exec_results
+
+        total = merge_exec_results(None, self._result(0.2, 5))
+        total = merge_exec_results(total, self._result(0.2, 7))
+        assert total.contact_steps == 12
+        assert total.policy_seconds == pytest.approx(0.4)
+
+    def test_integrator_does_not_translate_while_wedged_but_still_turns(self):
+        """Position freezes during contact; commanded heading still advances.
+
+        Heading needs no discount: the compass is absolute and re-read before the
+        next command, so a commanded-vs-realised yaw gap shows up as honest
+        within-call drift rather than accumulating.
+        """
+        from duck_embody.agent.memory import PositionIntegrator
+
+        moving = PositionIntegrator(0.0, 0.0)
+        end_h = moving.integrate_arc(0.2, 0.0, 0.0, 90.0, 3.0)
+        assert moving.y == pytest.approx(0.6, abs=1e-6)
+
+        wedged = PositionIntegrator(0.0, 0.0)
+        end_h_w = wedged.integrate_arc(0.2, 0.0, 0.0, 90.0, 3.0, moving_s=0.0)
+        assert wedged.x == pytest.approx(0.0, abs=1e-9)
+        assert wedged.y == pytest.approx(0.0, abs=1e-9)
+        assert end_h_w == pytest.approx(end_h), "heading must still integrate"
+
+    def test_default_moving_s_preserves_the_old_behaviour(self):
+        """Omitting moving_s must be identical to before the parameter existed."""
+        from duck_embody.agent.memory import PositionIntegrator
+
+        a = PositionIntegrator(0.0, 0.0)
+        b = PositionIntegrator(0.0, 0.0)
+        ha = a.integrate_arc(0.15, 0.05, 0.3, 20.0, 2.0)
+        hb = b.integrate_arc(0.15, 0.05, 0.3, 20.0, 2.0, moving_s=2.0)
+        assert (a.x, a.y) == pytest.approx((b.x, b.y))
+        assert ha == pytest.approx(hb)

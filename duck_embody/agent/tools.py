@@ -85,6 +85,8 @@ from duck_embody.agent.prompts import STAGE2_OBJECTIVE_TOOL_RESULT
 from duck_embody.agent.providers.base import ImageBlock, ToolCall, ToolResultBlock
 from duck_embody.env.camera import encode_b64
 from duck_embody.sim.policy_wrapper import (
+    CONTROL_DT,
+    credited_distance_m,
     MOVE_MAX_DISTANCE_M,
     MOVE_SPEED_MPS,
     shortest_angle_diff_deg,
@@ -1033,12 +1035,23 @@ def _send_velocity(context: ToolContext, args: dict) -> ToolOutcome:
     # `PositionIntegrator.integrate_arc`). `policy_seconds`, never the requested
     # duration: a fall cuts the command short and the estimate must not walk on
     # without the robot (PLAN T3.2 (b) — correct as written for this tool).
-    context.integrator.integrate_arc(cvx, cvy, cwz, heading, result.policy_seconds)
+    # `moving_s` excludes confirmed sustained contact, so the ESTIMATE stops
+    # accumulating metres the robot never travelled. Heading still integrates
+    # over the full duration (see integrate_arc).
+    _moving_s = max(0.0, result.policy_seconds - result.contact_steps * CONTROL_DT)
+    context.integrator.integrate_arc(
+        cvx, cvy, cwz, heading, result.policy_seconds, moving_s=_moving_s
+    )
     # Arc length of the commanded motion: speed x time, the same rule `move`
     # reports (doc 04 §6.2 — "dead-reckoned distance actually covered by the
     # most recent motion command"). Pinned into doc 05 §4.2, which named the
     # field but not its formula.
-    travelled = math.hypot(cvx, cvy) * result.policy_seconds
+    # Charged only for the seconds the robot was NOT in confirmed sustained
+    # contact — see policy_wrapper.credited_distance_m for the measurement that
+    # forced this. Previously `speed x policy_seconds` unconditionally, which
+    # credited a wedged duck 0.60 m for 0.01 m of real motion, 49 times in one
+    # trial, and produced ~95% of an apparent 26 m "drift".
+    travelled = credited_distance_m(math.hypot(cvx, cvy), result)
     execution = _record_motion(
         context,
         result,
