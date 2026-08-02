@@ -1,0 +1,21 @@
+== gpt56sol_seed104 ==
+  turns: 40   video: results/videos_v5d_r2/gpt56sol_seed104.mp4
+  PASS  trial has a `final` block (not an infra failure)
+  PASS  final.qa is populated  [5 answers]
+  PASS  no infra failure recorded
+  INFO  outside results/raw/ — freeze-hash check skipped (config_hash 0e9017a84c06…)
+  tools used: add_landmarkx1, correct_positionx2, get_observationx8, look_aroundx3, mark_exitx5, movex13, send_velocityx1, set_current_roomx1, turn_to_headingx15, update_planx5, update_roomx1
+  INFO  tools not exercised by this model: ['declare_done']
+  PASS  no malformed tool calls
+
+  per-turn wall-clock (API + sim + render):
+    n=39  min 2.0s  median 14.0s  mean 15.6s  max 40.0s
+    p90 31.0s
+    => a 40-turn stage is ~9 min at the median
+  PASS  no ground-truth field names in the model-visible record
+
+  tokens: in 257586 / out 3706 / cache_read 101840 / cache_write 0
+  cost:   $1.4500
+  PASS  prompt caching is actually being hit  [a trial with zero cache reads is paying full rate every turn]
+
+  AUDIT PASS

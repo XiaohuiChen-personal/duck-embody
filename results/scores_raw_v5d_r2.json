@@ -1,0 +1,1789 @@
+{
+  "schema": "duck-embody-scores-v2",
+  "scoring_criterion": {
+    "name": "v2_any_counter",
+    "changed_post_batch": true,
+    "rerun_log": "results/rerun_log.md",
+    "preregistered_find_kitchen_successes": 1,
+    "v2_find_kitchen_successes": 2
+  },
+  "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+  "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+  "batch_last_turn_timestamp": "2026-07-30T11:27:07Z",
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260726,
+    "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
+  },
+  "trials": [
+    {
+      "trial_id": "sonnet5_seed101",
+      "model": "claude-sonnet-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.0942,
+          "d_initial_m": 2.0652,
+          "d_final_m": 0.9476,
+          "progress": 0.5412,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 7.2872,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 39,
+          "drift_m": 1.5041,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            1.48
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.519,
+          "d_final_m": 1.519,
+          "progress": 0.0,
+          "oracle_path_m": 1.5607,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 8,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          1.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 1.204498,
+      "tokens": {
+        "input_tokens": 321520,
+        "output_tokens": 11364,
+        "cache_read_tokens": 174268,
+        "cache_write_tokens": 4586
+      },
+      "total_turns": 39,
+      "last_turn_timestamp": "2026-07-30T08:55:22Z",
+      "video": "results/videos_v5d_r2/sonnet5_seed101.mp4"
+    },
+    {
+      "trial_id": "sonnet5_seed102",
+      "model": "claude-sonnet-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.0007,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.0649,
+          "progress": 0.0914,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 7.1914,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0611,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.7935,
+          "d_final_m": 0.7935,
+          "progress": 0.0,
+          "oracle_path_m": 0.8243,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 7,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "bedroom"
+      ],
+      "cost_usd": 1.365291,
+      "tokens": {
+        "input_tokens": 364573,
+        "output_tokens": 14436,
+        "cache_read_tokens": 183440,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T09:05:50Z",
+      "video": "results/videos_v5d_r2/sonnet5_seed102.mp4"
+    },
+    {
+      "trial_id": "sonnet5_seed103",
+      "model": "claude-sonnet-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 2.7577,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.9246,
+          "progress": 0.0867,
+          "oracle_path_m": 3.142,
+          "true_path_m": 19.1165,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0604,
+          "corrections": 2,
+          "correction_magnitudes_m": [
+            0.0043,
+            0.0665
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.2966,
+          "d_final_m": 0.2966,
+          "progress": 0.0,
+          "oracle_path_m": 0.2914,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 9,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "hallway"
+      ],
+      "cost_usd": 1.55121,
+      "tokens": {
+        "input_tokens": 413526,
+        "output_tokens": 17040,
+        "cache_read_tokens": 183440,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T09:20:22Z",
+      "video": "results/videos_v5d_r2/sonnet5_seed103.mp4"
+    },
+    {
+      "trial_id": "sonnet5_seed104",
+      "model": "claude-sonnet-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 0.0604,
+          "d_initial_m": 1.9243,
+          "d_final_m": 0.5871,
+          "progress": 0.6949,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 9.7954,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.6784,
+          "corrections": 4,
+          "correction_magnitudes_m": [
+            0.0569,
+            1.1475,
+            1.1504,
+            0.8035
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 2.4912,
+          "d_final_m": 2.4912,
+          "progress": 0.0,
+          "oracle_path_m": 2.8056,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 4,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 3,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.3333,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 2,
+        "edges_correct": 0,
+        "edges_unresolved": 2,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.5,
+          0.5,
+          0.5,
+          0.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 1.163052,
+      "tokens": {
+        "input_tokens": 323350,
+        "output_tokens": 9198,
+        "cache_read_tokens": 183440,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T09:29:40Z",
+      "video": "results/videos_v5d_r2/sonnet5_seed104.mp4"
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "model": "claude-opus-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.0577,
+          "d_initial_m": 2.0652,
+          "d_final_m": 0.3607,
+          "progress": 0.8254,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 8.0246,
+          "spl": 0.2557,
+          "time_s": 47.72,
+          "turns_used": 23,
+          "drift_m": 0.0424,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.9298,
+          "d_final_m": 1.9298,
+          "progress": 0.0,
+          "oracle_path_m": 2.5056,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 7,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ],
+          [
+            "kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 1,
+        "edges_unresolved": 0,
+        "edge_accuracy": 1.0
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.5,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 1.244771,
+      "tokens": {
+        "input_tokens": 184582,
+        "output_tokens": 9757,
+        "cache_read_tokens": 99396,
+        "cache_write_tokens": 4518
+      },
+      "total_turns": 23,
+      "last_turn_timestamp": "2026-07-30T09:39:09Z",
+      "video": "results/videos_v5d_r2/opus5_seed101.mp4"
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "model": "claude-opus-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.9475,
+          "d_initial_m": 2.2727,
+          "d_final_m": 1.9819,
+          "progress": 0.1279,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 32.0025,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.2637,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.2385
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.9081,
+          "d_final_m": 0.9081,
+          "progress": 0.0,
+          "oracle_path_m": 0.9743,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 26,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 4.35733,
+      "tokens": {
+        "input_tokens": 684094,
+        "output_tokens": 33860,
+        "cache_read_tokens": 180720,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T10:07:51Z",
+      "video": "results/videos_v5d_r2/opus5_seed102.mp4"
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "model": "claude-opus-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.3261,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.3364,
+          "progress": 0.2704,
+          "oracle_path_m": 3.142,
+          "true_path_m": 33.1894,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 37,
+          "drift_m": 0.1305,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 3.0551,
+          "d_final_m": 3.0551,
+          "progress": 0.0,
+          "oracle_path_m": 3.1536,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 16,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "hallway"
+      ],
+      "cost_usd": 3.717913,
+      "tokens": {
+        "input_tokens": 539011,
+        "output_tokens": 37571,
+        "cache_read_tokens": 167166,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 37,
+      "last_turn_timestamp": "2026-07-30T10:35:55Z",
+      "video": "results/videos_v5d_r2/opus5_seed103.mp4"
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "model": "claude-opus-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": 0.1575,
+          "d_initial_m": 1.9243,
+          "d_final_m": 0.3025,
+          "progress": 0.8428,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 7.9939,
+          "spl": 0.2302,
+          "time_s": 44.44,
+          "turns_used": 22,
+          "drift_m": 0.1504,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 2.0215,
+          "d_final_m": 0.1973,
+          "progress": 0.9024,
+          "oracle_path_m": 2.2228,
+          "true_path_m": 4.8962,
+          "spl": 0.454,
+          "time_s": 27.7,
+          "turns_used": 9,
+          "drift_m": 0.1973,
+          "corrections": 3,
+          "correction_magnitudes_m": [
+            0.1397,
+            0.0502,
+            0.0393
+          ]
+        }
+      },
+      "bumps": 6,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 2.329959,
+      "tokens": {
+        "input_tokens": 360081,
+        "output_tokens": 18381,
+        "cache_read_tokens": 140058,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 31,
+      "last_turn_timestamp": "2026-07-30T10:48:46Z",
+      "video": "results/videos_v5d_r2/opus5_seed104.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed101",
+      "model": "gpt-5.6-sol",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.8859,
+          "d_initial_m": 2.0652,
+          "d_final_m": 0.8066,
+          "progress": 0.6094,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 4.8995,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 24,
+          "drift_m": 0.7657,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.7401
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.4394,
+          "d_final_m": 1.4394,
+          "progress": 0.0,
+          "oracle_path_m": 1.5485,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 4,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Living room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 0.869054,
+      "tokens": {
+        "input_tokens": 153177,
+        "output_tokens": 2463,
+        "cache_read_tokens": 58558,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 24,
+      "last_turn_timestamp": "2026-07-30T10:53:26Z",
+      "video": "results/videos_v5d_r2/gpt56sol_seed101.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed102",
+      "model": "gpt-5.6-sol",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.9144,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.9954,
+          "progress": 0.0,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 16.0509,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0565,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.1407,
+          "d_final_m": 1.1407,
+          "progress": 0.0,
+          "oracle_path_m": 1.1828,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 16,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Bedroom",
+            "bedroom"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "score": 0.2
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 1.373387,
+      "tokens": {
+        "input_tokens": 240844,
+        "output_tokens": 3984,
+        "cache_read_tokens": 99294,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T11:06:38Z",
+      "video": "results/videos_v5d_r2/gpt56sol_seed102.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed103",
+      "model": "gpt-5.6-sol",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.2254,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.3257,
+          "progress": 0.2737,
+          "oracle_path_m": 3.142,
+          "true_path_m": 10.3953,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1481,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.0043
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 3.5198,
+          "d_final_m": 3.5198,
+          "progress": 0.0,
+          "oracle_path_m": 3.9743,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 14,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.0
+      },
+      "visited_rooms": [
+        "hallway",
+        "bedroom"
+      ],
+      "cost_usd": 1.582117,
+      "tokens": {
+        "input_tokens": 276716,
+        "output_tokens": 4963,
+        "cache_read_tokens": 99294,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T11:16:46Z",
+      "video": "results/videos_v5d_r2/gpt56sol_seed103.mp4"
+    },
+    {
+      "trial_id": "gpt56sol_seed104",
+      "model": "gpt-5.6-sol",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 2.4063,
+          "d_initial_m": 1.9243,
+          "d_final_m": 2.4563,
+          "progress": 0.0,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 13.6506,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.3773,
+          "corrections": 2,
+          "correction_magnitudes_m": [
+            0.4039,
+            0.1826
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.6749,
+          "d_final_m": 0.6749,
+          "progress": 0.0,
+          "oracle_path_m": 0.6914,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 9,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Living room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.45003,
+      "tokens": {
+        "input_tokens": 257586,
+        "output_tokens": 3706,
+        "cache_read_tokens": 101840,
+        "cache_write_tokens": 0
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-07-30T11:27:07Z",
+      "video": "results/videos_v5d_r2/gpt56sol_seed104.mp4"
+    }
+  ],
+  "per_model": {
+    "sonnet5": {
+      "model": "sonnet5",
+      "n_trials": 4,
+      "trials": [
+        "sonnet5_seed101",
+        "sonnet5_seed102",
+        "sonnet5_seed103",
+        "sonnet5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.3535,
+          "ci95": [
+            0.0891,
+            0.618
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.3163
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 39.75,
+          "ci95": [
+            39.25,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.576,
+          "ci95": [
+            0.0607,
+            1.1434
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 1.75,
+          "ci95": [
+            0.5,
+            3.25
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 7.0,
+        "ci95": [
+          5.0,
+          8.5
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.2083,
+        "ci95": [
+          0.0,
+          0.4167
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.25,
+        "ci95": [
+          0.0,
+          0.5
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 3,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.35,
+        "ci95": [
+          0.3,
+          0.45
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 1.321,
+        "ci95": [
+          1.1838,
+          1.4645
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 5.284051
+      },
+      "total_turns": {
+        "mean": 39.75,
+        "ci95": [
+          39.25,
+          40.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 159
+      },
+      "find_kitchen_end_reasons": {
+        "declare_done": 3,
+        "turn_cap": 1
+      }
+    },
+    "opus5": {
+      "model": "opus5",
+      "n_trials": 4,
+      "trials": [
+        "opus5_seed101",
+        "opus5_seed102",
+        "opus5_seed103",
+        "opus5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 2,
+          "n": 4,
+          "rate": 0.5,
+          "printed": "2/4",
+          "mean": 0.5,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.5166,
+          "ci95": [
+            0.1992,
+            0.8341
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.5479
+        },
+        "spl": {
+          "mean": 0.1215,
+          "ci95": [
+            0.0,
+            0.2429
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 46.08,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 30.5,
+          "ci95": [
+            22.5,
+            38.5
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1467,
+          "ci95": [
+            0.0694,
+            0.2304
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 1,
+          "n": 4,
+          "rate": 0.25,
+          "printed": "1/4",
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2256,
+          "ci95": [
+            0.0,
+            0.6768
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.1135,
+          "ci95": [
+            0.0,
+            0.3405
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 27.7,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 2.25,
+          "ci95": [
+            0.0,
+            6.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1973,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.75,
+          "ci95": [
+            0.0,
+            2.25
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "printed": "1/1",
+          "mean": 1.0,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 1
+        },
+        "stage1_successes_never_offered_return": 1
+      },
+      "bumps": {
+        "mean": 13.75,
+        "ci95": [
+          6.5,
+          21.25
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.3333,
+        "ci95": [
+          0.0,
+          1.0
+        ],
+        "n_defined": 3,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.6,
+        "ci95": [
+          0.475,
+          0.7
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 2.9125,
+        "ci95": [
+          1.7874,
+          4.0376
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 11.649973
+      },
+      "total_turns": {
+        "mean": 32.75,
+        "ci95": [
+          26.5,
+          38.5
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 131
+      },
+      "find_kitchen_end_reasons": {
+        "declare_done": 4
+      }
+    },
+    "gpt56sol": {
+      "model": "gpt56sol",
+      "n_trials": 4,
+      "trials": [
+        "gpt56sol_seed101",
+        "gpt56sol_seed102",
+        "gpt56sol_seed103",
+        "gpt56sol_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2208,
+          "ci95": [
+            0.0,
+            0.4571
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.1369
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 36.0,
+          "ci95": [
+            28.0,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.3369,
+          "ci95": [
+            0.1023,
+            0.6113
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 1.0,
+          "ci95": [
+            0.25,
+            1.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 10.75,
+        "ci95": [
+          6.5,
+          15.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.625,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.5,
+        "ci95": [
+          0.125,
+          0.875
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 3,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.275,
+        "ci95": [
+          0.1,
+          0.45
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 1.3186,
+        "ci95": [
+          1.0143,
+          1.5299
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 5.274588
+      },
+      "total_turns": {
+        "mean": 36.0,
+        "ci95": [
+          28.0,
+          40.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 144
+      },
+      "find_kitchen_end_reasons": {
+        "declare_done": 3,
+        "turn_cap": 1
+      }
+    }
+  }
+}

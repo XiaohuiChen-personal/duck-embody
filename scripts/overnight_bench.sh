@@ -159,7 +159,17 @@ fi
 for f in "$RAW"/*_seed*.json; do
     python3 "$REPO/scripts/audit_trial.py" "$f" > "${f%.json}_audit.txt" 2>&1 || echo "audit failed: $f"
 done
-DUCK_EMBODY_RAW_DIR="$RAW" python3 "$REPO/scripts/build_scores.py" > /tmp/overnight_score.log 2>&1
+# Same PYTHONPATH trap as the probe had: invoked by absolute path from an
+# arbitrary cwd, so duck_embody is not importable.
+(cd "$REPO" && DUCK_EMBODY_RAW_DIR="$RAW" PYTHONPATH="$REPO" \
+    python3 scripts/build_scores.py) > /tmp/overnight_score.log 2>&1
 SC_RC=$?
-say "scoring rc=$SC_RC -> results/scores_raw_v5d_r2.json"
+if [ "$SC_RC" -ne 0 ]; then
+    # The first version printed DONE-COMPLETE regardless — a status line that
+    # reports success while the last step failed is worse than no status line.
+    say "DONE-BUT-SCORING-FAILED (rc=$SC_RC); trials are complete and audited"
+    tail -5 /tmp/overnight_score.log
+    exit 1
+fi
+say "scoring OK -> results/scores_raw_v5d_r2.json"
 say "DONE-COMPLETE"
