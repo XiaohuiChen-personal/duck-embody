@@ -1595,13 +1595,16 @@ def cmd_run(args, root: Path = REPO_ROOT) -> int:
     live = config_hash(FROZEN_FILES, root)
     plans = plan_batch(models, seeds, raw_dir, live)
 
-    # Preserve the legacy freeze/result guard as the first, cheapest gate. This
-    # also keeps old freeze manifests readable without rewriting them.
-    legacy_refusals = _startup_refusals(root, plans, raw_dir)
-    if legacy_refusals:
-        _print_refusals(legacy_refusals)
-        return 2
-
+    # New benchmark runs are governed by the write-once batch manifest below.
+    # ``results/freeze.json`` is immutable legacy v5d_r2 evidence and must remain
+    # readable by historical replay; enforcing it here would reject every newer
+    # manifest whose frozen files correctly differ from that old batch. Retain
+    # the legacy guard only for old invocations that supplied no batch id.
+    if not getattr(args, "batch_id", None):
+        legacy_refusals = _startup_refusals(root, plans, raw_dir)
+        if legacy_refusals:
+            _print_refusals(legacy_refusals)
+            return 2
     batch_manifest, manifest_refusals = _load_or_build_manifest(args, root, write=False)
     if batch_manifest is None:
         _print_refusals(manifest_refusals)

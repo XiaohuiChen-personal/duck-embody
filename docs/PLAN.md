@@ -2194,6 +2194,18 @@ artifact: `runner.py --freeze` had overwritten that tracked historical fixture,
 causing the pinned forensic baseline test to fail. New work uses only
 `results/manifests/<batch_id>.json`; it does not repurpose the legacy filename.
 
+**L7 second-attempt refusal (2026-08-03, preserved).** Two corrected mini cells
+passed strict machine and visual review under `v5d-r3-final` SHA `29fa11be…`,
+but the full runner refused before Kit because `cmd_run()` still applied
+`results/freeze.json` as a live startup guard *before* validating the new
+write-once manifest. That contradicted AGENTS §5's already-landed rule that
+`freeze*.json` is legacy evidence rather than the complete contract. The two
+cells therefore cannot certify the exact future runner SHA and are preserved as
+pre-runner-fix evidence. Fix: batch-id runs use the write-once manifest at
+startup and before every cell; only obsolete invocations without `--batch-id`
+retain the legacy guard. Full suite: **1898 passed, 3 skipped**. Create another
+manifest and rerun L7 before L8.
+
 ---
 
 ## Standing constraints (every task)
