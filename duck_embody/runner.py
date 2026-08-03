@@ -1485,21 +1485,20 @@ def midbatch_refusals(
     batch that finishes in one go never gets. Recomputing here is ~15 sha256
     reads plus one ``git status`` — microseconds against a multi-minute trial.
 
-    ``freeze.json`` is re-READ too (not reused from startup) so a mid-batch
-    edit or deletion of the manifest itself also refuses. Plan-level statuses
-    are deliberately NOT re-checked: earlier trials this batch legitimately
-    wrote new complete JSONs.
+    New runs revalidate the supplied write-once batch manifest only. Legacy
+    invocations without one re-read ``freeze.json``. Plan-level statuses are
+    deliberately NOT re-checked: earlier trials this batch legitimately wrote
+    new complete JSONs.
     """
+    if batch_manifest is not None:
+        return batch_manifest_refusals(batch_manifest, root)
     try:
         manifest = read_freeze(root)
     except (json.JSONDecodeError, UnicodeDecodeError) as error:
         return [f"results/freeze.json became unparseable mid-batch ({error})"]
     if manifest is None:
         return ["results/freeze.json disappeared mid-batch — refusing to continue"]
-    out = freeze_refusals(manifest, root) + commit_refusals(root)
-    if batch_manifest is not None:
-        out += batch_manifest_refusals(batch_manifest, root)
-    return out
+    return freeze_refusals(manifest, root) + commit_refusals(root)
 
 
 def _abort_on_midbatch_drift(

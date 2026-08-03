@@ -1,0 +1,286 @@
+{
+  "schema": "duck-embody-batch-manifest-v1",
+  "version": 1,
+  "created_at": "2026-08-03T03:45:51Z",
+  "batch_id": "v5d-r3-release",
+  "duck_embody": {
+    "commit": "b0ad1cf0fcfe6f4c03007c8c2f0bbba595017c5b",
+    "branch": "main",
+    "tree": "00008be99932f0a992fca9255b9545e42beeb08c",
+    "dirty": false,
+    "dirty_paths": [],
+    "frozen_files": {
+      "duck_embody/agent/prompts.py": "760825f46ec14b7db5244cc9a4954c4dfb152c64ec660eabb4d101cf26e909af",
+      "duck_embody/agent/tools.py": "8bc9e95f27a5193164d5a1025232e542aa02d11788b93e6ef43141e25413fdaa",
+      "duck_embody/agent/memory.py": "c22420320933e3aec9253174b73945e655d4d25fb6bd375e4842f6013d101f1a",
+      "duck_embody/agent/loop.py": "61acf19fcde9c8ed148e4eb7c48331a1df461a9e58cb4b37a8cde9e895b64ca0",
+      "duck_embody/agent/providers/base.py": "c7c914a567b26dd1f9c88ef2883c5ece6d595873e0024678f78990ae9f1aefef",
+      "duck_embody/agent/providers/anthropic.py": "493c1659e5e5e587407c3f5ca9348fdbdd4d0242a4e84c4e8332420981eda866",
+      "duck_embody/agent/providers/openai.py": "7747ad04591e9b4a3aa0914fea02c709f191558266ee88bbddea54cd5a11de21",
+      "duck_embody/sim/policy_wrapper.py": "ec807a8f8816a270285dbdec62742b4124c7f33acf3b47d0f5e49d184347858e",
+      "duck_embody/sim/recorder.py": "1237d0271195e1cf57b88f60017f82893079d090509489c81398ad5050cd75d8",
+      "duck_embody/sim/session.py": "dc86a43905753ea8c2186a6b2d5940b75f6154aa5ec13197c5bdb7b8ee27fec7",
+      "duck_embody/env/embody_env_cfg.py": "92ddbf1f3503ed251af36cd39e68799f2b97927ca8ad1a7ba6280a366ea4cc5b",
+      "duck_embody/env/scene_builder.py": "9e5d5c5c272957cb3824403c264bf11aaebb40d537ddb39c4ff522048f738d3f",
+      "duck_embody/env/camera.py": "3a307e09980dac6ef8e45698626f22f7b819f69f9870a03a613b16bad11bd945",
+      "duck_embody/env/apartment_layout.py": "6b254f23dbb182d15eca8483f9f03b649fdb4227cfe3c52ef37784d752f5642a",
+      "duck_embody/tasks/find_kitchen.py": "fb40cbdd4c012d286374f60f002ee98bfc904c48ffb6d8c0909a78642b6f53ea",
+      "configs/benchmark.yaml": "de8338b3da0b051178bc26cc3c454f8893d0b8cf0849bfc92ce711ed5d47ff47",
+      "configs/models/sonnet5.yaml": "2827fc7ef241df047f054a7f20b65476bfb6c02c57cf1735ab2783c70bca95a4",
+      "configs/models/opus5.yaml": "fa86cb51729d22cd448bc63c47c80c7f13bef437f54cfffae8e3ea861e59a3f1",
+      "configs/models/gpt56sol.yaml": "be2c4c2703a7cd8f4ed6a37c00d858f02c2deb637d6da4c8c7fb94cbaeed39e0"
+    },
+    "config_hash": "d30462d03c764c7c8520cae5910ea704eedbe94f96dfbf965d551ba6859ea46b",
+    "runner": {
+      "path": "duck_embody/runner.py",
+      "sha256": "80c71202f26123e955db71cc64ac6535faf041f2370f442f3dfa2351e201f4c9"
+    },
+    "pyproject": {
+      "path": "pyproject.toml",
+      "sha256": "114c99c2f5cfd87806ebb8ab7f711968e24f3c9aed7c7aa2273ccae88e31c201"
+    }
+  },
+  "policy": {
+    "checkpoint_path": "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt",
+    "archived_relative_path": "exported_policies/v5d_contact_wrench_ppo/model_5998.pt",
+    "archive_repository": "https://github.com/XiaohuiChen-personal/Open_Duck_Mini_Jetson",
+    "archived_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "calibration": {
+      "id": "v5d-contact-wrench-2026-07-29",
+      "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+      "values": {
+        "k_velocity_realisation": 0.9617,
+        "measured_speed_mps": 0.1923,
+        "turn_rate_realisation": 0.9372,
+        "open_loop_yaw_drift_deg_per_s": 1.3475,
+        "heading_hold_residual_drift_deg_per_20s": 0.04,
+        "purpose": "timeout_forecast_only",
+        "target_completion_sensor": "simulated_leg_odometry"
+      },
+      "source": "/home/xiaohui_chen/Projects/duck-embody/results/calibrations/v5d_contact_wrench.json",
+      "source_sha256": "bb7b5b4027aa626ce2216746eb8f07a349be99d9b72e4dcf2f76b80f6377cbd5"
+    }
+  },
+  "parent_repo": {
+    "url": "https://github.com/XiaohuiChen-personal/Open_Duck_Mini_Jetson",
+    "configured_branch": "v2",
+    "pinned_commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "path": "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson",
+    "commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "branch": "v2",
+    "tree": "6a6bf543d19b0b29675738c6f6dfb12b5b9ffcf2",
+    "dirty": false,
+    "dirty_paths": [],
+    "runtime_file_tree": {
+      "algorithm": "git-tree-sha1",
+      "digest": "6a6bf543d19b0b29675738c6f6dfb12b5b9ffcf2"
+    },
+    "robot_usd": {
+      "path": "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd",
+      "sha256": "f24b2505d3e8cfa3ba6cc358c514ba39384aca0f71617943370fc08b9ddbf1d4"
+    }
+  },
+  "runtime_versions": {
+    "python": "3.11.13",
+    "isaac_sim": "5.1.0-rc.19",
+    "isaac_lab": "2.3.2",
+    "cuda": "{\n   \"cuda\" : {\n      \"name\" : \"CUDA SDK\",\n      \"version\" : \"13.0.3\"\n   },\n   \"cuda_cccl\" : {\n      \"name\" : \"CUDA C++ Core Compute Libraries\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_crt\" : {\n      \"name\" : \"CUDA crt Compiler for CUDA applications\",\n      \"version\" : \"13.0.88\"\n   },\n   \"cuda_ctadvisor\" : {\n      \"name\" : \"CUDA Compile Time Advisor\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_cudart\" : {\n      \"name\" : \"CUDA Runtime (cudart)\",\n      \"version\" : \"13.0.96\"\n   },\n   \"cuda_culibos\" : {\n      \"name\" : \"CUDA DEV culibos is a Math Libraries\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_cuobjdump\" : {\n      \"name\" : \"cuobjdump\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_cupti\" : {\n      \"name\" : \"CUPTI\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_cuxxfilt\" : {\n      \"name\" : \"CUDA cu++ filt\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_gdb\" : {\n      \"name\" : \"CUDA GDB\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_nvcc\" : {\n      \"name\" : \"CUDA NVCC\",\n      \"version\" : \"13.0.88\"\n   },\n   \"cuda_nvdisasm\" : {\n      \"name\" : \"CUDA nvdisasm\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_nvml_dev\" : {\n      \"name\" : \"CUDA NVML Headers\",\n      \"version\" : \"13.0.87\"\n   },\n   \"cuda_nvprune\" : {\n      \"name\" : \"CUDA nvprune\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_nvrtc\" : {\n      \"name\" : \"CUDA NVRTC\",\n      \"version\" : \"13.0.88\"\n   },\n   \"cuda_nvtx\" : {\n      \"name\" : \"CUDA NVTX\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_profiler_api\" : {\n      \"name\" : \"CUDA Profiler API\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_sandbox_dev\" : {\n      \"name\" : \"NVIDIA Sandbox Utils\",\n      \"version\" : \"13.0.85\"\n   },\n   \"cuda_sanitizer_api\" : {\n      \"name\" : \"CUDA Compute Sanitizer API\",\n      \"version\" : \"13.0.85\"\n   },\n   \"fabricmanager\" : {\n      \"name\" : \"Fabric Manager\",\n      \"version\" : \"580.126.20\"\n   },\n   \"imex\" : {\n      \"name\" : \"Mapping GPU memory over NVLink\",\n      \"version\" : \"580.126.20\"\n   },\n   \"libcublas\" : {\n      \"name\" : \"CUDA cuBLAS\",\n      \"version\" : \"13.1.1.3\"\n   },\n   \"libcufft\" : {\n      \"name\" : \"CUDA cuFFT\",\n      \"version\" : \"12.0.0.61\"\n   },\n   \"libcufile\" : {\n      \"name\" : \"GPUDirect Storage (cufile)\",\n      \"version\" : \"1.15.1.6\"\n   },\n   \"libcurand\" : {\n      \"name\" : \"CUDA cuRAND\",\n      \"version\" : \"10.4.0.35\"\n   },\n   \"libcusolver\" : {\n      \"name\" : \"CUDA cuSOLVER\",\n      \"version\" : \"12.0.4.66\"\n   },\n   \"libcusparse\" : {\n      \"name\" : \"CUDA cuSPARSE\",\n      \"version\" : \"12.6.3.3\"\n   },\n   \"libnpp\" : {\n      \"name\" : \"CUDA NPP\",\n      \"version\" : \"13.0.1.2\"\n   },\n   \"libnvfatbin\" : {\n      \"name\" : \"Fatbin interaction library\",\n      \"version\" : \"13.0.85\"\n   },\n   \"libnvidia_nscq\" : {\n      \"name\" : \"NvSwitch Library\",\n      \"version\" : \"580.126.20\"\n   },\n   \"libnvjitlink\" : {\n      \"name\" : \"JIT Linker Library\",\n      \"version\" : \"13.0.88\"\n   },\n   \"libnvjpeg\" : {\n      \"name\" : \"CUDA nvJPEG\",\n      \"version\" : \"13.0.1.86\"\n   },\n   \"libnvptxcompiler\" : {\n      \"name\" : \"CUDA PTX compiler\",\n      \"version\" : \"13.0.88\"\n   },\n   \"libnvvm\" : {\n      \"name\" : \"NVVM\",\n      \"version\" : \"13.0.88\"\n   },\n   \"nsight_compute\" : {\n      \"name\" : \"Nsight Compute\",\n      \"version\" : \"2025.3.1.4\"\n   },\n   \"nsight_systems\" : {\n      \"name\" : \"Nsight Systems\",\n      \"version\" : \"2025.3.2.474\"\n   },\n   \"nvidia_driver\" : {\n      \"name\" : \"NVIDIA Linux Driver\",\n      \"version\" : \"580.126.20\"\n   },\n   \"nvidia_fs\" : {\n      \"name\" : \"NVIDIA file-system\",\n      \"version\" : \"2.26.6\"\n   }\n}",
+    "torch": "2.9.0+cu130",
+    "rsl_rl": "5.0.1",
+    "provider_sdks": {
+      "anthropic": "0.120.0",
+      "openai": "2.48.0"
+    }
+  },
+  "models": {
+    "sonnet5": {
+      "path": "configs/models/sonnet5.yaml",
+      "sha256": "2827fc7ef241df047f054a7f20b65476bfb6c02c57cf1735ab2783c70bca95a4",
+      "configured_alias": "sonnet5",
+      "model_id": "claude-sonnet-5",
+      "provider": "anthropic",
+      "snapshot_id": null,
+      "config": {
+        "provider": "anthropic",
+        "model_id": "claude-sonnet-5",
+        "max_tokens": 16000,
+        "price_in_per_mtok": 3.0,
+        "price_out_per_mtok": 15.0,
+        "price_cache_read_per_mtok": 0.3,
+        "price_cache_write_per_mtok": 3.75,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "params": {},
+        "notes": "Adaptive thinking is the default on this model (omitting `thinking` runs adaptive); the adapter requests {\"type\":\"adaptive\",\"display\":\"summarized\"} so the transcript records the reasoning summary for the qualitative audit — identical adapter behaviour to the other Anthropic contestants. Assistant turns are echoed back verbatim because thinking blocks must be replayed unchanged. Unlike fable5 there is no zero-data-retention restriction and no always-on-thinking constraint.\n"
+      }
+    },
+    "opus5": {
+      "path": "configs/models/opus5.yaml",
+      "sha256": "fa86cb51729d22cd448bc63c47c80c7f13bef437f54cfffae8e3ea861e59a3f1",
+      "configured_alias": "opus5",
+      "model_id": "claude-opus-5",
+      "provider": "anthropic",
+      "snapshot_id": null,
+      "config": {
+        "provider": "anthropic",
+        "model_id": "claude-opus-5",
+        "max_tokens": 16000,
+        "price_in_per_mtok": 5.0,
+        "price_out_per_mtok": 25.0,
+        "price_cache_read_per_mtok": 0.5,
+        "price_cache_write_per_mtok": 6.25,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "params": {},
+        "notes": "Safety classifiers can decline a request: HTTP 200 with stop_reason=\"refusal\" and possibly empty content. The adapter checks stop_reason BEFORE reading content — indexing content[0] blindly would crash on exactly the trials most worth recording. A refusal is scored as a model outcome, not an infra failure.\n"
+      }
+    },
+    "gpt56sol": {
+      "path": "configs/models/gpt56sol.yaml",
+      "sha256": "be2c4c2703a7cd8f4ed6a37c00d858f02c2deb637d6da4c8c7fb94cbaeed39e0",
+      "configured_alias": "gpt56sol",
+      "model_id": "gpt-5.6-sol",
+      "provider": "openai",
+      "snapshot_id": null,
+      "config": {
+        "provider": "openai",
+        "model_id": "gpt-5.6-sol",
+        "max_tokens": 16000,
+        "price_in_per_mtok": 5.0,
+        "price_out_per_mtok": 30.0,
+        "price_cache_read_per_mtok": 0.5,
+        "price_cache_write_per_mtok": 6.25,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://developers.openai.com/api/docs/pricing",
+        "params": {},
+        "notes": "USES THE RESPONSES API (/v1/responses), NOT chat completions. Measured 2026-07-26: /v1/chat/completions returns 400 \"Function tools with reasoning_effort are not supported for gpt-5.6-sol ... use /v1/responses or set reasoning_effort to 'none'\". Disabling reasoning was rejected as an option — it would run this contestant without reasoning while both Anthropic contestants think, which is a handicap, not a wire-format detail. Wire shape the adapter absorbs: tools are FLAT ({type,name,description, parameters}, not nested under \"function\"); content parts are input_text / input_image; the assistant turn is a LIST of output items (reasoning, function_call, message) echoed back verbatim — reasoning items included, for the same continuity reason Anthropic thinking blocks are replayed; results are {type:\"function_call_output\", call_id, output} where output is a STRING, so camera frames cannot ride inside a tool result and are delivered in an adjacent user message with the originating call_id named (doc 04 §6.1).\n"
+      }
+    }
+  },
+  "success_criterion": "v2_any_counter",
+  "matrix": {
+    "models": [
+      "sonnet5",
+      "opus5",
+      "gpt56sol"
+    ],
+    "seeds": [
+      101,
+      102,
+      103,
+      104
+    ]
+  },
+  "ordered_trials": [
+    {
+      "index": 1,
+      "model": "sonnet5",
+      "seed": 101,
+      "trial_id": "sonnet5_seed101"
+    },
+    {
+      "index": 2,
+      "model": "sonnet5",
+      "seed": 102,
+      "trial_id": "sonnet5_seed102"
+    },
+    {
+      "index": 3,
+      "model": "sonnet5",
+      "seed": 103,
+      "trial_id": "sonnet5_seed103"
+    },
+    {
+      "index": 4,
+      "model": "sonnet5",
+      "seed": 104,
+      "trial_id": "sonnet5_seed104"
+    },
+    {
+      "index": 5,
+      "model": "opus5",
+      "seed": 101,
+      "trial_id": "opus5_seed101"
+    },
+    {
+      "index": 6,
+      "model": "opus5",
+      "seed": 102,
+      "trial_id": "opus5_seed102"
+    },
+    {
+      "index": 7,
+      "model": "opus5",
+      "seed": 103,
+      "trial_id": "opus5_seed103"
+    },
+    {
+      "index": 8,
+      "model": "opus5",
+      "seed": 104,
+      "trial_id": "opus5_seed104"
+    },
+    {
+      "index": 9,
+      "model": "gpt56sol",
+      "seed": 101,
+      "trial_id": "gpt56sol_seed101"
+    },
+    {
+      "index": 10,
+      "model": "gpt56sol",
+      "seed": 102,
+      "trial_id": "gpt56sol_seed102"
+    },
+    {
+      "index": 11,
+      "model": "gpt56sol",
+      "seed": 103,
+      "trial_id": "gpt56sol_seed103"
+    },
+    {
+      "index": 12,
+      "model": "gpt56sol",
+      "seed": 104,
+      "trial_id": "gpt56sol_seed104"
+    }
+  ],
+  "invocation": {
+    "argv": [
+      "scripts/run_trial.py",
+      "--model",
+      "sonnet5",
+      "--seed",
+      "101",
+      "--checkpoint",
+      "/home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt",
+      "--calibration",
+      "results/calibrations/v5d_contact_wrench.json",
+      "--batch-id",
+      "v5d-r3-release",
+      "--out-dir",
+      "results/mini_v5d_r3",
+      "--video-dir",
+      "results/mini_v5d_r3_videos",
+      "--headless",
+      "--enable_cameras"
+    ],
+    "environment_variable_names": [
+      "ANTHROPIC_API_KEY",
+      "OPENAI_API_KEY",
+      "PYTHONPATH",
+      "PYTHONUNBUFFERED"
+    ]
+  },
+  "assets": {
+    "checksums_path": "assets/checksums.txt",
+    "verification": {
+      "ok": true,
+      "checked": 221,
+      "failures": [],
+      "checksums_sha256": "71d07c41f60884c4dffe9afb75bcd9e124dcc68fecbecaa96eb11280df9476e1"
+    }
+  },
+  "manifest_sha256": "1636403a2c619be44797ede1c0883602ae7fe08f40fa730e530d85ee9db2db44"
+}

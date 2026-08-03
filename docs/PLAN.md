@@ -2206,6 +2206,18 @@ startup and before every cell; only obsolete invocations without `--batch-id`
 retain the legacy guard. Full suite: **1898 passed, 3 skipped**. Create another
 manifest and rerun L7 before L8.
 
+**L7 third-attempt refusal (2026-08-03, preserved).** Release mini SHA
+`1636403a…` again passed 2/2 machine and visual review. The full runner launched
+one Kit session, then the *between-trial* guard still combined the legacy
+`freeze.json` hashes with the new manifest and aborted before cell 1. No full
+trial ran and no result was scored. Root cause was the same migration left
+half-complete at a second call site. `midbatch_refusals(root, batch_manifest)`
+now validates only the supplied write-once contract; no-manifest legacy callers
+still re-read `freeze.json`. A regression test proves a valid batch manifest
+does not require the historical file. Full suite: **1899 passed, 3 skipped**.
+Because `runner.py` is manifest-bound, preserve the two cells and create a new
+manifest/mini gate once more.
+
 ---
 
 ## Standing constraints (every task)

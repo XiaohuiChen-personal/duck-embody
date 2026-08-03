@@ -980,6 +980,13 @@ class TestMidbatchGuard:
     def test_a_clean_tree_has_no_midbatch_refusals(self, tmp_path):
         assert midbatch_refusals(self.make_frozen_root(tmp_path)) == []
 
+    def test_batch_manifest_does_not_require_legacy_freeze(
+        self, tmp_path, monkeypatch
+    ):
+        root, _, _, _, manifest = make_provenance_fixture(tmp_path, monkeypatch)
+        assert not (root / "results" / "freeze.json").exists()
+        assert midbatch_refusals(root, manifest) == []
+
     def test_a_mid_batch_frozen_edit_is_refused_by_name(self, tmp_path):
         root = self.make_frozen_root(tmp_path)
         mutated = "duck_embody/agent/prompts.py"
