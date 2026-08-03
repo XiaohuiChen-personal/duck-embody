@@ -1960,14 +1960,32 @@ Isaac Sim GPU job (AGENTS.md rule 1) and is **deferred**: not run this session.
 Run before this task's result is treated as sim-verified rather than
 unit-verified; record the mp4/filmstrip and pass/fail here when it lands.
 
-### TR.4–TR.9 `[ ]` Remaining remediation tasks
+### TR.4 `[x]` Motion tools and contact semantics (2026-08-02)
 
-Not started. Definitions live in
-`docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T4 motion and
-contact semantics, T5 request reconstruction, T6 immutable provenance,
-T7 provider usage and cost, T8 audit and reporting, T9 canary/mini-batch/full
-batch). Each still runs under AGENTS.md rules 10 and 11 and gets its own PLAN
-entry with evidence when it lands.
+Wired the playback layer's signed measured-distance `move` and compound
+`turn_and_move` through the model tool surface; every macro now publishes
+requested/measured values, target completion, stop reason, monotonic motion ID,
+and contact-event ID. `EpisodeRunner` executes at most one successful motion per
+model turn, answers later motion calls with `not_executed`, and continues
+perception/memory calls in order. The regenerated memory/status block carries
+`last_motion`, nullable-until-scanned `current_contact`, and `fell`. Final scoring
+publishes distinct sustained-contact event count/IDs while retaining the legacy
+command-based `bumps` count.
+
+**Evidence:** `TERM=xterm bash scripts/run_tests.sh tests/ -q` → 1851 passed,
+3 skipped (2026-08-02). Focused coverage in `tests/test_tools.py` and
+`tests/test_loop.py` pins signed reverse, `turn_and_move`, payload fields,
+second-motion `not_executed` with later perception/memory still executing,
+distinct collision-event deduplication, and legacy bump preservation. No Isaac
+job was run for this harness-only wiring task.
+
+### TR.5–TR.9 `[ ]` Remaining remediation tasks
+
+Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T5
+request reconstruction, T6 immutable provenance, T7 provider usage and cost, T8
+audit and reporting, T9 canary/mini-batch/full batch). Each still runs under
+AGENTS.md rules 10 and 11 and gets its own PLAN entry with evidence when it
+lands.
 
 ---
 

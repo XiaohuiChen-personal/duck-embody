@@ -1,5 +1,4 @@
-"""Tool schemas + dispatch: get_observation, look_around, turn_to_heading, move,
-send_velocity, memory tools, declare_done.
+"""Tool schemas + dispatch: perception, signed/compound motion, memory, done.
 
 This module is **the wire** (PLAN T3.2): the macros live in
 :mod:`duck_embody.sim.policy_wrapper`, the map lives in
@@ -58,7 +57,8 @@ tools refuse to run at all once ``playback.fell`` is set (:func:`dispatch`), so
 no further physics can step against a respawned robot. Both recorded in doc 05
 §4.1/§4.2/§8.
 
-The 14 schemas are doc 05 §4's canonical block **verbatim**. (12 until TR.1,
+The 15 schemas include doc 05 §4's canonical block plus T4b's compound macro.
+(12 until TR.1,
 which split the overloaded ``correct_position`` into three unambiguous tools —
 ``record_anchor`` / ``correct_to_anchor`` / coordinate-only
 ``correct_position``. Two extra schemas cost every request a few dozen tokens;
@@ -185,18 +185,41 @@ TOOL_SCHEMAS: list[dict] = [
     {
         "name": "move",
         "description": (
-            "Walk forward at vx=0.2 m/s, closed-loop on dead-reckoned distance. "
-            "Max 1.5 m per call. Auto-stops on collision and reports the bump."
+            "Walk at a signed distance, closed-loop on measured leg odometry. "
+            "Positive moves forward; negative backs up conservatively. Magnitude "
+            "is capped at 1.5 m. Auto-stops on sustained contact."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
                 "distance_m": {
                     "type": "number",
-                    "description": "Forward distance in meters, (0, 1.5]",
+                    "description": "Signed distance in meters, [-1.5, 1.5] excluding 0",
                 }
             },
             "required": ["distance_m"],
+        },
+    },
+    {
+        "name": "turn_and_move",
+        "description": (
+            "Compound motion macro: first turn to an absolute compass heading, "
+            "then move the signed distance only if the turn target was reached. "
+            "Auto-stops either phase on sustained contact."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "heading_deg": {
+                    "type": "number",
+                    "description": "Target absolute heading, degrees [0,360)",
+                },
+                "distance_m": {
+                    "type": "number",
+                    "description": "Signed distance in meters, [-1.5, 1.5] excluding 0",
+                },
+            },
+            "required": ["heading_deg", "distance_m"],
         },
     },
     {
@@ -420,6 +443,18 @@ class ToolContext:
     #: the `bumped` flag it refines: cleared by :meth:`reset_for_stage`.
     last_contact_groups: list = field(default_factory=list)
     last_distance_moved_m: float = 0.0
+    #: Monotonic trial-scoped motion identifier and the structured status shown
+    #: on every later observation/memory block. ``None`` means no motion has
+    #: been measured yet; it must not be rendered as a fabricated zero move.
+    motion_id_counter: int = 0
+    last_motion: dict | None = None
+    #: Latest contact-machine scan. ``None`` is materially different from
+    #: ``{"state": "free", ...}``: the former means no motion has sampled the
+    #: sensor yet, while the latter is a real free-space reading.
+    current_contact: dict | None = None
+    #: Distinct sustained-contact IDs seen over the trial. The legacy ``bumps``
+    #: counter remains command-based for backward-compatible scoring.
+    collision_event_ids: set[int] = field(default_factory=set)
     #: Compass heading latched at the moment of the fall, or ``None`` while the
     #: robot is upright. TRIAL-scoped and write-once: a fall ends the trial, so
     #: there is no boundary at which un-latching it would be correct. See
@@ -448,6 +483,8 @@ class ToolContext:
         self.last_bumped = False
         self.last_contact_groups = []
         self.last_distance_moved_m = 0.0
+        self.last_motion = None
+        self.current_contact = None
         self.counters.turns = 0
         self.counters.policy_seconds = 0.0
 
@@ -518,16 +555,25 @@ def unknown_tool(name: object) -> dict:
     }
 
 
-def not_executed(tool_name: str) -> dict:
-    """For calls listed *after* ``declare_done`` in the same turn (doc 05 §3.1).
+def not_executed(tool_name: str, *, reason: str = "declare_done") -> dict:
+    """Answer a tool call intentionally skipped by turn-level control flow.
 
-    §3.1 requires "a structured ``not_executed`` result" but §8's table lists
-    only ``unknown_tool``/``invalid_args``; the third kind is recorded into §8
-    in the same commit (AGENTS.md rule 5). It must still be a *result*, because
-    every ``tool_use`` block in the echoed assistant turn has to be answered
-    (§7.2) and an unanswered one is an API error — i.e. an infra rerun of a
-    trial the model actually finished.
+    The default preserves the existing ``declare_done`` result. ``motion_limit``
+    is used when a previous motion already executed in this model turn. Either
+    way this must be a result: an unanswered ``tool_use`` is a provider error.
     """
+    if reason == "motion_limit":
+        return {
+            "error": "not_executed",
+            "detail": (
+                f"{tool_name} was not executed because one motion command "
+                "already ran this turn"
+            ),
+            "hint": (
+                "wait for the next observation before issuing another motion "
+                "command; perception and memory tools may still be used now"
+            ),
+        }
     return {
         "error": "not_executed",
         "detail": f"{tool_name} was listed after declare_done and was not executed",
@@ -691,6 +737,30 @@ def observed_compass_deg(context: ToolContext) -> float:
     return context.playback.compass_deg()
 
 
+def status_payload(context: ToolContext) -> dict:
+    """The model-facing status schema shared by tools, memory, and trial logs."""
+    return {
+        "last_motion": (
+            None if context.last_motion is None else dict(context.last_motion)
+        ),
+        "current_contact": (
+            None
+            if context.current_contact is None
+            else {
+                **context.current_contact,
+                "regions": list(context.current_contact.get("regions", [])),
+            }
+        ),
+        # Read LIVE: a fall is sticky and ends the trial.
+        "fell": bool(context.playback.fell),
+        # Legacy mirrors retained for log/scorer compatibility. New decisions
+        # should use the structured last_motion/current_contact fields above.
+        "bumped": context.last_bumped,
+        "contact": list(context.last_contact_groups),
+        "distance_moved_m": round(context.last_distance_moved_m, 3),
+    }
+
+
 def _state_payload(context: ToolContext) -> dict:
     """The frozen ``compass_deg`` / ``position_estimate`` / ``status`` block.
 
@@ -705,21 +775,7 @@ def _state_payload(context: ToolContext) -> dict:
             "y": round(y, 2),
             "note": POSITION_ESTIMATE_NOTE,
         },
-        "status": {
-            "bumped": context.last_bumped,
-            # WHERE the last collision was felt: head / torso / left_leg /
-            # right_leg. Without it `bumped` is a bare boolean and the model can
-            # only guess which way is blocked — T3.5 measured 6 of 13 moves
-            # stopping under 0.11 m while it pinballed. Proprioception, not
-            # ground truth: it says what the ROBOT felt, never what was hit or
-            # where that thing is, so it stays on the sensor side of doc 05 §1.
-            "contact": list(context.last_contact_groups),
-            # Read LIVE, not carried: `fell` is sticky and ends the trial, so
-            # the final observation must report it however it is reached
-            # (doc 04 §6.2).
-            "fell": bool(context.playback.fell),
-            "distance_moved_m": round(context.last_distance_moved_m, 3),
-        },
+        "status": status_payload(context),
     }
 
 
@@ -728,6 +784,9 @@ def _record_motion(
     result,
     distance_moved_m: float,
     *,
+    tool_name: str,
+    requested: dict,
+    measured: dict,
     counts_bump: bool,
     heading_before: float,
 ) -> dict:
@@ -740,11 +799,12 @@ def _record_motion(
     exclude it (see :func:`_move`); the two are different numbers by design and
     conflating them in either direction fails silently.
 
-    ``counts_bump`` is passed explicitly by all three motion tools rather than
+    ``counts_bump`` is passed explicitly by every motion tool rather than
     defaulted, because the correct answer is not the same for all three and a
     default would decide it silently. doc 06 §5.6 enumerates exactly two sources
-    for the published ``bumps`` metric — ``move`` auto-stops and ``send_velocity``
-    collision reports — and ``turn_to_heading`` is not one of them. Counting it
+    for the published ``bumps`` metric — translational macros auto-stop and
+    ``send_velocity`` reports collisions — while ``turn_to_heading`` is not one
+    of them. Counting a recovery turn
     would be behaviour-dependent inflation, not a stricter measurement:
     ``PolicyPlayback._bump_run`` is instance state that survives across calls, so
     after a bump-stopped ``move`` the debounce counter is already at its
@@ -764,6 +824,32 @@ def _record_motion(
     context.last_bumped = bool(result.bumped)
     context.last_contact_groups = list(result.contact_groups)
     context.last_distance_moved_m = distance_moved_m
+    context.motion_id_counter += 1
+    motion_id = context.motion_id_counter
+    contact_event_id = result.contact_event_id
+    if contact_event_id is not None:
+        context.collision_event_ids.add(int(contact_event_id))
+    regions = (
+        []
+        if result.contact_state == "free"
+        else list(result.contact_event_regions or result.contact_groups)
+    )
+    context.current_contact = {
+        "state": result.contact_state,
+        "contact_event_id": contact_event_id,
+        "regions": regions,
+    }
+    context.last_motion = {
+        "last_motion_id": motion_id,
+        "tool": tool_name,
+        "requested": dict(requested),
+        "measured": dict(measured),
+        "target_reached": bool(result.target_reached),
+        "stop_reason": result.stop_reason,
+        "contact_event_id": contact_event_id,
+        "bumped": bool(result.bumped),
+        "distance_moved_m": round(distance_moved_m, 3),
+    }
     if result.fell and context.compass_at_fall is None:
         # BEFORE the breadcrumb below, which would otherwise be the first thing
         # written with the post-teleport spawn heading.
@@ -807,6 +893,12 @@ def _record_motion(
             or (context.playback.fall_diagnostics if result.fell else None)
         ),
         "stop_reason": result.stop_reason,
+        "target_reached": bool(result.target_reached),
+        "last_motion_id": motion_id,
+        "contact_event_id": contact_event_id,
+        "requested": dict(requested),
+        "measured": dict(measured),
+        "phase_results": [dict(phase) for phase in result.phase_results],
         "counted_as_bump": bool(result.bumped and counts_bump),
     }
 
@@ -930,15 +1022,18 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
     #
     # `counts_bump=False`: doc 06 §5.6 counts `move` and `send_velocity` only.
     # See `_record_motion` for why counting rotations inflates the metric.
+    compass = heading_before if result.fell else observed_compass_deg(context)
     execution = _record_motion(
         context,
         result,
         distance_moved_m=0.0,
+        tool_name="turn_to_heading",
+        requested={"heading_deg": round(heading, 1)},
+        measured={"heading_deg": round(compass, 1)},
         counts_bump=False,
         heading_before=heading_before,
     )
 
-    compass = observed_compass_deg(context)
     payload = {
         # The RAW argument, not `target`. `mark_exit`'s 15° snap set the
         # precedent doc 05 §4.2 cites — "the ack echoes the raw value, so the
@@ -948,6 +1043,7 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
         # ended up. Both wrapped and raw name the same angle, so
         # `heading_error_deg` below is unaffected.
         "requested_heading_deg": round(heading, 1),
+        "measured_heading_deg": round(compass, 1),
         # doc 05 §4.2's "achieved error", signed as the rotation the robot STILL
         # needs to reach the target (+ = further counter-clockwise). Note this
         # is the opposite sign to `policy_wrapper`'s internal `residual`, which
@@ -957,6 +1053,10 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
         # "timeout" in `stop_reason`, which is internal vocabulary — the frozen
         # prompt promises the model `timed_out`.
         "timed_out": result.stop_reason == "timeout",
+        "target_reached": bool(result.target_reached),
+        "stop_reason": result.stop_reason,
+        "last_motion_id": execution["last_motion_id"],
+        "contact_event_id": result.contact_event_id,
         "policy_seconds": round(result.policy_seconds, 2),
         **_state_payload(context),
     }
@@ -965,42 +1065,41 @@ def _turn_to_heading(context: ToolContext, args: dict) -> ToolOutcome:
     return ToolOutcome(payload=payload, execution=execution)
 
 
-def _move(context: ToolContext, args: dict) -> ToolOutcome:
-    """Walk forward with heading hold; auto-stops on collision.
-
-    ``distance_m <= 0`` is an ``invalid_args``, which §4 does not settle either
-    way (its domain is ``(0, 1.5]``, open at zero; §4.2's only stated failure
-    mode is the ``> 1.5`` clamp). The wrapper would clamp it to 0.0 and still
-    run one chunk — a silent no-op that burns a turn and tells the model
-    nothing. Nor is there an honest clamp available: raising 0 to some positive
-    distance invents a command the model did not give, and clamping -1 to +1
-    would drive the robot the opposite way from what a model that typed -1
-    meant. Backing out of a corner is ``send_velocity``'s job and the hint says
-    so. Recorded in doc 05 §4.2.
-    """
-    requested, error = number_arg(args["distance_m"], "distance_m", "move")
+def _signed_distance(
+    args: dict, tool_name: str
+) -> tuple[float | None, float | None, list[str], dict | None]:
+    """Validate and symmetrically clamp a signed motion distance."""
+    requested, error = number_arg(args["distance_m"], "distance_m", tool_name)
     if error is not None:
-        return ToolOutcome(payload=error, is_error=True)
-    if requested <= 0.0:
-        return ToolOutcome(
-            payload=invalid_args(
-                f"distance_m must be greater than 0 in move, got {requested:g}",
-                "move only walks forward; the schema domain is (0, 1.5]. To "
-                "back out of a corner use send_velocity with a negative vx.",
+        return None, None, [], error
+    if requested == 0.0:
+        return (
+            None,
+            None,
+            [],
+            invalid_args(
+                f"distance_m must be non-zero in {tool_name}, got 0",
+                "use a positive distance to move forward or a negative distance "
+                "to back up",
             ),
-            is_error=True,
         )
 
-    distance = min(requested, MOVE_MAX_DISTANCE_M)
+    distance = max(-MOVE_MAX_DISTANCE_M, min(requested, MOVE_MAX_DISTANCE_M))
     notes: list[str] = []
     if distance != requested:
-        # `policy_wrapper.move` performs the same clamp but records NO note
-        # (`clamp_notes` only ever carries velocity-hull notes), while doc 05
-        # §4.2 requires "Argument > 1.5 clamped with a note in the result".
         notes.append(
             f"distance_m {requested:+.3f} clamped to {distance:+.3f} "
-            f"(max {MOVE_MAX_DISTANCE_M:g} m per move call)"
+            f"(max magnitude {MOVE_MAX_DISTANCE_M:g} m per call)"
         )
+    return requested, distance, notes, None
+
+
+def _move(context: ToolContext, args: dict) -> ToolOutcome:
+    """Walk a signed distance with heading hold; auto-stop on sustained contact."""
+    requested, distance, notes, error = _signed_distance(args, "move")
+    if error is not None:
+        return ToolOutcome(payload=error, is_error=True)
+    assert requested is not None and distance is not None
 
     # The heading the macro holds for the whole drive, read before it starts —
     # which is exactly the value `move()` latches internally.
@@ -1048,6 +1147,9 @@ def _move(context: ToolContext, args: dict) -> ToolOutcome:
         context,
         result,
         distance_moved_m=travelled,
+        tool_name="move",
+        requested={"distance_m": round(requested, 3)},
+        measured={"distance_m": round(result.measured_distance_m, 3)},
         # doc 06 §5.6's first source: "auto-stops reported by `move`".
         counts_bump=True,
         heading_before=held_heading,
@@ -1059,6 +1161,83 @@ def _move(context: ToolContext, args: dict) -> ToolOutcome:
         # clamp note carries both numbers whenever they differ, and
         # `status.distance_moved_m` always carries what was actually covered.
         "requested_distance_m": round(requested, 3),
+        "measured_distance_m": round(result.measured_distance_m, 3),
+        "target_reached": bool(result.target_reached),
+        "stop_reason": result.stop_reason,
+        "last_motion_id": execution["last_motion_id"],
+        "contact_event_id": result.contact_event_id,
+        "policy_seconds": round(result.policy_seconds, 2),
+        **_state_payload(context),
+    }
+    if notes:
+        payload["notes"] = notes
+    return ToolOutcome(payload=payload, execution=execution)
+
+
+def _turn_and_move(context: ToolContext, args: dict) -> ToolOutcome:
+    """Wire the playback compound macro without reimplementing either phase."""
+    heading, error = number_arg(
+        args["heading_deg"], "heading_deg", "turn_and_move"
+    )
+    if error is not None:
+        return ToolOutcome(payload=error, is_error=True)
+    requested, distance, notes, error = _signed_distance(args, "turn_and_move")
+    if error is not None:
+        return ToolOutcome(payload=error, is_error=True)
+    assert requested is not None and distance is not None
+
+    target = wrap_deg(heading)
+    if target != heading:
+        notes.insert(
+            0,
+            f"heading_deg {heading:g} wrapped to {target:g} "
+            "(compass domain [0, 360))",
+        )
+
+    heading_before = context.playback.compass_deg()
+    result = context.playback.turn_and_move(
+        target,
+        distance,
+        hold_heading=True,
+        stop_on_bump=True,
+    )
+    context.integrator.apply_delta(*result.odom_dxy)
+    travelled = result.dead_reckoned_distance_m
+    measured_heading = (
+        heading_before if result.fell else observed_compass_deg(context)
+    )
+    # Preserve the legacy command-based bump metric: a contact while the turn
+    # phase is still running was historically not counted, while a move-phase
+    # collision was. Distinct sustained events are tracked independently.
+    move_phase_ran = any(
+        phase.get("phase") == "move" for phase in result.phase_results
+    )
+    execution = _record_motion(
+        context,
+        result,
+        distance_moved_m=travelled,
+        tool_name="turn_and_move",
+        requested={
+            "heading_deg": round(heading, 1),
+            "distance_m": round(requested, 3),
+        },
+        measured={
+            "heading_deg": round(measured_heading, 1),
+            "distance_m": round(result.measured_distance_m, 3),
+        },
+        counts_bump=move_phase_ran,
+        heading_before=heading_before,
+    )
+    payload = {
+        "requested_heading_deg": round(heading, 1),
+        "requested_distance_m": round(requested, 3),
+        "measured_heading_deg": round(measured_heading, 1),
+        "measured_distance_m": round(result.measured_distance_m, 3),
+        "target_reached": bool(result.target_reached),
+        "stop_reason": result.stop_reason,
+        "last_motion_id": execution["last_motion_id"],
+        "contact_event_id": result.contact_event_id,
+        "phase_results": [dict(phase) for phase in result.phase_results],
         "policy_seconds": round(result.policy_seconds, 2),
         **_state_payload(context),
     }
@@ -1115,6 +1294,17 @@ def _send_velocity(context: ToolContext, args: dict) -> ToolOutcome:
         context,
         result,
         distance_moved_m=travelled,
+        tool_name="send_velocity",
+        requested={
+            "vx": round(vx, 3),
+            "vy": round(vy, 3),
+            "wz": round(wz, 3),
+            "duration_s": round(requested_duration, 2),
+        },
+        measured={
+            "distance_m": round(travelled, 3),
+            "policy_seconds": round(result.policy_seconds, 2),
+        },
         # doc 06 §5.6's second source: "`bumped = true` collision reports
         # surfaced in `status` for `send_velocity` commands", one per command.
         counts_bump=True,
@@ -1134,6 +1324,10 @@ def _send_velocity(context: ToolContext, args: dict) -> ToolOutcome:
             "wz": round(cwz, 3),
             "duration_s": round(duration, 2),
         },
+        "target_reached": bool(result.target_reached),
+        "stop_reason": result.stop_reason,
+        "last_motion_id": execution["last_motion_id"],
+        "contact_event_id": result.contact_event_id,
         "policy_seconds": round(result.policy_seconds, 2),
         **_state_payload(context),
     }
@@ -1255,9 +1449,14 @@ def _declare_done(context: ToolContext, args: dict) -> ToolOutcome:
     return ToolOutcome(payload=stage_end_result(context.memory.stage))
 
 
-#: The three tools that step physics. Named once, because the fall guard in
+#: The tools that step physics. Named once, because the fall guard in
 #: :func:`dispatch` and doc 06 §5.6's accounting both key on the same set.
-MOTION_TOOLS: tuple[str, ...] = ("turn_to_heading", "move", "send_velocity")
+MOTION_TOOLS: tuple[str, ...] = (
+    "turn_to_heading",
+    "move",
+    "turn_and_move",
+    "send_velocity",
+)
 
 
 _HANDLERS = {
@@ -1265,6 +1464,7 @@ _HANDLERS = {
     "look_around": _look_around,
     "turn_to_heading": _turn_to_heading,
     "move": _move,
+    "turn_and_move": _turn_and_move,
     "send_velocity": _send_velocity,
     "update_room": _update_room,
     "add_landmark": _add_landmark,

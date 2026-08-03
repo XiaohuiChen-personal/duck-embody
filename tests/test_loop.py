@@ -104,6 +104,7 @@ from duck_embody.agent.tools import (
     TRIAL_OVER_DETAIL,
     ToolContext,
     observed_compass_deg,
+    status_payload,
 )
 from duck_embody.env.apartment_layout import (
     LAYOUT,
@@ -120,6 +121,7 @@ from duck_embody.sim.policy_wrapper import (
     ExecResult,
     clamp_command,
     duration_to_steps,
+    merge_exec_results,
 )
 from duck_embody.tasks.find_kitchen import (
     CRITERION_PREREGISTERED,
@@ -210,6 +212,7 @@ class FakePlayback:
         #: mirroring `tests/test_tools.py`'s fake.
         self.bump_contact_groups: list[str] = ["torso"]
         self.move_policy_seconds = 3 * MACRO_CHUNK_S
+        self.contact_event_id: int | None = None
 
     # -- sensors (SCORING ONLY except compass_deg) --------------------------
 
@@ -245,6 +248,11 @@ class FakePlayback:
             fell=self._fell,
             clamp_notes=notes,
             stop_reason="",
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
 
     def turn_to_heading(self, heading_deg, **kwargs):
@@ -256,6 +264,12 @@ class FakePlayback:
             policy_seconds=4 * MACRO_CHUNK_S,
             fell=self._fell,
             stop_reason="reached",
+            target_reached=True,
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
 
     def move(self, distance_m, hold_heading=True, stop_on_bump=True, on_chunk=None):
@@ -273,12 +287,68 @@ class FakePlayback:
             bumped=self.bumped,
             contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=fell,
-            stop_reason="fell" if fell else ("bump" if self.bumped else "reached"),
+            stop_reason=(
+                "fell"
+                if fell
+                else ("sustained_contact" if self.bumped else "reached")
+            ),
             dead_reckoned_distance_m=travelled,
+            measured_distance_m=travelled,
+            requested_distance_m=distance_m,
+            target_reached=not fell and not self.bumped,
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
         if fell:
             self._teleport_to_spawn()
         return result
+
+    def turn_and_move(
+        self,
+        heading_deg,
+        distance_m,
+        hold_heading=True,
+        stop_on_bump=True,
+        on_chunk=None,
+    ):
+        start = len(self.calls)
+        turn_result = self.turn_to_heading(heading_deg)
+        move_result = self.move(
+            distance_m,
+            hold_heading=hold_heading,
+            stop_on_bump=stop_on_bump,
+        )
+        merged = merge_exec_results(turn_result, move_result)
+        merged.phase_results = [
+            {
+                "phase": "turn",
+                "stop_reason": turn_result.stop_reason,
+                "target_reached": turn_result.target_reached,
+            },
+            {
+                "phase": "move",
+                "stop_reason": move_result.stop_reason,
+                "target_reached": move_result.target_reached,
+            },
+        ]
+        merged.stop_reason = move_result.stop_reason
+        merged.target_reached = move_result.target_reached
+        merged.requested_distance_m = move_result.requested_distance_m
+        merged.measured_distance_m = move_result.measured_distance_m
+        merged.dead_reckoned_distance_m = move_result.dead_reckoned_distance_m
+        merged.pose_trace = list(POSE_TRACE_SENTINEL)
+        merged.sampled_xy = [TRUE_XY]
+        del self.calls[start:]
+        self.calls.append(
+            (
+                "turn_and_move",
+                {"heading_deg": heading_deg, "distance_m": distance_m},
+            )
+        )
+        return merged
 
 
 class FakeCamera:
@@ -1324,33 +1394,60 @@ class TestCaps:
         assert result.end_reason == REASON_MOTION_CAP
         assert result.policy_seconds_used >= 0.5
 
-    def test_a_chained_turn_may_overshoot_the_motion_cap_and_it_is_logged(
+    def test_second_motion_is_not_executed_but_memory_and_perception_still_run(
         self, tmp_path
     ):
-        """Doc-sanctioned: caps are checked after the WHOLE turn, so several
-        motion tools in one turn can pass 240 s together. Doc 05 §12's open
-        question (cap motion tools per turn?) is designated for T3.5's smoke,
-        which can only answer it from data — hence ``execution.motion_calls``
-        and the per-turn policy-seconds recorded here."""
-        counters = Counters(policy_seconds_cap=1.0, turn_cap=7)
+        counters = Counters(policy_seconds_cap=0.5, turn_cap=7)
         runner, _, log = make_runner(
             tmp_path,
-            [turn(call("move", "a", distance_m=1.0), call("move", "b", distance_m=1.0))],
+            [
+                turn(
+                    call("move", "a", distance_m=1.0),
+                    call("move", "b", distance_m=1.0),
+                    call("update_plan", "c", text="wait for the next observation"),
+                    call("get_observation", "d"),
+                )
+            ],
             context=make_context(counters=counters),
         )
         result = runner.run_stage(runner.stages[0])
         record = log.document["turns"][0]
-        assert record["execution"]["motion_calls"] == 2
-        # 2 x 0.8 policy-s in ONE turn, against a 1.0 s cap checked afterwards.
+        assert record["execution"]["motion_calls"] == 1
+        assert runner.context.playback.calls == [("move", {"distance_m": 1.0})]
+        assert runner.memory.plan == "wait for the next observation"
+        assert runner.context.camera.captures == 1
+        blocks = runner.transcript[-1].results
+        assert [block.tool_use_id for block in blocks] == ["a", "b", "c", "d"]
+        skipped = json.loads(blocks[1].text)
+        assert skipped["error"] == "not_executed"
+        assert "next observation" in skipped["hint"]
+        assert blocks[1].is_error is True
         assert record["execution"]["policy_seconds_used"] > counters.policy_seconds_cap
         assert result.end_reason == REASON_MOTION_CAP
         assert result.policy_seconds_used > counters.policy_seconds_cap
-        # BOTH cap columns come from the live Counters, not the module
-        # constants: every smoke run constructs a non-default cap, and a budget
-        # line reading `40` while the loop enforced 7 is evidence that
-        # contradicts the run that produced it.
-        assert record["budget"]["stage_policy_seconds_cap"] == 1.0
+        assert record["budget"]["stage_policy_seconds_cap"] == 0.5
         assert record["budget"]["stage_turn_cap"] == counters.turn_cap == 7
+
+    def test_final_publishes_distinct_collision_events_and_legacy_bumps(
+        self, tmp_path
+    ):
+        playback = FakePlayback()
+        playback.bumped = True
+        playback.contact_event_id = 4
+        context = make_context(playback=playback)
+        runner, _, _ = make_runner(
+            tmp_path,
+            [
+                turn(call("move", distance_m=0.4)),
+                turn(call("move", distance_m=0.4)),
+                turn(call(DECLARE_DONE)),
+            ],
+            context=context,
+        )
+        final = runner.run()
+        assert final["bumps"] == 2
+        assert final["collision_events"] == 1
+        assert final["collision_event_ids"] == [4]
 
     @pytest.mark.parametrize(
         "counters,script,expected",
@@ -1780,6 +1877,7 @@ class TestNoGroundTruthReachesTheModel:
                         context.counters,
                         context.integrator.xy,
                         observed_compass_deg(context),
+                        status=status_payload(context),
                     )
                     last = messages[-1]
                     assert isinstance(last, UserMessage)
@@ -2315,7 +2413,8 @@ class TestTrialLogSchema:
             }
             assert set(record["obs"]["position_estimate"]) == {"x", "y"}
             assert set(record["obs"]["status"]) == {
-                "bumped", "contact", "fell", "distance_moved_m",
+                "last_motion", "current_contact", "fell",
+                "bumped", "contact", "distance_moved_m",
             }
             assert set(record["true_pose"]) == {"x", "y", "heading_deg"}
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", record["timestamp"])

@@ -30,6 +30,7 @@ every trial that came before it.
 
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
 
@@ -296,14 +297,22 @@ request; these are the notes that are not in them.
 
    *Motion.* `turn_to_heading(heading_deg)` rotates in place, closed-loop on
    the compass to within 5 deg, and reports `timed_out` rather than spinning
-   forever. `move(distance_m)` walks forward at 0.2 m/s, at most 1.5 m per
-   call, and auto-stops when contact PERSISTS (about half a second of steady
-   force), returning `bumped: true` plus the dead-reckoned distance it covered.
+   forever. `move(distance_m)` accepts a signed distance: positive walks
+   forward and negative backs up more slowly; magnitude is capped at 1.5 m.
+   `turn_and_move(heading_deg, distance_m)` turns first and starts its signed
+   move only if the heading target was reached. These macros auto-stop when
+   contact PERSISTS (about half a second of steady force), and report requested
+   versus measured motion, whether the target was reached, and the stop reason.
    A passing graze does not stop the walk — it is reported, not acted on.
-   `status.contact` names which parts of YOUR OWN body felt contact — any of
+   `status.current_contact` is null until a motion has actually scanned the
+   contact sensor; afterward it gives the contact-machine state, event ID, and
+   which parts of YOUR OWN body currently feel contact — any of
    `head`, `torso`, `left_leg`, `right_leg`. It tells you what you touched
    with, never what you touched: `head` means something at your own height,
-   `torso` something lower, and a single leg means one leg caught a low edge. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
+   `torso` something lower, and a single leg means one leg caught a low edge.
+   `status.last_motion` is null before the first motion and otherwise carries
+   that motion's ID, tool, requested/measured values, target result and stop
+   reason; `status.fell` ends the trial. `send_velocity(vx, vy, wz, duration_s)` is the raw escape
    hatch and does **not** auto-stop — it runs its full duration even through a
    collision. Every command is clamped to the policy's trained envelope and the
    clamp is echoed back: if a command returns changed, the changed one is what
@@ -322,8 +331,10 @@ request; these are the notes that are not in them.
 
    Usage notes:
    - Wherever you can, bundle memory writes with your motion command — turns
-     are your scarcest budget. Several tool calls in one turn run in the order
-     you list them and all their results come back together.
+     are your scarcest budget. At most ONE motion command executes per model
+     turn; later motion calls receive `not_executed` so you must wait for the
+     next observation before moving again. Perception and memory calls in the
+     same turn still run in listed order, and every call receives a result.
    - A rejected call (unknown room, malformed exit status) comes back as a
      structured error with a `hint`, not an exception. Read it and fix the next
      call; like every turn, it counts against your turn budget.
@@ -414,6 +425,8 @@ def render_memory_block(
     counters: Counters,
     position_estimate: tuple[float, float],
     compass_deg: float,
+    *,
+    status: dict | None = None,
 ) -> str:
     """Render ``Memory`` into the one text block re-injected every turn.
 
@@ -541,6 +554,14 @@ def render_memory_block(
         f"Current room (your assertion): {current_room}",
         f"Breadcrumbs (last {BREADCRUMB_WINDOW}): {crumb_text}",
     ]
+    if status is not None:
+        # One stable JSON-shaped line, byte-compatible with tool payload status.
+        # In particular current_contact remains null before the first sensor
+        # scan; rendering "free" there would invent a measurement.
+        lines.append(
+            "Motion/contact status: "
+            + json.dumps(status, separators=(",", ":"), allow_nan=False)
+        )
     if not memory.corrections:
         # ALWAYS rendered (2026-07-30). The old conditional made the null
         # action self-reinforcing: the one line that mentioned re-anchoring

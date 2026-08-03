@@ -95,6 +95,7 @@ from duck_embody.sim.policy_wrapper import (
     K_VELOCITY_REALISATION,
     MACRO_CHUNK_S,
     MOVE_MAX_DISTANCE_M,
+    REVERSE_MOVE_SPEED_MPS,
     MOVE_SPEED_MPS,
     VX_RANGE,
     VY_RANGE,
@@ -102,6 +103,7 @@ from duck_embody.sim.policy_wrapper import (
     ExecResult,
     clamp_command,
     duration_to_steps,
+    merge_exec_results,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -219,7 +221,7 @@ def backticked_identifiers(text: str) -> set[str]:
 #: one is genuinely produced — the allowlist redirects the assertion, it does
 #: not remove it.
 RESULT_FIELDS_NAMED_IN_THE_PROMPT = {
-    "timed_out", "bumped", "hint",
+    "timed_out", "bumped", "hint", "not_executed",
     # `status.contact` and its four possible values (T3.5).
     "status", "contact", "head", "torso", "left_leg", "right_leg",
 }
@@ -306,6 +308,7 @@ class FakePlayback:
         self.move_falls = False
         #: Share of a bumped call spent in CONFIRMED contact (diagnostics only).
         self.contact_fraction = 1.0
+        self.contact_event_id: int | None = None
         #: Leg-odometry realisation for fake motions: 1.0 = the legs measured
         #: exactly the served motion (perfect odometry, no noise — noise is a
         #: real-physics property, exercised by scripts/smoke_odometry.py on the
@@ -387,6 +390,11 @@ class FakePlayback:
             fall_diagnostics=self.fall_diagnostics if stop_reason == "fell" else None,
             clamp_notes=notes,
             stop_reason=stop_reason,
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
         if stop_reason == "fell":
             self._teleport_to_spawn()
@@ -430,6 +438,12 @@ class FakePlayback:
             contact_groups=list(self.bump_contact_groups) if self.bumped else [],
             fell=self._fell,
             stop_reason=self.turn_stop_reason,
+            target_reached=self.turn_stop_reason == "reached",
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
         if fell:
             self._teleport_to_spawn()
@@ -453,17 +467,19 @@ class FakePlayback:
         # fake that served the requested distance exactly would hide the
         # granularity `move` really has, which is the finest final-positioning
         # step a model gets against doc 06 §5.3's 0.35 m success radius.
+        magnitude = abs(distance_m)
+        speed = MOVE_SPEED_MPS if distance_m >= 0.0 else REVERSE_MOVE_SPEED_MPS
         ideal = max(
             1,
             math.ceil(
-                distance_m
+                magnitude
                 / K_VELOCITY_REALISATION
-                / (MOVE_SPEED_MPS * MACRO_CHUNK_S)
+                / (speed * MACRO_CHUNK_S)
             ),
         )
         chunks = ideal if self.stop_after_chunks is None else self.stop_after_chunks
         drive_s = chunks * MACRO_CHUNK_S
-        travelled = MOVE_SPEED_MPS * drive_s
+        travelled = speed * drive_s
         held = self._compass  # move holds the entry heading; odom points along it
         fell = self._fell or self.move_falls
         self._fell = fell
@@ -472,11 +488,15 @@ class FakePlayback:
         # THE STRUCTURAL DETAIL: the settle chunk is merged into policy_seconds
         # but contributes nothing to `travelled` (and is skipped after a fall).
         settle_s = 0.0 if fell else MACRO_CHUNK_S
-        reason = "fell" if self.move_falls else ("bump" if self.bumped else "reached")
+        reason = (
+            "fell"
+            if self.move_falls
+            else ("sustained_contact" if self.bumped else "reached")
+        )
         _odist = travelled * self.odom_factor
-        _hrad = math.radians(held)
+        _hrad = math.radians(held + (180.0 if distance_m < 0.0 else 0.0))
         result = _exec_result(
-            commanded=(MOVE_SPEED_MPS, 0.0, 0.0),
+            commanded=(speed if distance_m >= 0.0 else -speed, 0.0, 0.0),
             duration_s=MACRO_CHUNK_S,  # stale on macro results — never reported
             steps=duration_to_steps(drive_s + settle_s),
             policy_seconds=drive_s + settle_s,
@@ -489,10 +509,85 @@ class FakePlayback:
             dead_reckoned_distance_m=_odist,
             odom_dxy=(_odist * math.cos(_hrad), _odist * math.sin(_hrad)),
             odom_distance_m=_odist,
+            requested_distance_m=distance_m,
+            measured_distance_m=_odist,
+            target_reached=reason == "reached",
+            contact_state="sustained_contact" if self.bumped else "free",
+            contact_event_id=self.contact_event_id,
+            contact_event_regions=(
+                list(self.bump_contact_groups) if self.contact_event_id is not None else []
+            ),
         )
         if self.move_falls:
             self._teleport_to_spawn()
         return result
+
+    def turn_and_move(
+        self,
+        heading_deg,
+        distance_m,
+        hold_heading=True,
+        stop_on_bump=True,
+        on_chunk=None,
+    ):
+        start = len(self.calls)
+        turn = self.turn_to_heading(heading_deg)
+        phases = [
+            {
+                "phase": "turn",
+                "stop_reason": turn.stop_reason,
+                "target_reached": turn.target_reached,
+            }
+        ]
+        if not turn.target_reached:
+            turn.phase_results = phases
+            del self.calls[start:]
+            self.calls.append(
+                (
+                    "turn_and_move",
+                    {
+                        "heading_deg": heading_deg,
+                        "distance_m": distance_m,
+                        "hold_heading": hold_heading,
+                        "stop_on_bump": stop_on_bump,
+                    },
+                )
+            )
+            return turn
+        move = self.move(
+            distance_m,
+            hold_heading=hold_heading,
+            stop_on_bump=stop_on_bump,
+        )
+        phases.append(
+            {
+                "phase": "move",
+                "stop_reason": move.stop_reason,
+                "target_reached": move.target_reached,
+            }
+        )
+        merged = merge_exec_results(turn, move)
+        merged.phase_results = phases
+        merged.stop_reason = move.stop_reason
+        merged.target_reached = move.target_reached
+        merged.requested_distance_m = move.requested_distance_m
+        merged.measured_distance_m = move.measured_distance_m
+        merged.dead_reckoned_distance_m = move.dead_reckoned_distance_m
+        merged.pose_trace = list(_exec_result().pose_trace)
+        merged.sampled_xy = list(_exec_result().sampled_xy)
+        del self.calls[start:]
+        self.calls.append(
+            (
+                "turn_and_move",
+                {
+                    "heading_deg": heading_deg,
+                    "distance_m": distance_m,
+                    "hold_heading": hold_heading,
+                    "stop_on_bump": stop_on_bump,
+                },
+            )
+        )
+        return merged
 
     # -- assertions helpers -------------------------------------------------
 
@@ -554,6 +649,7 @@ VALID_ARGS: dict[str, dict] = {
     "look_around": {},
     "turn_to_heading": {"heading_deg": 90.0},
     "move": {"distance_m": 0.6},
+    "turn_and_move": {"heading_deg": 90.0, "distance_m": 0.6},
     "send_velocity": {"vx": 0.1, "vy": 0.0, "wz": 0.2, "duration_s": 1.0},
     "update_room": {"name": "living_room", "description": "sofa, blue rug"},
     "add_landmark": {"room": "living_room", "description": "coffee table"},
@@ -592,38 +688,19 @@ def seeded_context(**kwargs) -> ToolContext:
 
 
 class TestSchemaMatchesTheDesignDoc:
-    def test_the_tool_set_is_the_docs_fourteen_in_the_docs_order(self):
-        """12 until TR.1, which split the overloaded correction tool into
-        `record_anchor` / `correct_to_anchor` / coordinate-only
-        `correct_position`. Three schemas with disjoint required fields cannot
-        express the F-10 failure (a live call that sent `place=""` alongside a
-        valid x/y and was rejected)."""
-        assert [s["name"] for s in TOOL_SCHEMAS] == [
-            s["name"] for s in doc_tool_schemas()
-        ]
-        assert len(TOOL_SCHEMAS) == 14
+    def test_the_tool_set_adds_the_compound_macro_in_motion_order(self):
+        documented = [s["name"] for s in doc_tool_schemas()]
+        documented.insert(documented.index("move") + 1, "turn_and_move")
+        assert [s["name"] for s in TOOL_SCHEMAS] == documented
+        assert len(TOOL_SCHEMAS) == 15
 
-    @pytest.mark.parametrize("index", range(14))
-    def test_every_description_string_is_the_docs_verbatim(self, index):
-        """PLAN T3.2 (a): compare the STRINGS, not just the names.
-
-        Doc 05 §6 records the deviation that makes this the only guard: the
-        frozen prompt carries a paraphrase and says so, so the `send_velocity`
-        hull and `turn_to_heading`'s [0,360) domain reach the model through
-        these strings and nothing else. A description trimmed here ships a
-        benchmark where every model is quietly told less, and the whole batch
-        freezes that way.
-        """
-        doc = doc_tool_schemas()[index]
-        mine = TOOL_SCHEMAS[index]
-        assert mine["name"] == doc["name"]
-        assert mine["description"] == doc["description"], (
-            f"{doc['name']}'s description drifted from doc 05 §4"
-        )
-
-    def test_every_input_schema_is_the_docs_object_for_object(self):
-        for mine, doc in zip(TOOL_SCHEMAS, doc_tool_schemas()):
-            assert mine["input_schema"] == doc["input_schema"], mine["name"]
+    def test_unchanged_schema_entries_still_match_the_design_doc(self):
+        """T4b intentionally widens signed move and adds turn_and_move."""
+        mine = {schema["name"]: schema for schema in TOOL_SCHEMAS}
+        for doc in doc_tool_schemas():
+            if doc["name"] == "move":
+                continue
+            assert mine[doc["name"]] == doc
 
     def test_the_whole_block_round_trips_through_json_unchanged(self):
         """Both adapters serialise this straight onto the wire; a tuple or a
@@ -688,22 +765,26 @@ class TestToolNamesMatchTheFrozenPrompt:
         )
 
     def test_the_result_fields_the_prompt_promises_are_really_emitted(self):
-        """The other half of the allowlist above: `timed_out`, `bumped` and
-        `hint` are excused from the tool-name check because they are result
-        keys — so they had better BE result keys."""
+        """Result/status names documented by the prompt are emitted."""
         context = make_context()
         turn = dispatch(call("turn_to_heading", heading_deg=180.0), context)
         assert "timed_out" in turn.payload
-        assert "bumped" in turn.payload["status"]
         bad = dispatch(call("move", distance_m="north"), context)
         assert "hint" in bad.payload
 
-        # `status.contact` and the four region names the prompt promises.
-        obs = dispatch(call("get_observation"), context)
-        assert "contact" in obs.payload["status"], (
-            "the prompt documents status.contact but no observation emits it"
-        )
-        assert isinstance(obs.payload["status"]["contact"], list)
+        status = dispatch(call("get_observation"), context).payload["status"]
+        assert set(status) == {
+            "last_motion",
+            "current_contact",
+            "fell",
+            "bumped",
+            "contact",
+            "distance_moved_m",
+        }
+        assert status["last_motion"]["tool"] == "turn_to_heading"
+        assert set(status["current_contact"]) == {
+            "state", "contact_event_id", "regions",
+        }
 
     def test_the_contact_regions_the_prompt_names_are_the_ones_the_code_groups(self):
         """The prompt tells the model to expect head / torso / left_leg /
@@ -787,6 +868,27 @@ class TestDispatchRouting:
         assert context.playback.names_called() == ["move"]
         assert context.playback.calls[0][1]["stop_on_bump"] is True
         assert context.playback.calls[0][1]["hold_heading"] is True
+
+    def test_negative_move_routes_to_the_playback_reverse_path(self):
+        context = make_context()
+        outcome = dispatch(call("move", distance_m=-0.4), context)
+        assert context.playback.calls[0][1]["distance_m"] == -0.4
+        assert outcome.payload["requested_distance_m"] == -0.4
+        assert outcome.payload["measured_distance_m"] > 0.0
+        assert context.integrator.x < START_XY[0]
+
+    def test_turn_and_move_routes_to_the_compound_playback_macro(self):
+        context = make_context()
+        outcome = dispatch(
+            call("turn_and_move", heading_deg=180.0, distance_m=0.4), context
+        )
+        assert context.playback.names_called() == ["turn_and_move"]
+        sent = context.playback.calls[0][1]
+        assert sent["heading_deg"] == 180.0
+        assert sent["distance_m"] == 0.4
+        assert sent["hold_heading"] is True
+        assert sent["stop_on_bump"] is True
+        assert outcome.payload["phase_results"][-1]["phase"] == "move"
 
     def test_send_velocity_routes_to_execute_and_never_auto_stops(self):
         """The distinction doc 05 §4.2 asserts twice and PLAN T3.2 puts in its
@@ -886,9 +988,7 @@ class TestStructuredErrorsNeverExceptions:
         surplus rather than a conflation of two tools (doc 05 §8: "the harness
         never guesses intent"), and the model would never learn that half of
         what it asked for was discarded."""
-        args = dict(VALID_ARGS[name], distance_m=1.0) if name != "move" else dict(
-            VALID_ARGS[name], heading_deg=90.0
-        )
+        args = dict(VALID_ARGS[name], unexpected="value")
         outcome = dispatch(ToolCall(id="x", name=name, args=args), seeded_context())
         assert outcome.is_error is True
         assert outcome.payload["error"] == "invalid_args"
@@ -975,8 +1075,8 @@ class TestStructuredErrorsNeverExceptions:
         assert context.integrator.xy == before
         assert context.counters.policy_seconds == 0.0
 
-    @pytest.mark.parametrize("bad_distance", [0, 0.0, -0.5, -2.0])
-    def test_a_non_positive_move_distance_is_rejected_not_silently_no_opped(
+    @pytest.mark.parametrize("bad_distance", [0, 0.0])
+    def test_a_zero_move_distance_is_rejected_not_silently_no_opped(
         self, bad_distance
     ):
         """§4's domain is `(0, 1.5]` — OPEN at zero — but §4.2 states a failure
@@ -992,8 +1092,7 @@ class TestStructuredErrorsNeverExceptions:
         outcome = dispatch(call("move", distance_m=bad_distance), context)
         assert outcome.is_error is True
         assert outcome.payload["error"] == "invalid_args"
-        # The hint must route the model to the tool that CAN reverse.
-        assert "send_velocity" in outcome.payload["hint"]
+        assert "negative" in outcome.payload["hint"]
         assert context.playback.calls == []
 
     def test_a_numeric_string_parses_because_the_schema_asked_for_a_number(self):
@@ -1108,7 +1207,7 @@ class TestClampingIsEchoedNotSilent:
         assert quantum == pytest.approx(0.04)
         for requested in (1.5, 0.5, 0.1, 0.05):
             outcome = dispatch(call("move", distance_m=requested), make_context())
-            covered = outcome.payload["status"]["distance_moved_m"]
+            covered = outcome.payload["measured_distance_m"]
             expected = quantum * math.ceil(
                 requested / K_VELOCITY_REALISATION / quantum
             )
@@ -1193,11 +1292,60 @@ PAYLOAD_KEYS: dict[str, tuple[set[str], set[str]]] = {
     "look_around": (_STATE_KEYS, set()),
     "turn_to_heading": (
         _STATE_KEYS
-        | {"requested_heading_deg", "heading_error_deg", "timed_out", "policy_seconds"},
+        | {
+            "requested_heading_deg",
+            "measured_heading_deg",
+            "heading_error_deg",
+            "timed_out",
+            "target_reached",
+            "stop_reason",
+            "last_motion_id",
+            "contact_event_id",
+            "policy_seconds",
+        },
         {"notes"},
     ),
-    "move": (_STATE_KEYS | {"requested_distance_m", "policy_seconds"}, {"notes"}),
-    "send_velocity": (_STATE_KEYS | {"executed", "policy_seconds"}, {"notes"}),
+    "move": (
+        _STATE_KEYS
+        | {
+            "requested_distance_m",
+            "measured_distance_m",
+            "target_reached",
+            "stop_reason",
+            "last_motion_id",
+            "contact_event_id",
+            "policy_seconds",
+        },
+        {"notes"},
+    ),
+    "turn_and_move": (
+        _STATE_KEYS
+        | {
+            "requested_heading_deg",
+            "requested_distance_m",
+            "measured_heading_deg",
+            "measured_distance_m",
+            "target_reached",
+            "stop_reason",
+            "last_motion_id",
+            "contact_event_id",
+            "phase_results",
+            "policy_seconds",
+        },
+        {"notes"},
+    ),
+    "send_velocity": (
+        _STATE_KEYS
+        | {
+            "executed",
+            "target_reached",
+            "stop_reason",
+            "last_motion_id",
+            "contact_event_id",
+            "policy_seconds",
+        },
+        {"notes"},
+    ),
     "update_room": ({"ok", "detail", "rooms"}, set()),
     "add_landmark": ({"ok", "detail", "landmarks"}, set()),
     "mark_exit": ({"ok", "detail", "exits"}, set()),
@@ -1413,6 +1561,43 @@ class TestScoringSideExecutionRecord:
         assert turn.execution["counted_as_bump"] is False
         assert move.execution["counted_as_bump"] is True
         assert context.bumps == 1
+
+    def test_distinct_contact_events_do_not_replace_the_legacy_bump_count(self):
+        playback = FakePlayback()
+        playback.bumped = True
+        playback.contact_event_id = 7
+        context = make_context(playback=playback)
+        first = dispatch(call("move", distance_m=0.4), context)
+        second = dispatch(call("move", distance_m=0.4), context)
+        assert context.bumps == 2, "legacy count remains one per bumped command"
+        assert context.collision_event_ids == {7}, "one sustained event spans both"
+        assert first.payload["contact_event_id"] == 7
+        assert second.payload["contact_event_id"] == 7
+
+    def test_motion_payloads_publish_requested_measured_and_stop_fields(self):
+        context = make_context()
+        turn = dispatch(call("turn_to_heading", heading_deg=180.0), context)
+        move = dispatch(call("move", distance_m=-0.4), context)
+        compound = dispatch(
+            call("turn_and_move", heading_deg=270.0, distance_m=0.4), context
+        )
+        common = {"target_reached", "stop_reason", "last_motion_id", "contact_event_id"}
+        assert common <= set(turn.payload)
+        assert {"requested_heading_deg", "measured_heading_deg"} <= set(turn.payload)
+        assert common <= set(move.payload)
+        assert {"requested_distance_m", "measured_distance_m"} <= set(move.payload)
+        assert common <= set(compound.payload)
+        assert {
+            "requested_heading_deg",
+            "requested_distance_m",
+            "measured_heading_deg",
+            "measured_distance_m",
+        } <= set(compound.payload)
+        assert [
+            turn.payload["last_motion_id"],
+            move.payload["last_motion_id"],
+            compound.payload["last_motion_id"],
+        ] == [1, 2, 3]
 
 
 # ---------------------------------------------------------------------------
@@ -1731,8 +1916,9 @@ class TestObservationPayload:
         # Derived from doc 04 §6, not transcribed: a hardcoded set here means
         # the doc and the payload can drift apart silently, and adding
         # `status.contact` in T3.5 is exactly the change that would have done it.
-        assert set(outcome.payload["status"]) == set(
-            doc_04_frozen_payload()["status"]
+        assert set(outcome.payload["status"]) == (
+            set(doc_04_frozen_payload()["status"])
+            | {"last_motion", "current_contact"}
         )
 
     def test_the_estimate_note_is_doc_04s_frozen_string_verbatim(self):
@@ -1761,7 +1947,14 @@ class TestObservationPayload:
         outcome = dispatch(call("get_observation"), make_context())
         assert list(outcome.payload) == list(doc)
         assert list(outcome.payload["position_estimate"]) == list(doc["position_estimate"])
-        assert list(outcome.payload["status"]) == list(doc["status"])
+        assert list(outcome.payload["status"]) == [
+            "last_motion",
+            "current_contact",
+            "fell",
+            "bumped",
+            "contact",
+            "distance_moved_m",
+        ]
         # And the SERIALISED form keeps it — that string is what reaches the
         # model, and `json.dumps(..., sort_keys=True)` reorders only there. The
         # nested block is the one that can tell: the doc's top level happens to
@@ -1770,7 +1963,14 @@ class TestObservationPayload:
         wire = json.loads(outcome.to_block("x", "get_observation").text)
         assert list(wire) == list(doc)
         assert list(wire["position_estimate"]) == list(doc["position_estimate"]) != sorted(doc["position_estimate"])
-        assert list(wire["status"]) == list(doc["status"])
+        assert list(wire["status"]) == [
+            "last_motion",
+            "current_contact",
+            "fell",
+            "bumped",
+            "contact",
+            "distance_moved_m",
+        ]
 
     def test_the_compass_keeps_the_docs_one_decimal_of_precision(self):
         """doc 04 §6's frozen payload shows `"compass_deg": 87.4` — one decimal.
@@ -1839,11 +2039,15 @@ class TestObservationPayload:
         worse answer than a documented zero."""
         outcome = dispatch(call("get_observation"), make_context())
         assert outcome.payload["status"] == {
+            # Null means no motion/contact scan has happened yet; it is not a
+            # fabricated successful zero-distance command or free-space scan.
+            "last_motion": None,
+            "current_contact": None,
+            "fell": False,
             "bumped": False,
             # Empty, not absent: `contact` refines `bumped`, so it has to keep
             # the same shape on turn 1 as on every turn after it.
             "contact": [],
-            "fell": False,
             "distance_moved_m": 0.0,
         }
 

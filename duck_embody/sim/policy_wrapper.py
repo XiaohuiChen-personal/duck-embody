@@ -1450,6 +1450,11 @@ class PolicyPlayback:
     ) -> ExecResult:
         """Turn first, then move only after a successful heading lock."""
         turn = self.turn_to_heading(heading_deg, on_chunk=on_chunk)
+        start_xy = (
+            turn.pose_trace[0]
+            if turn.pose_trace
+            else (turn.true_pose[0], turn.true_pose[1])
+        )
         phase_results = [self._phase_summary("turn", turn)]
         if not turn.target_reached:
             turn.phase_results = phase_results
@@ -1470,4 +1475,10 @@ class PolicyPlayback:
         merged.requested_distance_m = move.requested_distance_m
         merged.measured_distance_m = move.measured_distance_m
         merged.dead_reckoned_distance_m = move.dead_reckoned_distance_m
+        end_xy = (merged.true_pose[0], merged.true_pose[1])
+        # `merge_exec_results` merges periodic samples but intentionally leaves
+        # pose_trace to the enclosing macro. Rebuild the compound trace once so
+        # scoring includes both phases rather than only the initial turn.
+        merged.pose_trace = [start_xy, *merged.sampled_xy, end_xy]
+        merged.true_displacement_m = math.dist(start_xy, end_xy)
         return merged

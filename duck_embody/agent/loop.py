@@ -90,6 +90,7 @@ from duck_embody.agent.providers.base import (
 )
 from duck_embody.agent.tools import (
     DECLARE_DONE,
+    MOTION_TOOLS,
     TOOL_SCHEMAS,
     ToolContext,
     ToolOutcome,
@@ -97,6 +98,8 @@ from duck_embody.agent.tools import (
     not_executed,
     observed_compass_deg,
     stage_end_result,
+    status_payload,
+    trial_over,
 )
 from duck_embody.tasks.find_kitchen import (
     REASON_DECLARE_DONE,
@@ -631,6 +634,11 @@ def motion_phrase(tool_name: str, args: dict, execution: dict) -> str:
     seconds = execution.get("policy_seconds_used", 0.0)
     if tool_name == "move":
         parts = [f"moved {distance:.2f} m"]
+    elif tool_name == "turn_and_move":
+        parts = [
+            f"turned toward {args.get('heading_deg')} deg and moved "
+            f"{distance:.2f} m"
+        ]
     elif tool_name == "turn_to_heading":
         parts = [f"turned toward {args.get('heading_deg')} deg"]
     else:
@@ -651,14 +659,11 @@ def motion_phrase(tool_name: str, args: dict, execution: dict) -> str:
 def merge_executions(
     calls: list[tuple[str, dict, dict]], non_motion: list[str]
 ) -> dict:
-    """doc 06 §4's singular ``turns[].execution``, from N motion calls.
+    """Build doc 06 §4's singular ``turns[].execution`` object.
 
-    §4 has exactly ONE ``execution`` object per turn while doc 05 §3.3 explicitly
-    allows several motion tools in one turn — "motion tools inside one turn
-    execute sequentially and each advances physics; policy-seconds accumulate
-    across them". The mismatch is resolved by **merging**, with the per-call
-    records kept alongside (doc 06 §4 widened in the same commit, AGENTS.md
-    rule 5):
+    T4b limits live turns to one successful motion call. The generic merge is
+    retained so historical multi-call records and synthetic audit fixtures stay
+    readable, with the per-call records kept alongside:
 
     * ``policy_seconds_used`` sums, which is what the cap charges;
     * ``pose_trace`` concatenates in call order, which is exactly what §5.3's SPL
@@ -668,12 +673,8 @@ def merge_executions(
       ``counted_as_bump`` is the **only** per-turn source for §5.6's two-source
       bump metric.
 
-    ``motion_calls`` is recorded because doc 05 §12's open question — cap motion
-    tools at one per turn? — is designated for T3.5's smoke to answer, and it can
-    only answer it from data. Along with the per-turn ``policy_seconds_used`` and
-    the stage total in ``budget``, this is the evidence for how far a chained
-    turn overshoots the 240 s cap (which is checked after the whole turn, so an
-    overshoot is doc-sanctioned and must be visible rather than clipped).
+    ``motion_calls`` remains explicit and should now be 0 or 1 for live turns;
+    a larger value identifies a pre-T4b historical record.
 
     ``execution`` is **always an object, never ``null`` and never absent**, even
     on a turn that stepped no physics: T4.1's scorer raises on a missing
@@ -1075,6 +1076,11 @@ class EpisodeRunner:
             },
             "stages": {stage1.stage: stage1.as_dict(), stage2.stage: stage2.as_dict()},
             "bumps": self.context.bumps,
+            # Sustained contact has a trial-scoped monotonic ID. Counting the
+            # set publishes physical events rather than command reports while
+            # retaining the legacy command-based `bumps` field above.
+            "collision_events": len(self.context.collision_event_ids),
+            "collision_event_ids": sorted(self.context.collision_event_ids),
             # doc 06 §4: "§5 values, computed post-hoc by scorer". T4.1 fills it.
             "metrics": {},
             # WIDENED from doc 06 §4's {input, output, cost_usd_estimate} to
@@ -1125,7 +1131,10 @@ class EpisodeRunner:
         # metric.
         compass = observed_compass_deg(context)
         position = self.integrator.xy
-        memory_block = render_memory_block(self.memory, counters, position, compass)
+        status = status_payload(context)
+        memory_block = render_memory_block(
+            self.memory, counters, position, compass, status=status
+        )
         # doc 06 §4's `obs` — "what the model was shown". Captured BEFORE the
         # model decides, because that is what "shown" means: the status triple
         # describes the previous turn's motion, which is exactly what the model
@@ -1134,17 +1143,7 @@ class EpisodeRunner:
             "frame_paths": [],
             "compass_deg": round(compass, 1),
             "position_estimate": {"x": round(position[0], 2), "y": round(position[1], 2)},
-            "status": {
-                "bumped": context.last_bumped,
-                # Same carried reading `_state_payload` shows the model
-                # (T3.5's contact field, recorded into doc 06 §4 in the same
-                # commit): without it the log's "what the model was shown"
-                # summary silently under-reports the one status field that says
-                # WHICH way was blocked.
-                "contact": list(context.last_contact_groups),
-                "fell": bool(context.playback.fell),
-                "distance_moved_m": round(context.last_distance_moved_m, 3),
-            },
+            "status": status,
         }
         messages = build_request(memory_block, self.transcript, self.k)
 
@@ -1178,6 +1177,7 @@ class EpisodeRunner:
         end_reason: str | None = None
         score: StageScore | None = None
         dispatched = 0
+        motion_executed = False
 
         for index, call in enumerate(turn.tool_calls):
             if call.name == DECLARE_DONE:
@@ -1217,11 +1217,25 @@ class EpisodeRunner:
                 end_reason = REASON_DECLARE_DONE
                 break
 
+            if call.name in MOTION_TOOLS and motion_executed:
+                # One model turn may execute at most one motion command. The
+                # call is still answered, and later perception/memory calls are
+                # still dispatched in order; the model sees the new physical
+                # state on its next request before it can move again.
+                results.append(
+                    ToolOutcome(
+                        payload=not_executed(call.name, reason="motion_limit"),
+                        is_error=True,
+                    ).to_block(call.id, call.name)
+                )
+                continue
+
             outcome = dispatch(call, context)
             dispatched += 1
             results.append(outcome.to_block(call.id, call.name))
             frames.extend(outcome.images)
             if outcome.execution is not None:
+                motion_executed = True
                 motion.append((call.name, dict(call.args), outcome.execution))
                 pose = outcome.execution.get("true_pose")
                 if pose:
@@ -1237,6 +1251,14 @@ class EpisodeRunner:
                 # after the falling command would still answer — rendering the
                 # trial's final frame from the spawn point Isaac teleported the
                 # robot to. Only the loop can stop the rest of the turn.
+                # Every remaining tool_use still needs a paired result even
+                # though no post-fall call may touch the respawned simulation.
+                for later in turn.tool_calls[index + 1 :]:
+                    results.append(
+                        ToolOutcome(
+                            payload=trial_over(later.name), is_error=True
+                        ).to_block(later.id, later.name)
+                    )
                 end_reason = REASON_FALL
                 break
 
@@ -1338,9 +1360,9 @@ class EpisodeRunner:
                 "heading_deg": round(self.last_true_pose[2], 2),
             },
             "memory_snapshot": memory_snapshot(self.memory, memory_block),
-            # The evidence doc 05 §12's motion-tools-per-turn question needs, and
-            # the only place a cap overshoot is visible: caps are checked AFTER
-            # the whole turn, so one chained turn can legitimately end at 251 s.
+            # Live T4b turns contain at most one successful motion; the explicit
+            # count keeps that invariant auditable and remains compatible with
+            # historical logs that could contain chained calls.
             "budget": {
                 "stage_turns_used": counters.turns,
                 "stage_turn_cap": counters.turn_cap,
@@ -1408,6 +1430,7 @@ class EpisodeRunner:
             self.counters,
             self.integrator.xy,
             observed_compass_deg(self.context),
+            status=status_payload(self.context),
         )
         prompt = render_qa_prompt(block)
         turn = self.provider.send(
