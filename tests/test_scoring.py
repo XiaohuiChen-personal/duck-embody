@@ -1231,6 +1231,30 @@ class TestMapMatching:
         assert turn["model_output"]["dispatched"] == 1
         assert scoring.room_evidence(builder.document) == {"kitchen": [(2.4, 1.0)]}
 
+    def test_interleaved_motion_rejection_does_not_hide_later_memory_write(self):
+        turn = {
+            "model_output": {
+                "tool_calls": [
+                    {"name": "move", "args": {"distance_m": 0.5}},
+                    {"name": "turn_to_heading", "args": {"heading_deg": 90}},
+                    {"name": "set_current_room", "args": {"name": "kitchen"}},
+                ],
+                "dispatched": 2,
+            },
+            "tool_results": [
+                {"name": "move", "json_text": '{"ok": true}'},
+                {
+                    "name": "turn_to_heading",
+                    "json_text": '{"error": "not_executed"}',
+                },
+                {"name": "set_current_room", "json_text": '{"ok": true}'},
+            ],
+        }
+        assert [call["name"] for call in scoring.executed_calls(turn)] == [
+            "move",
+            "set_current_room",
+        ]
+
     def test_a_tool_call_with_null_args_does_not_kill_the_trial(self):
         """The OpenAI adapter parses tool arguments out of a JSON string, so a
         provider-side artefact can land ``null`` there. It used to raise

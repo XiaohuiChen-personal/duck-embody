@@ -276,13 +276,14 @@ per-stage reading anyway. There is no presentation discontinuity because §5.2's
 every request and never stored in the transcript, so the model never sees a stale pre-reset budget line.
 An <strong>unrun</strong> stage 2 reports outcome <code>not_run</code> with turns 0 and policy-seconds 0.0.</div>
 
-<div class="warning"><strong>Multiple tool calls per turn are allowed and executed in listed order.</strong>
+<div class="warning"><strong>Multiple tool calls per turn are allowed and handled in listed order.</strong>
 This lets a model bundle memory writes (<code>update_room</code>, <code>mark_exit</code>,
 <code>update_plan</code>) with one motion command in a single turn — important because the 40-turn cap counts
 <em>model calls</em>, not tool calls. All results return in one message, per Anthropic's parallel-tool-use
 guidance — not an API-rejected shape (consecutive same-role messages are merged server-side), but splitting
-results across messages silently trains the model to stop making parallel calls (§7.2). Motion tools inside
-one turn execute sequentially and each advances physics; policy-seconds accumulate across them.</div>
+results across messages silently trains the model to stop making parallel calls (§7.2). At most one motion
+tool executes in a turn; later motion calls receive <code>not_executed</code>, while later perception and
+memory calls still run. This preserves one observation-to-motion decision per physical transition.</div>
 
 <h2 id="tools">4. Tool surface — full schema and semantics</h2>
 

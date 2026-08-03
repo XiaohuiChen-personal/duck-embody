@@ -134,6 +134,14 @@ def build_parser():
     parser.add_argument("--video-dir", default=str(DEFAULT_VIDEO_DIR))
     parser.add_argument("--checkpoint", default=None, help="policy .pt (default: policy/model_2999.pt)")
     parser.add_argument(
+        "--batch-id",
+        help="optional write-once provenance manifest id for a pre-freeze canary",
+    )
+    parser.add_argument(
+        "--calibration",
+        help="checkpoint-keyed calibration JSON; required with --batch-id",
+    )
+    parser.add_argument(
         "--max-turns", type=int, default=None,
         help="per-stage turn cap override for smoke runs ONLY. A benchmark "
              "trial must use the frozen 40 (doc 06 §2); the override is recorded "
@@ -151,11 +159,18 @@ def main() -> int:
     # Parsed BEFORE anything launches: AppLauncher inside SimSession.launch()
     # parses sys.argv for its own flags and would choke on ours. Stripping them
     # afterwards leaves kit exactly the argv it expects.
+    invocation_argv = list(sys.argv)
     args, kit_argv = build_parser().parse_known_args()
     sys.argv = [sys.argv[0], *kit_argv]
 
     if args.max_turns is not None and args.max_turns <= 0:
         print("FATAL: --max-turns must be positive")
+        return 2
+    if bool(args.batch_id) != bool(args.calibration):
+        print("FATAL: --batch-id and --calibration must be supplied together")
+        return 2
+    if args.batch_id and not args.checkpoint:
+        print("FATAL: a manifest-backed canary requires explicit --checkpoint")
         return 2
 
     # Imports that need no kit, so a config typo fails in a second rather than
@@ -230,8 +245,33 @@ def main() -> int:
     # §7's design. Two copies of the reset/attach/log/finish sequence would
     # drift silently, and then the batch would measure a different harness
     # than the one the T3.5 gate proved.
-    from duck_embody.runner import announce, run_one_trial
+    from duck_embody.runner import (
+        announce,
+        build_batch_manifest,
+        manifest_path,
+        run_one_trial,
+        write_manifest_once,
+    )
     from duck_embody.sim.session import SimSession
+
+    provenance = None
+    if args.batch_id:
+        manifest = build_batch_manifest(
+            batch_id=args.batch_id,
+            checkpoint=Path(args.checkpoint),
+            calibration_path=Path(args.calibration),
+            argv=invocation_argv,
+        )
+        path = manifest_path(args.batch_id)
+        write_manifest_once(path, manifest)
+        provenance = {
+            "batch_manifest_sha256": manifest["manifest_sha256"],
+            "checkpoint_sha256": manifest["policy"]["checkpoint_sha256"],
+            "parent_commit": manifest["parent_repo"]["commit"],
+            "success_criterion": manifest["success_criterion"],
+            "resolved_model": None,
+        }
+        print(f"  manifest : {path} ({manifest['manifest_sha256'][:12]}…)")
 
     session = SimSession.launch(
         task_id=TASK_ID, checkpoint=args.checkpoint, headless=not args.headed
@@ -267,6 +307,8 @@ def main() -> int:
             no_video=args.no_video,
             max_turns=args.max_turns,
             on_turn=announce,
+            provenance=provenance,
+            smoke=args.max_turns is not None,
         )
         final = outcome.final
         video_rel = outcome.video_path

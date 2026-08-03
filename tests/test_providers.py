@@ -272,6 +272,53 @@ class TestAnthropicMessageShaping:
         out = anthropic_adapter.to_native([AssistantMessage(native=native)])
         assert out == [{"role": "assistant", "content": native}]
 
+    def test_parse_normalizes_sdk_blocks_before_multiturn_replay(
+        self, anthropic_adapter
+    ):
+        """SDK model objects can fail when the next request serializes them."""
+        from types import SimpleNamespace
+
+        class SDKBlock:
+            type = "tool_use"
+            id = "call_1"
+            name = "move"
+            input = {"distance_m": 0.5}
+
+            def model_dump_json(self, **_kwargs):
+                return json.dumps(
+                    {
+                        "type": self.type,
+                        "id": self.id,
+                        "name": self.name,
+                        "input": self.input,
+                    }
+                )
+
+            def model_dump(self, **_kwargs):
+                return json.loads(self.model_dump_json())
+
+        response = _refusal_response([SDKBlock()])
+        response.stop_reason = "tool_use"
+        response.stop_details = None
+        response.usage = SimpleNamespace(
+            input_tokens=10,
+            output_tokens=3,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+        )
+        turn = anthropic_adapter._parse(response)
+        assert turn.raw == [
+            {
+                "type": "tool_use",
+                "id": "call_1",
+                "name": "move",
+                "input": {"distance_m": 0.5},
+            }
+        ]
+        assert anthropic_adapter.to_native([AssistantMessage(native=turn.raw)]) == [
+            {"role": "assistant", "content": turn.raw}
+        ]
+
     def test_a_refusal_parses_to_an_empty_list_never_none(self, anthropic_adapter):
         """`_parse` normalises `raw`, so a `None` content cannot become
         `"content": null` on the wire either."""

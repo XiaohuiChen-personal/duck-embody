@@ -326,6 +326,23 @@ Agent harness (found in T3.4's review pass, 2026-07-26):
   `out.extend([])` is a no-op on the OpenAI adapter — so it would have cost only
   the two Anthropic contestants a trial each. Any future provider adapter needs
   the same guard.
+- **Anthropic multi-turn replay must cross the SDK boundary as plain JSON
+  dicts.** The first TR.9 live two-turn probe succeeded, then anthropic 0.79.0
+  + Pydantic 2.9.2 failed before request 2 while serializing the SDK content
+  model (`TypeError: argument 'by_alias': 'NoneType' object cannot be converted
+  to 'PyBool'`). `_parse()` now converts every response content block with
+  `model_dump_json()` before storing `AssistantTurn.raw`; signed thinking and
+  tool-use fields remain JSON data, but no Pydantic object is replayed.
+  `results/probes/provider_roundtrip_20260802.json` proves two turns for both
+  providers, request-hash reconstruction, resolved IDs, and normalized usage.
+- **`model_output.dispatched` is a count, not always a prefix boundary after
+  one-motion enforcement.** A rejected interior second motion receives
+  `not_executed`, while later memory/perception calls still run. Remediated logs
+  carry one positional `tool_results[]` entry per listed call; scoring and
+  forensics use those records for exact status. Only historical logs without
+  `tool_results` use the old prefix interpretation (including truncation by
+  `declare_done` or a fall). `turn_and_move` is also a motion record and must
+  remain in forensic joins.
 - **The fairness contract hashes FILES; doc 06 §2 freezes ITEMS.** Hash the file
   that *enforces* an item, not the one that documents it: the 40/240 caps live in
   `agent/memory.py` (not the mirrored `configs/benchmark.yaml`), the motion

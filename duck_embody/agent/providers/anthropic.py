@@ -53,6 +53,31 @@ from duck_embody.agent.providers.base import (
 load_env()
 
 
+def _content_block_dict(block) -> dict:
+    """Stable JSON object for replaying an Anthropic content block.
+
+    Returning SDK Pydantic objects directly worked with older SDK/Pydantic
+    pairs, but anthropic 0.79.0 + Pydantic 2.9.2 fails on the second request
+    while serializing those objects (``by_alias=None``). ``model_dump_json``
+    preserves signed thinking/tool blocks while crossing the SDK boundary as
+    plain JSON-compatible data.
+    """
+    if isinstance(block, dict):
+        return dict(block)
+    if hasattr(block, "model_dump_json"):
+        return json.loads(block.model_dump_json(exclude_none=True))
+    if hasattr(block, "model_dump"):
+        try:
+            return dict(block.model_dump(mode="json", exclude_none=True))
+        except TypeError:
+            return dict(block.model_dump(exclude_none=True))
+    return {
+        key: value
+        for key, value in vars(block).items()
+        if not key.startswith("_") and value is not None
+    }
+
+
 class AnthropicProvider:
     def __init__(self, cfg: ModelConfig, max_retries: int = 5):
         import anthropic
@@ -279,12 +304,11 @@ class AnthropicProvider:
             text="\n".join(p for p in text_parts if p),
             tool_calls=tool_calls,
             usage=usage,
-            # Normalised to a list, never `None`: a refusal is HTTP 200 with an
-            # empty (or absent) `content`, and `to_native` must be able to tell
-            # "nothing to echo" from a real turn without special-casing `None`.
-            # It drops an empty one rather than emitting invalid content — see
-            # there for why that is a scored-vs-rerun distinction.
-            raw=list(response.content or []),
+            # Plain JSON-compatible dicts, not SDK Pydantic objects. They retain
+            # signed thinking blocks unchanged at the wire-data level while
+            # avoiding an SDK/Pydantic second-request serialization failure.
+            # Empty/absent refusal content still normalises to [].
+            raw=[_content_block_dict(block) for block in response.content or []],
             stop_reason=stop_reason,
             thinking="\n".join(p for p in thinking_parts if p),
             refusal=refusal,

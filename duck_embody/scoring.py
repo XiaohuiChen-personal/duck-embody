@@ -1231,16 +1231,54 @@ def _point_in_room(x: float, y: float, room: str) -> bool:
     return room_at(x, y) == room
 
 
+def executed_call_mask(turn: dict) -> list[bool]:
+    """Per-listed-call execution status, exact for remediated logs.
+
+    Remediated logs carry one positional ``tool_results`` entry for every
+    listed call.  Control-flow rejections are therefore identifiable even when
+    they are interleaved (for example: motion, rejected second motion, then a
+    valid memory write).  Historical logs lack those records; for them
+    ``dispatched`` retains its original prefix-count meaning.
+    """
+    output = turn.get("model_output") or {}
+    calls = output.get("tool_calls") or []
+    if not isinstance(calls, list):
+        return []
+    results = turn.get("tool_results")
+    if isinstance(results, list) and len(results) == len(calls):
+        mask: list[bool] = []
+        for call, result in zip(calls, results):
+            if not isinstance(call, dict) or not isinstance(result, dict):
+                mask.append(False)
+                continue
+            skipped = call.get("name") == "declare_done"
+            try:
+                payload = json.loads(result.get("json_text") or "{}")
+            except (json.JSONDecodeError, TypeError):
+                payload = {}
+            if isinstance(payload, dict) and payload.get("error") in {
+                "not_executed",
+                "stage_ended",
+            }:
+                skipped = True
+            mask.append(not skipped)
+        return mask
+    dispatched = output.get("dispatched")
+    if not isinstance(dispatched, int) or not 0 <= dispatched <= len(calls):
+        dispatched = len(calls)
+    return [index < dispatched for index in range(len(calls))]
+
+
 def executed_calls(turn: dict) -> list[dict]:
     """The turn's tool calls the harness actually RAN, in order.
 
-    ``model_output.tool_calls`` is what the model emitted; ``dispatched`` is how
-    many of them ``loop._run_turn`` got to before ``declare_done`` ended the
-    stage, and every call after that is answered with ``not_executed``. Measured
-    before this filter existed: a turn logged as ``[declare_done,
-    set_current_room('kitchen')]`` still contributed a §5.7 evidence point for
-    a call the harness had rejected, so the majority-of-evidence test could be
-    tipped by claims that never ran.
+    ``model_output.tool_calls`` is what the model emitted. Remediated logs use
+    positional ``tool_results`` to distinguish calls that ran from interleaved
+    one-motion rejections; historical logs fall back to the old
+    ``dispatched`` prefix count. Measured before this filter existed: a turn
+    logged as ``[declare_done, set_current_room('kitchen')]`` still contributed
+    a §5.7 evidence point for a call the harness had rejected, so the
+    majority-of-evidence test could be tipped by claims that never ran.
 
     Known residual: a call with a ``parse_error`` IS counted in ``dispatched``
     (``tools.dispatch`` answers it with an error and never touches memory), and
@@ -1253,10 +1291,11 @@ def executed_calls(turn: dict) -> list[dict]:
     calls = output.get("tool_calls") or []
     if not isinstance(calls, list):
         return []
-    dispatched = output.get("dispatched")
-    if isinstance(dispatched, int) and 0 <= dispatched <= len(calls):
-        calls = calls[:dispatched]
-    return [call for call in calls if isinstance(call, dict)]
+    return [
+        call
+        for call, ran in zip(calls, executed_call_mask(turn))
+        if ran and isinstance(call, dict)
+    ]
 
 
 def _claimed_room_name(call: dict) -> str | None:

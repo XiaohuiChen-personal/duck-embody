@@ -23,9 +23,10 @@ Three schema facts the callers keep getting wrong, all measured against
    across the batch for 343 `turn_to_heading`/`move`/`send_velocity` tool calls,
    and nothing for the other 12 tools. It is not positionally aligned with
    ``model_output.tool_calls``.
-2. ``model_output.dispatched`` is the number of calls the loop actually ran, and
-   it **excludes a trailing ``declare_done``** (11 of 434 turns). Calls at index
-   ≥ ``dispatched`` never touched the world and must not be paired with state.
+2. Historical ``model_output.dispatched`` is a prefix count and excludes
+   ``declare_done`` or calls after a fall. Remediated logs can reject an
+   interior second motion while continuing to later non-motion calls, so their
+   positional ``tool_results`` records are the exact per-call source.
 3. ``memory_snapshot.corrections`` is **cumulative and stage-local**: its
    ``turn`` is ``turn_idx``, which restarts at the stage boundary, so records
    must be keyed on ``(stage, turn)``. ``opus5_seed104`` has a ``find_kitchen``
@@ -48,7 +49,7 @@ from duck_embody import scoring
 #: local rather than imported from ``agent/tools.py`` on purpose: this module
 #: describes *logs already written*, so it must keep reading historical batches
 #: unchanged even after a remediation task edits the live tool set.
-MOTION_TOOLS = ("turn_to_heading", "move", "send_velocity")
+MOTION_TOOLS = ("turn_to_heading", "move", "send_velocity", "turn_and_move")
 
 #: The terminal tool. It ends the stage instead of being dispatched, which is
 #: the whole reason ``dispatched`` can be less than ``len(tool_calls)``.
@@ -251,11 +252,11 @@ def _validate_turn(document: dict, index: int, turn: Any) -> None:
             f"{path}.execution.calls",
             f"expected a list, got {type(calls).__name__}",
         )
-    dispatched = _dispatched_count(document, index, turn, tool_calls)
+    dispatch_mask = _dispatch_mask(document, index, turn, tool_calls)
     motion_names = [
         call["name"]
-        for call in tool_calls[:dispatched]
-        if call["name"] in MOTION_TOOLS
+        for call, ran in zip(tool_calls, dispatch_mask)
+        if ran and call["name"] in MOTION_TOOLS
     ]
     if len(motion_names) != len(calls):
         raise _fail(
@@ -302,34 +303,59 @@ def _validate_turn(document: dict, index: int, turn: Any) -> None:
                 )
 
 
-def _dispatched_count(
+def _dispatch_mask(
     document: dict, index: int, turn: dict, tool_calls: list[dict]
-) -> int:
-    """How many listed calls the loop actually ran.
-
-    Trusts ``model_output.dispatched`` when present, but only after checking it
-    against the shape that explains every observed shortfall — a trailing
-    ``declare_done``. A log where the two disagree for some other reason is a
-    log this parser must not guess about.
-    """
+) -> list[bool]:
+    """Which listed calls ran, with an auditable historical fallback."""
     dispatched = turn["model_output"].get("dispatched")
     if dispatched is None:
-        return len(tool_calls)
+        dispatched = len(tool_calls)
     if not isinstance(dispatched, int) or not 0 <= dispatched <= len(tool_calls):
         raise _fail(
             document,
             f"turns[{index}].model_output.dispatched",
-            f"is {dispatched!r}, not an index into {len(tool_calls)} tool call(s)",
+            f"is {dispatched!r}, not a count within {len(tool_calls)} tool call(s)",
         )
+    results = turn.get("tool_results")
+    if isinstance(results, list):
+        if len(results) != len(tool_calls):
+            raise _fail(
+                document,
+                f"turns[{index}].tool_results",
+                f"has {len(results)} record(s) for {len(tool_calls)} tool call(s)",
+            )
+        for call_index, (call, result) in enumerate(zip(tool_calls, results)):
+            if not isinstance(result, dict) or result.get("name") != call["name"]:
+                raise _fail(
+                    document,
+                    f"turns[{index}].tool_results[{call_index}]",
+                    f"does not positionally match tool call {call['name']!r}",
+                )
+        mask = scoring.executed_call_mask(turn)
+        if sum(mask) != dispatched:
+            raise _fail(
+                document,
+                f"turns[{index}].model_output.dispatched",
+                f"is {dispatched}, but positional tool results prove {sum(mask)} "
+                "call(s) ran",
+            )
+        return mask
+
+    # Historical logs predate positional tool results. In those logs the loop
+    # stopped at the first declare_done or fall, so dispatched is a prefix
+    # count. Both truncation causes are explicit in doc 06 §4.
     undispatched = [call["name"] for call in tool_calls[dispatched:]]
-    if undispatched and undispatched != [DECLARE_DONE]:
+    records = turn["execution"].get("calls") or []
+    ended_by_fall = bool(records and records[-1].get("fell"))
+    ended_by_declare = bool(undispatched and undispatched[0] == DECLARE_DONE)
+    if undispatched and not (ended_by_declare or ended_by_fall):
         raise _fail(
             document,
             f"turns[{index}].model_output.dispatched",
-            f"stops before {undispatched} — only a trailing {DECLARE_DONE!r} is a "
-            "known non-dispatch (doc 05 §4.6)",
+            f"stops before {undispatched} without a {DECLARE_DONE!r} or a falling "
+            "last execution record (doc 06 §4)",
         )
-    return dispatched
+    return [call_index < dispatched for call_index in range(len(tool_calls))]
 
 
 def load_trial(path: str | Path) -> dict:
@@ -370,7 +396,7 @@ def iter_tool_calls(document: dict) -> Iterator[ToolCall]:
     trial_id = str(document.get("trial_id", "<unknown trial>"))
     for index, turn in enumerate(document.get("turns") or []):
         tool_calls = turn["model_output"].get("tool_calls") or []
-        dispatched = _dispatched_count(document, index, turn, tool_calls)
+        dispatch_mask = _dispatch_mask(document, index, turn, tool_calls)
         for call_index, call in enumerate(tool_calls):
             yield ToolCall(
                 trial_id=trial_id,
@@ -380,7 +406,7 @@ def iter_tool_calls(document: dict) -> Iterator[ToolCall]:
                 call_index=call_index,
                 name=str(call["name"]),
                 args=dict(call.get("args") or {}),
-                dispatched=call_index < dispatched,
+                dispatched=dispatch_mask[call_index],
             )
 
 
@@ -395,11 +421,11 @@ def iter_motion_calls(document: dict) -> Iterator[MotionCall]:
     trial_id = str(document.get("trial_id", "<unknown trial>"))
     for index, turn in enumerate(document.get("turns") or []):
         tool_calls = turn["model_output"].get("tool_calls") or []
-        dispatched = _dispatched_count(document, index, turn, tool_calls)
+        dispatch_mask = _dispatch_mask(document, index, turn, tool_calls)
         records = turn["execution"].get("calls") or []
         motion_index = 0
-        for call_index, call in enumerate(tool_calls[:dispatched]):
-            if call["name"] not in MOTION_TOOLS:
+        for call_index, (call, ran) in enumerate(zip(tool_calls, dispatch_mask)):
+            if not ran or call["name"] not in MOTION_TOOLS:
                 continue
             if motion_index >= len(records):
                 raise _fail(
@@ -448,12 +474,14 @@ def correction_events(document: dict) -> list[CorrectionEvent]:
     previous_true_xy: tuple[float, float] | None = None
     for index, turn in enumerate(document.get("turns") or []):
         tool_calls = turn["model_output"].get("tool_calls") or []
-        dispatched = _dispatched_count(document, index, turn, tool_calls)
+        dispatch_mask = _dispatch_mask(document, index, turn, tool_calls)
         records = turn["execution"].get("calls") or []
         written = _corrections_written(turn)
         write_index = 0
         motion_index = 0
-        for call_index, call in enumerate(tool_calls[:dispatched]):
+        for call_index, (call, ran) in enumerate(zip(tool_calls, dispatch_mask)):
+            if not ran:
+                continue
             name = call["name"]
             if name in MOTION_TOOLS:
                 motion_index += 1

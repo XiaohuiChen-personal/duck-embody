@@ -1,0 +1,106 @@
+{
+  "schema": "duck-embody-provider-roundtrip-v1",
+  "created_at": "2026-08-03T02:10:25Z",
+  "frame": "results/figures/smoke/camera_standing.jpg",
+  "providers": {
+    "sonnet5": {
+      "request_sha256": [
+        "c703a82613920509b2ec9e5327d4e74c4c71114b7b3bd8ba41bb526a4ba83590",
+        "4d872d04363c496626537818a1559b6788b98e1b63a808a36c58e843a4cabedb"
+      ],
+      "reconstructed_sha256": [
+        "c703a82613920509b2ec9e5327d4e74c4c71114b7b3bd8ba41bb526a4ba83590",
+        "4d872d04363c496626537818a1559b6788b98e1b63a808a36c58e843a4cabedb"
+      ],
+      "hashes_match": true,
+      "turns": [
+        {
+          "resolved_model_id": "claude-sonnet-5",
+          "native_response_sha256": "0f9e29cebe3c692170de57053e7f87d5389f599d57757b75356dd5eb47c7baa1",
+          "tool_names": [
+            "report_scene"
+          ],
+          "usage": {
+            "input_tokens_total": 859,
+            "input_tokens_uncached": 859,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "output_tokens_total": 56,
+            "reasoning_tokens": null,
+            "provider_reported_total_tokens": null,
+            "cost_usd_estimate": 0.003417,
+            "pricing_version": "2026-08-02",
+            "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+          }
+        },
+        {
+          "resolved_model_id": "claude-sonnet-5",
+          "native_response_sha256": "ce917f917deaa80750077d52195915157bc7362e9a4679f5b37f2acbc1d975c2",
+          "tool_names": [],
+          "usage": {
+            "input_tokens_total": 933,
+            "input_tokens_uncached": 933,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "output_tokens_total": 19,
+            "reasoning_tokens": null,
+            "provider_reported_total_tokens": null,
+            "cost_usd_estimate": 0.003084,
+            "pricing_version": "2026-08-02",
+            "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+          }
+        }
+      ]
+    },
+    "gpt56sol": {
+      "request_sha256": [
+        "c703a82613920509b2ec9e5327d4e74c4c71114b7b3bd8ba41bb526a4ba83590",
+        "827976e2e6693b08a2aacc778469e5e0eed240a9ecfccd1ab1a687be1c9fcc98"
+      ],
+      "reconstructed_sha256": [
+        "c703a82613920509b2ec9e5327d4e74c4c71114b7b3bd8ba41bb526a4ba83590",
+        "827976e2e6693b08a2aacc778469e5e0eed240a9ecfccd1ab1a687be1c9fcc98"
+      ],
+      "hashes_match": true,
+      "turns": [
+        {
+          "resolved_model_id": "gpt-5.6-sol",
+          "native_response_sha256": "862a013014fc45a5271672f5ebbf265ca4229ca1c5d15478e6638861a73fa617",
+          "tool_names": [
+            "report_scene"
+          ],
+          "usage": {
+            "input_tokens_total": 394,
+            "input_tokens_uncached": 394,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "output_tokens_total": 39,
+            "reasoning_tokens": 17,
+            "provider_reported_total_tokens": 433,
+            "cost_usd_estimate": 0.00314,
+            "pricing_version": "2026-08-02",
+            "pricing_source": "https://developers.openai.com/api/docs/pricing"
+          }
+        },
+        {
+          "resolved_model_id": "gpt-5.6-sol",
+          "native_response_sha256": "5afec32b13673671d008fa638e3d98e3ea37006f394b224bb84fbc7bad6b2272",
+          "tool_names": [],
+          "usage": {
+            "input_tokens_total": 454,
+            "input_tokens_uncached": 454,
+            "cache_read_tokens": 0,
+            "cache_write_tokens": 0,
+            "output_tokens_total": 12,
+            "reasoning_tokens": 0,
+            "provider_reported_total_tokens": 466,
+            "cost_usd_estimate": 0.00263,
+            "pricing_version": "2026-08-02",
+            "pricing_source": "https://developers.openai.com/api/docs/pricing"
+          }
+        }
+      ]
+    }
+  },
+  "acceptance": "PASS"
+}

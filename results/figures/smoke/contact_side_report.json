@@ -11,11 +11,11 @@
       "expected": "right_leg",
       "mirror_key": "wall25",
       "reach_m": 0.6,
-      "steps": 192,
-      "bumped_at_step": 148,
-      "fell": true,
+      "steps": 262,
+      "bumped_at_step": 153,
+      "fell": false,
       "peak_by_body": {
-        "head_assembly": 10.8
+        "head_assembly": 203.7
       },
       "felt_groups": [
         "head"
@@ -35,142 +35,148 @@
       "expected": "right_leg",
       "mirror_key": "wall25",
       "reach_m": 0.6,
-      "steps": 192,
+      "steps": 262,
+      "bumped_at_step": 153,
+      "fell": false,
+      "peak_by_body": {
+        "head_assembly": 203.7,
+        "trunk_assembly": 28.8
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw-15",
+      "seed": 101,
+      "spawn": [
+        2.424,
+        2.95,
+        105.0
+      ],
+      "expected": "right_leg",
+      "mirror_key": "wall15",
+      "reach_m": 0.5499999999999999,
+      "steps": 250,
+      "bumped_at_step": 149,
+      "fell": false,
+      "peak_by_body": {
+        "head_assembly": 24.6,
+        "trunk_assembly": 1.8
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw-15",
+      "seed": 104,
+      "spawn": [
+        2.424,
+        2.95,
+        105.0
+      ],
+      "expected": "right_leg",
+      "mirror_key": "wall15",
+      "reach_m": 0.5499999999999999,
+      "steps": 250,
+      "bumped_at_step": 149,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 43.7,
+        "head_assembly": 18.3
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw+0",
+      "seed": 101,
+      "spawn": [
+        2.25,
+        2.95,
+        90.0
+      ],
+      "expected": null,
+      "mirror_key": "wall0",
+      "reach_m": 0.49999999999999994,
+      "steps": 237,
+      "bumped_at_step": 146,
+      "fell": false,
+      "peak_by_body": {
+        "left_antenna_holder": 69.2,
+        "trunk_assembly": 38.9,
+        "head_assembly": 14.2
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw+0",
+      "seed": 104,
+      "spawn": [
+        2.25,
+        2.95,
+        90.0
+      ],
+      "expected": null,
+      "mirror_key": "wall0",
+      "reach_m": 0.49999999999999994,
+      "steps": 237,
+      "bumped_at_step": 146,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 69.2,
+        "left_antenna_holder": 24.0,
+        "head_assembly": 14.2
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw+15",
+      "seed": 101,
+      "spawn": [
+        2.076,
+        2.95,
+        75.0
+      ],
+      "expected": "left_leg",
+      "mirror_key": "wall15",
+      "reach_m": 0.5499999999999999,
+      "steps": 250,
       "bumped_at_step": 148,
-      "fell": true,
+      "fell": false,
       "peak_by_body": {
-        "head_assembly": 10.8
-      },
-      "felt_groups": [
-        "head"
-      ],
-      "single_leg": false,
-      "reported_leg": null,
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw-15",
-      "seed": 101,
-      "spawn": [
-        2.424,
-        2.95,
-        105.0
-      ],
-      "expected": "right_leg",
-      "mirror_key": "wall15",
-      "reach_m": 0.5499999999999999,
-      "steps": 188,
-      "bumped_at_step": 135,
-      "fell": true,
-      "peak_by_body": {
-        "knee_and_ankle_assembly_3": 213.5,
-        "head_assembly": 38.3
+        "head_assembly": 53.0,
+        "trunk_assembly": 5.2
       },
       "felt_groups": [
         "head",
-        "right_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "right_leg",
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw-15",
-      "seed": 104,
-      "spawn": [
-        2.424,
-        2.95,
-        105.0
-      ],
-      "expected": "right_leg",
-      "mirror_key": "wall15",
-      "reach_m": 0.5499999999999999,
-      "steps": 188,
-      "bumped_at_step": 135,
-      "fell": true,
-      "peak_by_body": {
-        "head_assembly": 38.3,
-        "knee_and_ankle_assembly_3": 29.6
-      },
-      "felt_groups": [
-        "head",
-        "right_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "right_leg",
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw+0",
-      "seed": 101,
-      "spawn": [
-        2.25,
-        2.95,
-        90.0
-      ],
-      "expected": null,
-      "mirror_key": "wall0",
-      "reach_m": 0.49999999999999994,
-      "steps": 178,
-      "bumped_at_step": 135,
-      "fell": true,
-      "peak_by_body": {
-        "head_assembly": 88.0,
-        "knee_and_ankle_assembly": 14.8
-      },
-      "felt_groups": [
-        "head",
-        "left_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "left_leg",
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw+0",
-      "seed": 104,
-      "spawn": [
-        2.25,
-        2.95,
-        90.0
-      ],
-      "expected": null,
-      "mirror_key": "wall0",
-      "reach_m": 0.49999999999999994,
-      "steps": 178,
-      "bumped_at_step": 135,
-      "fell": true,
-      "peak_by_body": {
-        "knee_and_ankle_assembly": 195.1,
-        "head_assembly": 88.0
-      },
-      "felt_groups": [
-        "head",
-        "left_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "left_leg",
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw+15",
-      "seed": 101,
-      "spawn": [
-        2.076,
-        2.95,
-        75.0
-      ],
-      "expected": "left_leg",
-      "mirror_key": "wall15",
-      "reach_m": 0.5499999999999999,
-      "steps": 180,
-      "bumped_at_step": 134,
-      "fell": true,
-      "peak_by_body": {
-        "head_assembly": 10.0
-      },
-      "felt_groups": [
-        "head"
+        "torso"
       ],
       "single_leg": false,
       "reported_leg": null,
@@ -187,176 +193,182 @@
       "expected": "left_leg",
       "mirror_key": "wall15",
       "reach_m": 0.5499999999999999,
-      "steps": 180,
-      "bumped_at_step": 134,
-      "fell": true,
+      "steps": 250,
+      "bumped_at_step": 148,
+      "fell": false,
       "peak_by_body": {
-        "head_assembly": 10.0
+        "head_assembly": 53.0,
+        "trunk_assembly": 5.2
       },
       "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw+25",
+      "seed": 101,
+      "spawn": [
+        1.947,
+        2.95,
+        65.0
+      ],
+      "expected": "left_leg",
+      "mirror_key": "wall25",
+      "reach_m": 0.6,
+      "steps": 262,
+      "bumped_at_step": 149,
+      "fell": false,
+      "peak_by_body": {
+        "head_assembly": 51.3,
+        "trunk_assembly": 7.0
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "wall yaw+25",
+      "seed": 104,
+      "spawn": [
+        1.947,
+        2.95,
+        65.0
+      ],
+      "expected": "left_leg",
+      "mirror_key": "wall25",
+      "reach_m": 0.6,
+      "steps": 262,
+      "bumped_at_step": 149,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 39.2,
+        "head_assembly": 30.8
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "counter west edge",
+      "seed": 101,
+      "spawn": [
+        2.3165,
+        0.95,
+        270.0
+      ],
+      "expected": "left_leg",
+      "mirror_key": "counter_edge",
+      "reach_m": 0.49999999999999994,
+      "steps": 237,
+      "bumped_at_step": 141,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 139.7,
+        "head_assembly": 7.0
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "counter west edge",
+      "seed": 104,
+      "spawn": [
+        2.3165,
+        0.95,
+        270.0
+      ],
+      "expected": "left_leg",
+      "mirror_key": "counter_edge",
+      "reach_m": 0.49999999999999994,
+      "steps": 237,
+      "bumped_at_step": 141,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 139.7,
+        "head_assembly": 7.0
+      },
+      "felt_groups": [
+        "head",
+        "torso"
+      ],
+      "single_leg": false,
+      "reported_leg": null,
+      "registered_force": true
+    },
+    {
+      "label": "counter east edge",
+      "seed": 101,
+      "spawn": [
+        3.0935000000000006,
+        0.9,
+        270.0
+      ],
+      "expected": "right_leg",
+      "mirror_key": "counter_edge",
+      "reach_m": 0.44999999999999996,
+      "steps": 224,
+      "bumped_at_step": 1,
+      "fell": false,
+      "peak_by_body": {
+        "trunk_assembly": 57.9,
+        "knee_and_ankle_assembly": 13.1,
+        "head_assembly": 6.6
+      },
+      "felt_groups": [
+        "torso",
+        "head",
+        "left_leg"
+      ],
+      "single_leg": true,
+      "reported_leg": "left_leg",
+      "registered_force": true,
+      "recovery_cleared": false
+    },
+    {
+      "label": "counter east edge",
+      "seed": 104,
+      "spawn": [
+        3.0935000000000006,
+        0.9,
+        270.0
+      ],
+      "expected": "right_leg",
+      "mirror_key": "counter_edge",
+      "reach_m": 0.44999999999999996,
+      "steps": 223,
+      "bumped_at_step": 118,
+      "fell": false,
+      "peak_by_body": {
+        "knee_and_ankle_assembly": 156.6,
+        "left_antenna_holder": 32.3,
+        "trunk_assembly": 32.0
+      },
+      "felt_groups": [
+        "left_leg",
+        "torso",
         "head"
       ],
-      "single_leg": false,
-      "reported_leg": null,
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw+25",
-      "seed": 101,
-      "spawn": [
-        1.947,
-        2.95,
-        65.0
-      ],
-      "expected": "left_leg",
-      "mirror_key": "wall25",
-      "reach_m": 0.6,
-      "steps": 219,
-      "bumped_at_step": 143,
-      "fell": true,
-      "peak_by_body": {
-        "knee_and_ankle_assembly_3": 234.8,
-        "head_assembly": 22.1
-      },
-      "felt_groups": [
-        "head",
-        "right_leg"
-      ],
       "single_leg": true,
-      "reported_leg": "right_leg",
-      "registered_force": true
-    },
-    {
-      "label": "wall yaw+25",
-      "seed": 104,
-      "spawn": [
-        1.947,
-        2.95,
-        65.0
-      ],
-      "expected": "left_leg",
-      "mirror_key": "wall25",
-      "reach_m": 0.6,
-      "steps": 219,
-      "bumped_at_step": 143,
-      "fell": true,
-      "peak_by_body": {
-        "knee_and_ankle_assembly_3": 234.8,
-        "head_assembly": 22.1
-      },
-      "felt_groups": [
-        "head",
-        "right_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "right_leg",
-      "registered_force": true
-    },
-    {
-      "label": "counter west edge",
-      "seed": 101,
-      "spawn": [
-        2.3165,
-        0.95,
-        270.0
-      ],
-      "expected": "left_leg",
-      "mirror_key": "counter_edge",
-      "reach_m": 0.49999999999999994,
-      "steps": 237,
-      "bumped_at_step": 136,
-      "fell": false,
-      "peak_by_body": {
-        "trunk_assembly": 174.5,
-        "head_assembly": 25.8,
-        "knee_and_ankle_assembly_3": 6.4
-      },
-      "felt_groups": [
-        "head",
-        "torso",
-        "right_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "right_leg",
+      "reported_leg": "left_leg",
       "registered_force": true,
       "recovery_cleared": false
-    },
-    {
-      "label": "counter west edge",
-      "seed": 104,
-      "spawn": [
-        2.3165,
-        0.95,
-        270.0
-      ],
-      "expected": "left_leg",
-      "mirror_key": "counter_edge",
-      "reach_m": 0.49999999999999994,
-      "steps": 237,
-      "bumped_at_step": 136,
-      "fell": false,
-      "peak_by_body": {
-        "trunk_assembly": 173.3,
-        "head_assembly": 21.6,
-        "knee_and_ankle_assembly_3": 6.4
-      },
-      "felt_groups": [
-        "head",
-        "torso",
-        "right_leg"
-      ],
-      "single_leg": true,
-      "reported_leg": "right_leg",
-      "registered_force": true,
-      "recovery_cleared": false
-    },
-    {
-      "label": "counter east edge",
-      "seed": 101,
-      "spawn": [
-        3.0935000000000006,
-        0.9,
-        270.0
-      ],
-      "expected": "right_leg",
-      "mirror_key": "counter_edge",
-      "reach_m": 0.44999999999999996,
-      "steps": 169,
-      "bumped_at_step": 1,
-      "fell": true,
-      "peak_by_body": {
-        "trunk_assembly": 46.8
-      },
-      "felt_groups": [
-        "torso"
-      ],
-      "single_leg": false,
-      "reported_leg": null,
-      "registered_force": true
-    },
-    {
-      "label": "counter east edge",
-      "seed": 104,
-      "spawn": [
-        3.0935000000000006,
-        0.9,
-        270.0
-      ],
-      "expected": "right_leg",
-      "mirror_key": "counter_edge",
-      "reach_m": 0.44999999999999996,
-      "steps": 166,
-      "bumped_at_step": 1,
-      "fell": true,
-      "peak_by_body": {
-        "trunk_assembly": 514.1
-      },
-      "felt_groups": [
-        "torso"
-      ],
-      "single_leg": false,
-      "reported_leg": null,
-      "registered_force": true
     },
     {
       "label": "sofa east edge",
@@ -369,19 +381,17 @@
       "expected": "left_leg",
       "mirror_key": null,
       "reach_m": 0.25,
-      "steps": 116,
-      "bumped_at_step": 81,
-      "fell": true,
+      "steps": 174,
+      "bumped_at_step": 90,
+      "fell": false,
       "peak_by_body": {
-        "trunk_assembly": 377.5,
-        "knee_and_ankle_assembly": 205.3
+        "trunk_assembly": 142.9
       },
       "felt_groups": [
-        "torso",
-        "left_leg"
+        "torso"
       ],
-      "single_leg": true,
-      "reported_leg": "left_leg",
+      "single_leg": false,
+      "reported_leg": null,
       "registered_force": true
     },
     {
@@ -395,36 +405,28 @@
       "expected": "left_leg",
       "mirror_key": null,
       "reach_m": 0.25,
-      "steps": 116,
-      "bumped_at_step": 81,
-      "fell": true,
+      "steps": 174,
+      "bumped_at_step": 90,
+      "fell": false,
       "peak_by_body": {
-        "trunk_assembly": 377.5,
-        "knee_and_ankle_assembly": 205.3
+        "trunk_assembly": 142.9
       },
       "felt_groups": [
-        "torso",
-        "left_leg"
+        "torso"
       ],
-      "single_leg": true,
-      "reported_leg": "left_leg",
+      "single_leg": false,
+      "reported_leg": null,
       "registered_force": true
     }
   ],
-  "side_rate": 0.5,
+  "side_rate": 0.0,
   "mirrors": {
-    "wall25": [
-      "right_leg"
-    ],
-    "wall15": [
-      "right_leg"
-    ],
-    "wall0": [
+    "wall0": [],
+    "wall15": [],
+    "counter_edge": [
       "left_leg"
     ],
-    "counter_edge": [
-      "right_leg"
-    ]
+    "wall25": []
   },
   "recovery_rate": 0.0,
   "prompt_action": "WEAKEN the prompt sentence to '\u2026and a single leg means one leg caught a low edge' before T4.3 (verdict B / honest null)"

@@ -361,8 +361,42 @@ class TestMalformedDocuments:
     def test_unexplained_partial_dispatch_is_rejected(self) -> None:
         turn = _turn(1, ["move", "look_around"], [_exec("move", (1.0, 0.0))])
         turn["model_output"]["dispatched"] = 1
-        with pytest.raises(ForensicsError, match="only a trailing 'declare_done'"):
+        with pytest.raises(ForensicsError, match="without a 'declare_done' or a falling"):
             forensics.validate_document(_document([turn]), require_final=False)
+
+    def test_historical_fall_explains_trailing_unrun_calls(self) -> None:
+        execution = _exec("turn_to_heading", (1.0, 0.0))
+        execution["fell"] = True
+        turn = _turn(
+            1,
+            ["set_current_room", "turn_to_heading", "move", "get_observation"],
+            [execution],
+        )
+        turn["model_output"]["dispatched"] = 2
+        document = _document([turn])
+        forensics.validate_document(document, require_final=False)
+        calls = list(forensics.iter_tool_calls(document))
+        assert [call.dispatched for call in calls] == [True, True, False, False]
+
+    def test_positional_results_handle_interleaved_motion_rejection(self) -> None:
+        turn = _turn(
+            1,
+            ["move", "turn_to_heading", "set_current_room"],
+            [_exec("move", (1.0, 0.0))],
+        )
+        turn["model_output"]["dispatched"] = 2
+        turn["tool_results"] = [
+            _tool_result("move", {}),
+            _tool_result("turn_to_heading", {"error": "not_executed"}),
+            _tool_result("set_current_room", {"ok": True}),
+        ]
+        document = _document([turn])
+        forensics.validate_document(document, require_final=False)
+        calls = list(forensics.iter_tool_calls(document))
+        assert [call.dispatched for call in calls] == [True, False, True]
+        assert [call.call.name for call in forensics.iter_motion_calls(document)] == [
+            "move"
+        ]
 
     def test_orphan_correction_record_is_rejected(self) -> None:
         turn = _turn(1, ["look_around"], [])
@@ -595,3 +629,13 @@ def _turn(
     if end is not None:
         turn["true_pose"] = {"x": end[0], "y": end[1], "heading_deg": 0.0}
     return turn
+
+
+def _tool_result(name: str, payload: dict) -> dict:
+    return {
+        "call_id": f"call_{name}",
+        "name": name,
+        "json_text": json.dumps(payload),
+        "is_error": bool(payload.get("error")),
+        "images": [],
+    }

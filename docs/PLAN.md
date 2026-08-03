@@ -2118,6 +2118,66 @@ legacy evidence. Regenerated artifacts:
 Definition remains in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T9
 canary/mini-batch/full batch).
 
+**Adversarial plan review (2026-08-02, rule 10.1).** L0 passed at the landed
+revision (`1894 passed, 3 skipped`), but L1 found that the new strict forensic
+reader could not replay the immutable v4 batch: `fable5_seed102` turn 14 fell
+while executing the second listed call, so `model_output.dispatched == 2` and
+the trailing `move` / `get_observation` were correctly unrun. The reader
+mistakenly allowed a short dispatch only for `declare_done`, despite doc 06 §4
+explicitly naming both `declare_done` and falls as truncation causes. Review
+also found a post-TR.4 schema issue: one-motion enforcement may reject an
+interior second motion and still execute later memory/perception calls, so
+`dispatched` is now a count, not always a prefix boundary. New logs already
+carry one positional `tool_results[]` record per listed call, including
+`not_executed` / `stage_ended`; replay and scoring must use those records for
+exact per-call status, retain the historical prefix interpretation only for
+logs without `tool_results`, and test both fall truncation and interleaved
+motion rejection before L1 can pass. This is a model-neutral reporting/scoring
+fix, not a prompt or acceptance-threshold change.
+
+**L0–L5 evidence (2026-08-02/03).**
+
+- **L0 PASS:** exact command `TERM=xterm bash scripts/run_tests.sh tests/ -q`
+  passed after the fixes: **1898 passed, 3 skipped**.
+- **L1 PASS (historical disposition preserved):** canonical scorer replay over
+  all 12 v4 and all 12 immutable `v5d_r2` trials had zero common-metric diffs
+  against `results/{scores.json,scores_raw_v5d_r2.json}`. Strict batch replay
+  returned `INCOMPLETE` for both (12 parsed, zero structured visual verdicts),
+  not a false PASS; raw JSON remained untouched. The v4 fall-truncation parser
+  defect found by the first replay is regression-tested.
+- **L2 PASS:** 97 selected mocked stage-2, refusal, reconstruction,
+  one-motion, anchor/revisit, pre-teleport, and budget-reset tests passed (plus
+  the complete suite above).
+- **L3 PASS:** `scripts/probe_provider_roundtrip.py` made two live turns through
+  `sonnet5`/Anthropic and `gpt56sol`/OpenAI. Both request hashes reconstructed,
+  both resolved model IDs matched configuration, and all four responses carried
+  complete normalized usage. Evidence:
+  `results/probes/provider_roundtrip_20260802.json`. The first run exposed the
+  Anthropic SDK-object replay defect; the plain-JSON fix passed the rerun.
+- **L4 PASS with one honest policy-specific INCONCLUSIVE:** candidate
+  checkpoint `model_5998.pt` passed recorded/unrecorded invariance in all four
+  sequences (`results/logs/smoke_record_invariance.json` + four mp4/filmstrips).
+  The full contact run `gap_hunt_20260802-212524` passed S0/S1/S3/S4; S2 was
+  **INCONCLUSIVE**, because the retrained gait did not topple under the bounded
+  press (explicitly allowed by the smoke design, not converted to PASS).
+  Scripted S5 initially exposed stale pre-one-motion assumptions and an
+  over-tight gait-dependent route; after fixing the smoke rather than task
+  thresholds, targeted run `results/logs/gap_hunt_20260802-214801/` passed both
+  stages, request/source reconstruction, boundary reset, accounting, and video.
+  Filmstrips show upright alternating gait, bump-without-teleport, recognizable
+  rooms, and no crawl/glide.
+- **L5 PASS:** manifest-backed five-turn Sonnet canary at
+  `results/smokes/t9_canary_prefreeze/sonnet5_seed101.json` ended at the explicit
+  smoke turn cap (no task-success requirement), with QA 5/5 parsed, normalized
+  cache usage, no automatic room/exit anchors, one-motion-safe
+  `turn_and_move`, six reconstructed requests, 17 verified images, and strict
+  trial audit PASS. Manifest:
+  `results/manifests/t9-canary-prefreeze.json` SHA
+  `a281de9c56de6096d4f2f73a9db99bbf8d168c80139179ff0d0ef79dd433f4c0`.
+  Dense visual audit under
+  `results/smokes/t9_canary_prefreeze_audits/sonnet5_seed101.md` is PASS on all
+  checklist fields. Cost: $0.1288.
+
 ---
 
 ## Standing constraints (every task)

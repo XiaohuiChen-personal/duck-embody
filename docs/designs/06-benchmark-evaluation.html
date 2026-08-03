@@ -487,8 +487,9 @@ use, and the only thing that distinguishes two stages' "turn 7".</li>
 know they exist). <code>turns[].model_output</code> carries six keys beyond §4's <code>thought</code> /
 <code>tool_calls</code>: <code>text</code> (visible prose, distinct from <code>thought</code>'s reasoning
 summary), <code>stop_reason</code>, <code>refusal</code>, <code>dispatched</code> (how many calls actually
-ran — the only thing distinguishing "the model emitted 4 calls" from "the harness ran 2 and answered the
-rest <code>not_executed</code>", which is how a <code>declare_done</code> or a fall truncates a turn),
+ran; historical logs use it as a prefix boundary when <code>declare_done</code> or a fall truncates a turn,
+while remediated logs use positional <code>tool_results[]</code> to identify an interleaved rejected second
+motion followed by valid perception/memory calls),
 <code>parse_errors</code>, and <code>nudged</code>. <code>config</code> carries <code>model_config</code>
 (the YAML stem, e.g. <code>fable5</code>, alongside <code>model</code>'s provider ID) and, on a smoke run
 only, <code>turn_cap_override</code>. <code>final.stages[*]</code> carries <code>stage</code>,
