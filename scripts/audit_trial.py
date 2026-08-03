@@ -101,6 +101,51 @@ def audit(path: Path, require_tool_coverage: bool = False) -> int:
         print("  INFO  no results/freeze.json yet (pre-freeze audit) — "
               "freeze-hash check skipped")
 
+    # -- reconstructable requests (TR.5 / F-09) ---------------------------
+    requests = trial.get("requests")
+    if isinstance(requests, list):
+        try:
+            sys.path.insert(0, str(REPO_ROOT))
+            from duck_embody.agent.loop import (
+                reconstruct_neutral_request,
+                request_structure_problems,
+            )
+
+            reconstruction_errors: list[str] = []
+            structural_errors: list[str] = []
+            for index, request in enumerate(requests):
+                try:
+                    rebuilt = reconstruct_neutral_request(
+                        trial, index, path.parent
+                    )
+                    if rebuilt["request_sha256"] != request.get("request_sha256"):
+                        reconstruction_errors.append(
+                            f"request {index}: reconstructed hash differs"
+                        )
+                except Exception as exc:  # noqa: BLE001 - report every corrupt request
+                    reconstruction_errors.append(f"request {index}: {exc}")
+                    continue
+                structural_errors.extend(
+                    f"request {index}: {detail}"
+                    for detail in request_structure_problems(
+                        trial, index, path.parent
+                    )
+                )
+            check(
+                not reconstruction_errors,
+                "every provider-neutral request reconstructs to its logged hash",
+                reconstruction_errors[0] if reconstruction_errors else f"{len(requests)} requests",
+            )
+            check(
+                not structural_errors,
+                "model-facing requests derive only from logged harness sources",
+                structural_errors[0] if structural_errors else "",
+            )
+        except Exception as exc:  # noqa: BLE001 - an unavailable checker is an audit failure
+            check(False, "provider-neutral request audit is runnable", str(exc))
+    else:
+        print("  INFO  legacy trial has no request journal — reconstruction skipped")
+
     # -- tool coverage: PLAN T3.5 wants every tool exercised at least once --
     used: dict[str, int] = {}
     errors: list[tuple[int, str, str]] = []

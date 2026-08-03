@@ -63,7 +63,7 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Mapping
 
 from duck_embody.agent.memory import (
     STAGE_RETURN_HOME,
@@ -87,6 +87,8 @@ from duck_embody.agent.providers.base import (
     ToolResultBlock,
     Usage,
     UserMessage,
+    canonical_json_bytes,
+    native_response_sha256,
 )
 from duck_embody.agent.tools import (
     DECLARE_DONE,
@@ -131,6 +133,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 #: nothing failing; ``tests/test_loop.py`` asserts this constant still matches
 #: the prompt's own promise.
 K_CONTEXT_TURNS = 10
+
+#: Stable identifiers name the frozen prompt roles without logging a second
+#: copy of either prompt into every request manifest.
+NAVIGATION_SYSTEM_FROZEN_ID = "duck-embody.navigation-system.v1"
+QA_SYSTEM_FROZEN_ID = "duck-embody.qa-system.none.v1"
+NEUTRAL_REQUEST_SCHEMA = "duck-embody.neutral-request.v1"
 
 #: The system parameter for the post-episode QA exchange (doc 06 §5.9).
 #:
@@ -299,8 +307,12 @@ class TranscriptEntry:
     native: Any
     results: list[ToolResultBlock] = field(default_factory=list)
     note: str | None = None
+    global_turn_index: int | None = None
+    response_metadata: dict[str, Any] = field(default_factory=dict)
 
-    def messages(self, *, keep_images: bool) -> list[Message]:
+    def messages(
+        self, *, keep_images: bool, context_index: int | None = None
+    ) -> list[Message]:
         blocks: list[Block] = [
             block if keep_images else _without_images(block) for block in self.results
         ]
@@ -316,7 +328,35 @@ class TranscriptEntry:
                 "transcript entry has neither tool results nor a note — an empty "
                 "user message is an API error (doc 05 §7.2)"
             )
-        return [AssistantMessage(native=self.native), UserMessage(blocks)]
+        response_sha = self.response_metadata.get("native_response_sha256")
+        if not response_sha:
+            # Synthetic/unit-test transcript entries predate response metadata.
+            # Real provider turns always carry the hash of the whole response.
+            response_sha = native_response_sha256(self.native)
+        return [
+            AssistantMessage(
+                native=self.native,
+                context_index=context_index,
+                global_turn_index=self.global_turn_index,
+                native_response_sha256=response_sha,
+            ),
+            UserMessage(blocks),
+        ]
+
+
+def _context_selection(
+    transcript: list[TranscriptEntry], k: int
+) -> list[tuple[int, bool]]:
+    """Selected transcript indexes paired with their image-retention decision."""
+    if not transcript:
+        return []
+    n = len(transcript)
+    tail_start = max(1, n - k) if k > 0 else n
+    image_floor = n - k
+    return [
+        (index, index >= image_floor)
+        for index in [0, *range(tail_start, n)]
+    ]
 
 
 def context_messages(
@@ -344,16 +384,11 @@ def context_messages(
     §5.2 exempts it from truncation and storing it in the transcript would both
     duplicate it and freeze a stale budget line into the context.
     """
-    if not transcript:
-        return []
-    n = len(transcript)
-    # `max(1, ...)`: the tail is taken over transcript[1:], so it can never
-    # reach back to index 0 and re-emit the pinned first turn.
-    tail_start = max(1, n - k) if k > 0 else n
-    image_floor = n - k
     messages: list[Message] = []
-    for index in [0, *range(tail_start, n)]:
-        messages += transcript[index].messages(keep_images=index >= image_floor)
+    for index, keep_images in _context_selection(transcript, k):
+        messages += transcript[index].messages(
+            keep_images=keep_images, context_index=index
+        )
     return messages
 
 
@@ -377,6 +412,569 @@ def build_request(
     that must not happen is splitting *tool results* across messages.
     """
     return [*context_messages(transcript, k), UserMessage([TextBlock(memory_block)])]
+
+
+# ---------------------------------------------------------------------------
+# Reconstructable provider-neutral requests (TR.5 / forensics F-09)
+# ---------------------------------------------------------------------------
+
+
+def _sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _sha256_text(value: str) -> str:
+    return _sha256_bytes(value.encode("utf-8"))
+
+
+def _tool_schema_sha256(tools: list[dict]) -> str:
+    return _sha256_bytes(canonical_json_bytes(tools))
+
+
+def _media_extension(media_type: str) -> str:
+    return {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }.get(media_type, ".bin")
+
+
+def _request_image_relative_path(
+    trial_id: str, sha256: str, media_type: str
+) -> str:
+    return (
+        f"frames/{trial_id}/request_{sha256}"
+        f"{_media_extension(media_type)}"
+    )
+
+
+def _context_manifest(
+    transcript: list[TranscriptEntry], k: int
+) -> dict[str, Any]:
+    selected = _context_selection(transcript, k)
+    image_policy: list[dict[str, Any]] = []
+    for index, keep_images in selected:
+        entry = transcript[index]
+        count = sum(len(result.images) for result in entry.results)
+        state = "none"
+        if count:
+            state = "retained" if keep_images else "stripped"
+        image_policy.append(
+            {
+                "context_index": index,
+                "global_turn_index": entry.global_turn_index,
+                "original_image_count": count,
+                "state": state,
+            }
+        )
+    return {
+        "k": k,
+        "indexes": [index for index, _keep in selected],
+        "global_turn_indexes": [
+            transcript[index].global_turn_index for index, _keep in selected
+        ],
+        "image_policy": image_policy,
+    }
+
+
+def _image_manifest(
+    image: ImageBlock,
+    save_image: Callable[[bytes, str, str], str],
+) -> dict[str, Any]:
+    try:
+        raw = base64.b64decode(image.data_b64, validate=True)
+    except Exception as exc:
+        raise ValueError("outgoing ImageBlock is not valid base64") from exc
+    digest = _sha256_bytes(raw)
+    return {
+        "label": image.label,
+        "frame_path": save_image(raw, image.media_type, digest),
+        "sha256": digest,
+        "media_type": image.media_type,
+    }
+
+
+def _message_manifests(
+    messages: list[Message],
+    *,
+    memory_block: str,
+    save_image: Callable[[bytes, str, str], str],
+) -> list[dict[str, Any]]:
+    """Describe the exact neutral messages without logging native reasoning."""
+    out: list[dict[str, Any]] = []
+    for message_index, message in enumerate(messages):
+        if isinstance(message, AssistantMessage):
+            response_sha = message.native_response_sha256
+            if not response_sha:
+                response_sha = native_response_sha256(message.native)
+            out.append(
+                {
+                    "role": "assistant",
+                    "context_index": message.context_index,
+                    "global_turn_index": message.global_turn_index,
+                    "native_response_sha256": response_sha,
+                }
+            )
+            continue
+
+        blocks: list[dict[str, Any]] = []
+        for block in message.blocks:
+            if isinstance(block, TextBlock):
+                blocks.append(
+                    {
+                        "type": "text",
+                        "source": (
+                            "memory"
+                            if message_index == len(messages) - 1
+                            and len(message.blocks) == 1
+                            and block.text == memory_block
+                            else "harness"
+                        ),
+                        "text": block.text,
+                    }
+                )
+            elif isinstance(block, ImageBlock):
+                blocks.append(
+                    {
+                        "type": "image",
+                        **_image_manifest(block, save_image),
+                    }
+                )
+            elif isinstance(block, ToolResultBlock):
+                blocks.append(
+                    {
+                        "type": "tool_result",
+                        "call_id": block.tool_use_id,
+                        "name": block.tool_name,
+                        "json_text": block.text,
+                        "is_error": bool(block.is_error),
+                        "images": [
+                            _image_manifest(image, save_image)
+                            for image in block.images
+                        ],
+                    }
+                )
+            else:  # pragma: no cover - Block is a closed union
+                raise TypeError(f"unsupported neutral block {type(block).__name__}")
+        out.append({"role": "user", "blocks": blocks})
+    return out
+
+
+_HASHED_REQUEST_KEYS = (
+    "schema",
+    "system_prompt",
+    "tool_schema_sha256",
+    "messages",
+    "memory_block",
+    "context",
+)
+
+
+def _hashed_request_payload(manifest: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: manifest[key] for key in _HASHED_REQUEST_KEYS}
+
+
+def request_manifest_sha256(manifest: Mapping[str, Any]) -> str:
+    """Hash only model-facing neutral content, not log bookkeeping fields."""
+    return _sha256_bytes(canonical_json_bytes(_hashed_request_payload(manifest)))
+
+
+def build_neutral_request_manifest(
+    *,
+    trial_id: str,
+    request_index: int,
+    kind: str,
+    system: str,
+    messages: list[Message],
+    tools: list[dict],
+    memory_block: str,
+    context: dict[str, Any],
+    save_image: Callable[[bytes, str, str], str],
+    stage: str | None = None,
+    stage_turn_index: int | None = None,
+    global_turn_index: int | None = None,
+) -> dict[str, Any]:
+    """Build the provider-neutral evidence record before an API call."""
+    frozen_id = (
+        NAVIGATION_SYSTEM_FROZEN_ID
+        if kind == "episode"
+        else QA_SYSTEM_FROZEN_ID
+    )
+    manifest: dict[str, Any] = {
+        "schema": NEUTRAL_REQUEST_SCHEMA,
+        "request_index": request_index,
+        "kind": kind,
+        "stage": stage,
+        "stage_turn_index": stage_turn_index,
+        "global_turn_index": global_turn_index,
+        "system_prompt": {
+            "frozen_id": frozen_id,
+            "sha256": _sha256_text(system),
+        },
+        "tool_schema_sha256": _tool_schema_sha256(tools),
+        "messages": _message_manifests(
+            messages, memory_block=memory_block, save_image=save_image
+        ),
+        "memory_block": memory_block,
+        "context": context,
+    }
+    manifest["request_sha256"] = request_manifest_sha256(manifest)
+    return manifest
+
+
+def _saved_frame_bytes(
+    saved_frames: Path | str | Mapping[str, Any] | Callable[[str], bytes],
+    relative: str,
+) -> bytes:
+    if callable(saved_frames):
+        value = saved_frames(relative)
+    elif isinstance(saved_frames, Mapping):
+        if relative not in saved_frames:
+            raise FileNotFoundError(relative)
+        value = saved_frames[relative]
+    else:
+        rel = Path(relative)
+        if rel.is_absolute() or ".." in rel.parts:
+            raise ValueError(f"frame path must be relative and contained: {relative!r}")
+        value = Path(saved_frames) / rel
+
+    if isinstance(value, bytes):
+        return value
+    if isinstance(value, bytearray):
+        return bytes(value)
+    if isinstance(value, Path):
+        return value.read_bytes()
+    if isinstance(value, str):
+        path = Path(value)
+        if path.exists():
+            return path.read_bytes()
+        return value.encode("utf-8")
+    raise TypeError(f"unsupported saved frame carrier {type(value).__name__}")
+
+
+def _manifest_images(manifest: Mapping[str, Any]) -> Iterable[Mapping[str, Any]]:
+    for message in manifest.get("messages", []):
+        for block in message.get("blocks", []):
+            if block.get("type") == "image":
+                yield block
+            for image in block.get("images", []):
+                yield image
+
+
+_FORBIDDEN_MODEL_RESULT_KEYS = {
+    "true_pose",
+    "pose_trace",
+    "sampled_xy",
+    "true_displacement_m",
+    "fall_diagnostics",
+    "tilt_deg",
+}
+
+
+def _nested_mapping_keys(value: Any) -> Iterable[str]:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            yield str(key)
+            yield from _nested_mapping_keys(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _nested_mapping_keys(item)
+
+
+def reconstruct_neutral_request(
+    document: Mapping[str, Any],
+    turn_index: int,
+    saved_frames: Path | str | Mapping[str, Any] | Callable[[str], bytes],
+) -> dict[str, Any]:
+    """Reconstruct and verify one neutral request from its logged evidence.
+
+    ``turn_index`` is the zero-based index in the pre-send ``requests`` journal;
+    this includes the final QA request. Every referenced frame is read and
+    checked before the canonical hash is returned.
+    """
+    requests = document.get("requests")
+    if not isinstance(requests, list):
+        raise ValueError("trial document has no pre-send `requests` journal")
+    try:
+        manifest = requests[turn_index]
+    except IndexError as exc:
+        raise IndexError(f"request index {turn_index} is out of range") from exc
+
+    for image in _manifest_images(manifest):
+        raw = _saved_frame_bytes(saved_frames, image["frame_path"])
+        actual = _sha256_bytes(raw)
+        if actual != image["sha256"]:
+            raise ValueError(
+                f"saved frame hash mismatch for {image['frame_path']}: "
+                f"logged {image['sha256']}, reconstructed {actual}"
+            )
+
+    reconstructed = _hashed_request_payload(manifest)
+    reconstructed["request_sha256"] = request_manifest_sha256(manifest)
+    if reconstructed["request_sha256"] != manifest.get("request_sha256"):
+        raise ValueError(
+            f"request {turn_index} hash mismatch: logged "
+            f"{manifest.get('request_sha256')}, reconstructed "
+            f"{reconstructed['request_sha256']}"
+        )
+    return reconstructed
+
+
+def request_structure_problems(
+    document: Mapping[str, Any],
+    turn_index: int,
+    saved_frames: Path | str | Mapping[str, Any] | Callable[[str], bytes],
+) -> list[str]:
+    """Return provenance mismatches for one logged request.
+
+    Hash reconstruction detects corruption inside the manifest. This second,
+    structural pass detects a self-consistent but invented model-facing block:
+    context tool results must originate in earlier turn records, the memory text
+    must be that turn's pre-dispatch snapshot, and harness text is fixed.
+    """
+    problems: list[str] = []
+    requests = document.get("requests")
+    if not isinstance(requests, list) or turn_index >= len(requests):
+        return [f"request {turn_index} is missing"]
+    manifest = requests[turn_index]
+    try:
+        reconstruct_neutral_request(document, turn_index, saved_frames)
+    except (ValueError, TypeError, KeyError, FileNotFoundError) as exc:
+        problems.append(str(exc))
+        return problems
+
+    leaked_keys: set[str] = set()
+    for message in manifest.get("messages", []):
+        for block in message.get("blocks", []):
+            if block.get("type") != "tool_result":
+                continue
+            try:
+                payload = json.loads(block.get("json_text", ""))
+            except (TypeError, json.JSONDecodeError):
+                problems.append("tool-result text is not exact valid JSON")
+                continue
+            leaked_keys.update(
+                _FORBIDDEN_MODEL_RESULT_KEYS & set(_nested_mapping_keys(payload))
+            )
+    if leaked_keys:
+        problems.append(
+            "tool-result structure contains scoring-only keys: "
+            + ", ".join(sorted(leaked_keys))
+        )
+
+    kind = manifest.get("kind")
+    expected_system = SYSTEM_PROMPT if kind == "episode" else QA_SYSTEM_PROMPT
+    expected_frozen_id = (
+        NAVIGATION_SYSTEM_FROZEN_ID
+        if kind == "episode"
+        else QA_SYSTEM_FROZEN_ID
+    )
+    expected_tools = TOOL_SCHEMAS if kind == "episode" else QA_TOOLS
+    if manifest.get("system_prompt") != {
+        "frozen_id": expected_frozen_id,
+        "sha256": _sha256_text(expected_system),
+    }:
+        problems.append("system prompt identity/hash differs from the frozen prompt")
+    if manifest.get("tool_schema_sha256") != _tool_schema_sha256(expected_tools):
+        problems.append("tool-schema hash differs from the frozen schema")
+
+    if kind == "qa":
+        expected_messages = [
+            {
+                "role": "user",
+                "blocks": [
+                    {
+                        "type": "text",
+                        "source": "harness",
+                        "text": render_qa_prompt(manifest.get("memory_block", "")),
+                    }
+                ],
+            }
+        ]
+        if manifest.get("messages") != expected_messages:
+            problems.append("QA message is not the frozen prompt over its memory block")
+        if manifest.get("context") != {
+            "k": 0,
+            "indexes": [],
+            "global_turn_indexes": [],
+            "image_policy": [],
+        }:
+            problems.append("QA request unexpectedly carries episode context")
+        return problems
+    if kind != "episode":
+        problems.append(f"unknown request kind {kind!r}")
+        return problems
+
+    current = next(
+        (
+            item
+            for item in document.get("turns", [])
+            if item.get("request_index") == manifest.get("request_index")
+        ),
+        None,
+    )
+    if current is None:
+        # An exhausted API call deliberately has a pre-send request but no turn.
+        return problems
+    memory_block = (current.get("memory_snapshot") or {}).get("block")
+    if manifest.get("memory_block") != memory_block:
+        problems.append("memory block differs from the turn's pre-dispatch snapshot")
+
+    global_index = manifest.get("global_turn_index")
+    prior = sorted(
+        (
+            item
+            for item in document.get("turns", [])
+            if isinstance(item.get("global_turn_idx"), int)
+            and isinstance(global_index, int)
+            and item["global_turn_idx"] < global_index
+            and item.get("end_reason") != REASON_FALL
+        ),
+        key=lambda item: item["global_turn_idx"],
+    )
+    k = K_CONTEXT_TURNS
+    selected = _context_selection(
+        [
+            TranscriptEntry(
+                native=[],
+                results=[
+                    ToolResultBlock(
+                        result["call_id"],
+                        result["name"],
+                        result["json_text"],
+                        images=[
+                            ImageBlock(
+                                data_b64="unused",
+                                label=image.get("label"),
+                                media_type=image["media_type"],
+                            )
+                            for image in result.get("images", [])
+                        ],
+                        is_error=bool(result.get("is_error")),
+                    )
+                    for result in item.get("tool_results", [])
+                ],
+                note=(
+                    DERAILMENT_NUDGE
+                    if (item.get("model_output") or {}).get("nudged")
+                    else None
+                ),
+                global_turn_index=item["global_turn_idx"],
+                response_metadata=item.get("response_metadata") or {},
+            )
+            for item in prior
+        ],
+        k,
+    )
+
+    expected_context = {
+        "k": k,
+        "indexes": [index for index, _keep in selected],
+        "global_turn_indexes": [
+            prior[index]["global_turn_idx"] for index, _keep in selected
+        ],
+        "image_policy": [],
+    }
+    expected_messages: list[dict[str, Any]] = []
+    trial_id = str(document.get("trial_id", ""))
+    for context_index, keep_images in selected:
+        source = prior[context_index]
+        source_results = source.get("tool_results", [])
+        image_count = sum(len(result.get("images", [])) for result in source_results)
+        expected_context["image_policy"].append(
+            {
+                "context_index": context_index,
+                "global_turn_index": source["global_turn_idx"],
+                "original_image_count": image_count,
+                "state": (
+                    "retained"
+                    if image_count and keep_images
+                    else "stripped"
+                    if image_count
+                    else "none"
+                ),
+            }
+        )
+        expected_messages.append(
+            {
+                "role": "assistant",
+                "context_index": context_index,
+                "global_turn_index": source["global_turn_idx"],
+                "native_response_sha256": (
+                    source.get("response_metadata") or {}
+                ).get("native_response_sha256"),
+            }
+        )
+        blocks: list[dict[str, Any]] = []
+        if (source.get("model_output") or {}).get("nudged"):
+            blocks.append(
+                {
+                    "type": "text",
+                    "source": "harness",
+                    "text": DERAILMENT_NUDGE,
+                }
+            )
+        else:
+            for result in source_results:
+                images: list[dict[str, Any]] = []
+                if keep_images:
+                    for image in result.get("images", []):
+                        try:
+                            raw = _saved_frame_bytes(
+                                saved_frames, image["frame_path"]
+                            )
+                        except (ValueError, TypeError, FileNotFoundError) as exc:
+                            problems.append(str(exc))
+                            continue
+                        if _sha256_bytes(raw) != image.get("sha256"):
+                            problems.append(
+                                f"source frame hash mismatch for {image['frame_path']}"
+                            )
+                        images.append(
+                            {
+                                "label": image.get("label"),
+                                "frame_path": _request_image_relative_path(
+                                    trial_id,
+                                    image["sha256"],
+                                    image["media_type"],
+                                ),
+                                "sha256": image["sha256"],
+                                "media_type": image["media_type"],
+                            }
+                        )
+                blocks.append(
+                    {
+                        "type": "tool_result",
+                        "call_id": result.get("call_id"),
+                        "name": result.get("name"),
+                        "json_text": result.get("json_text"),
+                        "is_error": bool(result.get("is_error")),
+                        "images": images,
+                    }
+                )
+        expected_messages.append({"role": "user", "blocks": blocks})
+
+    expected_messages.append(
+        {
+            "role": "user",
+            "blocks": [
+                {
+                    "type": "text",
+                    "source": "memory",
+                    "text": memory_block,
+                }
+            ],
+        }
+    )
+    if manifest.get("context") != expected_context:
+        problems.append("context indexes or image-retention policy differ")
+    if manifest.get("messages") != expected_messages:
+        problems.append(
+            "ordered neutral messages are not derivable from prior tool results "
+            "and fixed harness text"
+        )
+    return problems
 
 
 # ---------------------------------------------------------------------------
@@ -495,6 +1093,7 @@ class TrialLog:
     ) -> None:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.trial_id = trial_id
         # Frames live in a per-trial subdirectory so 12 trials can share one
         # results directory; doc 06 §4's example path is `frames/t007_0.png`,
         # and the recorded paths stay relative to this JSON's directory so the
@@ -535,6 +1134,10 @@ class TrialLog:
                     "heading_deg": spawn_heading_deg,
                 },
             },
+            # Written and flushed BEFORE each provider call. If the call
+            # exhausts its retries, the exact attempted request remains
+            # reconstructable even though no turn record can exist yet.
+            "requests": [],
             "turns": [],
             "video_path": None,
         }
@@ -563,6 +1166,55 @@ class TrialLog:
             (self.frames_dir / name).write_bytes(base64.b64decode(image.data_b64))
             paths.append(f"{self.frames_rel}/{name}")
         return paths
+
+    def save_request_image(
+        self, raw: bytes, media_type: str, digest: str
+    ) -> str:
+        """Content-address one exact outgoing ImageBlock without re-capture."""
+        relative = _request_image_relative_path(
+            self.trial_id, digest, media_type
+        )
+        path = self.path.parent / relative
+        if path.exists():
+            if path.read_bytes() != raw:
+                raise RuntimeError(
+                    f"content-addressed frame collision at {relative}"
+                )
+        else:
+            path.write_bytes(raw)
+        return relative
+
+    def record_request(
+        self,
+        *,
+        kind: str,
+        system: str,
+        messages: list[Message],
+        tools: list[dict],
+        memory_block: str,
+        context: dict[str, Any],
+        stage: str | None = None,
+        stage_turn_index: int | None = None,
+        global_turn_index: int | None = None,
+    ) -> dict[str, Any]:
+        """Persist a request manifest before control enters a provider SDK."""
+        manifest = build_neutral_request_manifest(
+            trial_id=self.trial_id,
+            request_index=len(self.document["requests"]),
+            kind=kind,
+            system=system,
+            messages=messages,
+            tools=tools,
+            memory_block=memory_block,
+            context=context,
+            save_image=self.save_request_image,
+            stage=stage,
+            stage_turn_index=stage_turn_index,
+            global_turn_index=global_turn_index,
+        )
+        self.document["requests"].append(manifest)
+        self.flush()
+        return manifest
 
     def append_turn(self, record: dict) -> None:
         self.document["turns"].append(record)
@@ -703,6 +1355,41 @@ def merge_executions(
         "motion_calls": len(calls),
         "calls": records,
     }
+
+
+def tool_result_records(
+    results: list[ToolResultBlock], frame_paths: list[str]
+) -> list[dict[str, Any]]:
+    """Independent source records for structural request reconstruction."""
+    records: list[dict[str, Any]] = []
+    frame_index = 0
+    for result in results:
+        images: list[dict[str, Any]] = []
+        for image in result.images:
+            if frame_index >= len(frame_paths):
+                raise ValueError("tool-result images outnumber saved frame paths")
+            raw = base64.b64decode(image.data_b64, validate=True)
+            images.append(
+                {
+                    "label": image.label,
+                    "frame_path": frame_paths[frame_index],
+                    "sha256": _sha256_bytes(raw),
+                    "media_type": image.media_type,
+                }
+            )
+            frame_index += 1
+        records.append(
+            {
+                "call_id": result.tool_use_id,
+                "name": result.tool_name,
+                "json_text": result.text,
+                "is_error": bool(result.is_error),
+                "images": images,
+            }
+        )
+    if frame_index != len(frame_paths):
+        raise ValueError("saved frame paths outnumber tool-result images")
+    return records
 
 
 def memory_snapshot(memory: Memory, memory_block: str) -> dict:
@@ -1001,6 +1688,8 @@ class EpisodeRunner:
         self.episode_usage = Usage()
         self.qa_usage = Usage()
         self.global_turn = 0
+        self.qa_request_index: int | None = None
+        self.qa_response_metadata: dict[str, Any] = {}
         #: Last TRUE pose observed while the episode was live. Maintained rather
         #: than re-read at the end because a fall has already teleported the
         #: robot back to spawn inside `env.step()` — `ExecResult.true_pose` is
@@ -1027,6 +1716,19 @@ class EpisodeRunner:
         """Sample ground truth while it is trustworthy (i.e. before any fall)."""
         x, y = self.context.playback.true_xy()
         self.last_true_pose = (x, y, self.context.playback.compass_deg())
+
+    def _complete_response_metadata(self, turn) -> dict[str, Any]:
+        """Fill synthetic-provider gaps while preserving adapter provenance."""
+        metadata = dict(turn.metadata or {})
+        metadata.setdefault("configured_alias", getattr(self.provider, "name", "unknown"))
+        metadata.setdefault(
+            "resolved_model_id", getattr(self.provider, "model_id", "unknown")
+        )
+        for key in ("response_id", "provider_request_id", "created", "fingerprint"):
+            metadata.setdefault(key, None)
+        metadata.setdefault("native_response_sha256", native_response_sha256(turn.raw))
+        turn.metadata = metadata
+        return metadata
 
     # -- the episode --------------------------------------------------------
 
@@ -1097,6 +1799,8 @@ class EpisodeRunner:
             },
             "qa": qa,
             "qa_raw": qa_raw,
+            "qa_request_index": self.qa_request_index,
+            "qa_response_metadata": self.qa_response_metadata,
             # WIDENED (doc 06 §4/§5.9, same commit): loud when the split found
             # fewer than five answers. `split_qa_answers` records an unparseable
             # answer as "" and T4.1 scores that 0, which is indistinguishable
@@ -1146,6 +1850,17 @@ class EpisodeRunner:
             "status": status,
         }
         messages = build_request(memory_block, self.transcript, self.k)
+        request_manifest = self.log.record_request(
+            kind="episode",
+            system=self.system_prompt,
+            messages=messages,
+            tools=self.tool_schemas,
+            memory_block=memory_block,
+            context=_context_manifest(self.transcript, self.k),
+            stage=spec.name,
+            stage_turn_index=counters.turns + 1,
+            global_turn_index=self.global_turn + 1,
+        )
 
         # --- 2. Model call --------------------------------------------------
         #
@@ -1155,6 +1870,7 @@ class EpisodeRunner:
         # §8's infra path — the trial reruns whole, and catching it here would
         # convert a network fault into a scored model failure.
         turn = self.provider.send(self.system_prompt, messages, self.tool_schemas)
+        response_metadata = self._complete_response_metadata(turn)
         counters.turns += 1
         context.turn += 1
         self.global_turn += 1
@@ -1272,7 +1988,12 @@ class EpisodeRunner:
         if end_reason != REASON_FALL:
             if turn.tool_calls:
                 self.transcript.append(
-                    TranscriptEntry(native=turn.raw, results=results)
+                    TranscriptEntry(
+                        native=turn.raw,
+                        results=results,
+                        global_turn_index=self.global_turn,
+                        response_metadata=response_metadata,
+                    )
                 )
             else:
                 # doc 05 §8's refusal/derailment row, which §3.1's pseudocode has
@@ -1291,7 +2012,13 @@ class EpisodeRunner:
                 # `AnthropicProvider.to_native` so it holds for every producer
                 # of an empty turn, not just this one.
                 self.transcript.append(
-                    TranscriptEntry(native=turn.raw, results=[], note=DERAILMENT_NUDGE)
+                    TranscriptEntry(
+                        native=turn.raw,
+                        results=[],
+                        note=DERAILMENT_NUDGE,
+                        global_turn_index=self.global_turn,
+                        response_metadata=response_metadata,
+                    )
                 )
 
         # --- 4. Caps (checked AFTER execution; never retried) ---------------
@@ -1330,6 +2057,8 @@ class EpisodeRunner:
             "turn_idx": context.turn,
             "global_turn_idx": self.global_turn,
             "timestamp": self.clock(),
+            "request_index": request_manifest["request_index"],
+            "response_metadata": response_metadata,
             "obs": obs,
             "model_output": {
                 "thought": turn.thinking or "",
@@ -1348,6 +2077,7 @@ class EpisodeRunner:
                 ],
                 "nudged": not turn.tool_calls,
             },
+            "tool_results": tool_result_records(results, obs["frame_paths"]),
             "execution": merge_executions(motion, non_motion),
             # doc 06 §4's sibling of `execution`, logged EVERY turn — including
             # the turns that stepped no physics, where it comes from the live
@@ -1433,9 +2163,25 @@ class EpisodeRunner:
             status=status_payload(self.context),
         )
         prompt = render_qa_prompt(block)
-        turn = self.provider.send(
-            QA_SYSTEM_PROMPT, [UserMessage([TextBlock(prompt)])], QA_TOOLS
+        messages = [UserMessage([TextBlock(prompt)])]
+        request_manifest = self.log.record_request(
+            kind="qa",
+            system=QA_SYSTEM_PROMPT,
+            messages=messages,
+            tools=QA_TOOLS,
+            memory_block=block,
+            context={
+                "k": 0,
+                "indexes": [],
+                "global_turn_indexes": [],
+                "image_policy": [],
+            },
         )
+        self.qa_request_index = request_manifest["request_index"]
+        turn = self.provider.send(
+            QA_SYSTEM_PROMPT, messages, QA_TOOLS
+        )
+        self.qa_response_metadata = self._complete_response_metadata(turn)
         self.qa_usage = self.qa_usage + turn.usage
         answers = split_qa_answers(turn.text or "")
         qa = [

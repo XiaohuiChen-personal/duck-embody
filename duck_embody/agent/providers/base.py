@@ -21,10 +21,14 @@ blocks to be replayed unchanged and re-serialising them would corrupt the turn.
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
+import json
 import os
 from dataclasses import dataclass, field
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Mapping, Protocol
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -88,11 +92,12 @@ class TextBlock:
 
 @dataclass
 class ImageBlock:
-    """A camera frame, base64-encoded JPEG."""
+    """A camera frame, base64-encoded without a provider-specific envelope."""
 
     data_b64: str
     #: Optional caption, used by look_around to label each bearing.
     label: str | None = None
+    media_type: str = "image/jpeg"
 
 
 @dataclass
@@ -122,6 +127,12 @@ class AssistantMessage:
     """A turn from the model, echoed back verbatim in provider-native form."""
 
     native: Any
+    #: Audit-only descriptors. Adapters ignore these fields and replay only
+    #: ``native``; the neutral request manifest uses them instead of logging
+    #: provider-native reasoning content.
+    context_index: int | None = None
+    global_turn_index: int | None = None
+    native_response_sha256: str | None = None
 
 
 Message = UserMessage | AssistantMessage
@@ -185,6 +196,75 @@ class AssistantTurn:
     thinking: str = ""
     #: Populated when the provider declined the request outright.
     refusal: str | None = None
+    #: Provider response identifiers and hashes only. Provider-native content
+    #: can contain reasoning and therefore never belongs in this mapping.
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    """Canonical UTF-8 JSON used by request and native-response hashes."""
+    return json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _native_json_value(value: Any) -> Any:
+    """Convert an SDK response to stable JSON without exposing it in the log."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if dataclasses.is_dataclass(value):
+        return _native_json_value(dataclasses.asdict(value))
+    if isinstance(value, Mapping):
+        return {str(key): _native_json_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_native_json_value(item) for item in value]
+    if hasattr(value, "model_dump"):
+        try:
+            dumped = value.model_dump(mode="json", exclude_none=False)
+        except TypeError:
+            dumped = value.model_dump(exclude_none=False)
+        return _native_json_value(dumped)
+    if hasattr(value, "to_dict"):
+        return _native_json_value(value.to_dict())
+    if hasattr(value, "__dict__"):
+        return {
+            key: _native_json_value(item)
+            for key, item in vars(value).items()
+            if not key.startswith("_")
+        }
+    return repr(value)
+
+
+def native_response_sha256(response: Any) -> str:
+    """Hash the complete native response while logging none of its content."""
+    return hashlib.sha256(canonical_json_bytes(_native_json_value(response))).hexdigest()
+
+
+def response_metadata(response: Any, *, alias: str, model_id: str) -> dict[str, Any]:
+    """Provider-neutral response provenance with no API keys or reasoning."""
+
+    def first(*names: str) -> Any:
+        for name in names:
+            value = getattr(response, name, None)
+            if value is not None:
+                return _native_json_value(value)
+        return None
+
+    return {
+        "configured_alias": alias,
+        "resolved_model_id": first("model") or model_id,
+        "response_id": first("id"),
+        "provider_request_id": first("_request_id", "request_id"),
+        "created": first("created_at", "created"),
+        "fingerprint": first("system_fingerprint", "fingerprint"),
+        "native_response_sha256": native_response_sha256(response),
+    }
 
 
 class Provider(Protocol):

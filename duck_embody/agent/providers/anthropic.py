@@ -47,6 +47,7 @@ from duck_embody.agent.providers.base import (
     UserMessage,
     load_env,
     require_key,
+    response_metadata,
 )
 
 load_env()
@@ -73,7 +74,7 @@ class AnthropicProvider:
             "type": "image",
             "source": {
                 "type": "base64",
-                "media_type": "image/jpeg",
+                "media_type": img.media_type,
                 "data": img.data_b64,
             },
         }
@@ -274,6 +275,9 @@ class AnthropicProvider:
             stop_reason=stop_reason,
             thinking="\n".join(p for p in thinking_parts if p),
             refusal=refusal,
+            metadata=response_metadata(
+                response, alias=self.name, model_id=self.model_id
+            ),
         )
 
     # -- one-shot helper for the out-of-benchmark judge ---------------------

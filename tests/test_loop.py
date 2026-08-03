@@ -43,7 +43,9 @@ transcript:
 from __future__ import annotations
 
 import base64
+import hashlib
 import html
+import importlib.util
 import json
 import math
 import re
@@ -61,6 +63,9 @@ from duck_embody.agent.loop import (
     TrialLog,
     _json_safe,
     build_request,
+    reconstruct_neutral_request,
+    request_manifest_sha256,
+    request_structure_problems,
     config_hash,
     context_messages,
     freeze_commit,
@@ -859,6 +864,230 @@ class TestMemoryBlockInEveryRequest:
             assert "Position estimate: x=" not in request["system"]
             assert "Budget: turns" not in request["system"]
             assert request["system"] in (SYSTEM_PROMPT, QA_SYSTEM_PROMPT)
+
+
+class TestReconstructableRequestManifest:
+    def two_turn_document(self, tmp_path, first_turn):
+        runner, _, log = make_runner(
+            tmp_path, [first_turn, turn(call(DECLARE_DONE))]
+        )
+        runner.context.playback.set_true_xy(target_true_xy(9.0))
+        runner.run_stage(runner.stages[0])
+        return runner, log.document
+
+    def test_reconstruction_reads_saved_outgoing_images_and_matches_hash(
+        self, tmp_path
+    ):
+        _, document = self.two_turn_document(
+            tmp_path, turn(call("get_observation"))
+        )
+        manifest = document["requests"][1]
+        rebuilt = reconstruct_neutral_request(document, 1, tmp_path)
+        assert rebuilt["request_sha256"] == manifest["request_sha256"]
+        images = [
+            image
+            for message in manifest["messages"]
+            for block in message.get("blocks", [])
+            for image in block.get("images", [])
+        ]
+        assert len(images) == 1
+        saved = (tmp_path / images[0]["frame_path"]).read_bytes()
+        assert hashlib.sha256(saved).hexdigest() == images[0]["sha256"]
+        assert images[0]["media_type"] == "image/jpeg"
+
+    def test_manifest_preserves_multi_tool_result_order_and_exact_json(
+        self, tmp_path
+    ):
+        _, document = self.two_turn_document(
+            tmp_path,
+            turn(
+                call("update_plan", "a", text="go east"),
+                call("get_observation", "b"),
+                call("no_such_tool", "c"),
+            ),
+        )
+        result_blocks = [
+            block
+            for message in document["requests"][1]["messages"]
+            for block in message.get("blocks", [])
+            if block.get("type") == "tool_result"
+        ]
+        assert [(block["call_id"], block["name"]) for block in result_blocks] == [
+            ("a", "update_plan"),
+            ("b", "get_observation"),
+            ("c", "no_such_tool"),
+        ]
+        source = document["turns"][0]["tool_results"]
+        assert [block["json_text"] for block in result_blocks] == [
+            item["json_text"] for item in source
+        ]
+
+    def test_logged_context_and_image_strip_boundary_match_the_live_policy(
+        self, tmp_path
+    ):
+        context = make_context(counters=Counters(turn_cap=12))
+        runner, _, log = make_runner(
+            tmp_path,
+            [turn(call("get_observation", f"obs_{index}")) for index in range(12)],
+            context=context,
+        )
+        runner.run_stage(runner.stages[0])
+        before_boundary = log.document["requests"][10]["context"]
+        at_boundary = log.document["requests"][11]["context"]
+        assert before_boundary["indexes"] == list(range(10))
+        assert before_boundary["image_policy"][0]["state"] == "retained"
+        assert at_boundary["indexes"] == list(range(11))
+        assert at_boundary["image_policy"][0]["state"] == "stripped"
+        assert all(
+            item["state"] == "retained"
+            for item in at_boundary["image_policy"][1:]
+        )
+
+    def test_refusal_path_is_reconstructable_without_native_content(
+        self, tmp_path
+    ):
+        refusal = AssistantTurn(
+            text="",
+            tool_calls=[],
+            usage=Usage(input_tokens=1),
+            raw=[],
+            stop_reason="refusal",
+            refusal="refusal (category=test)",
+        )
+        _, document = self.two_turn_document(tmp_path, refusal)
+        manifest = document["requests"][1]
+        assert reconstruct_neutral_request(document, 1, tmp_path)[
+            "request_sha256"
+        ] == manifest["request_sha256"]
+        assistant = manifest["messages"][0]
+        assert assistant["role"] == "assistant"
+        assert re.fullmatch(r"[0-9a-f]{64}", assistant["native_response_sha256"])
+        harness_text = [
+            block["text"]
+            for message in manifest["messages"]
+            for block in message.get("blocks", [])
+            if block.get("type") == "text"
+            and block.get("source") == "harness"
+        ]
+        assert DERAILMENT_NUDGE in harness_text
+
+    def test_provider_failure_still_leaves_the_pre_send_manifest(self, tmp_path):
+        log = make_log(tmp_path)
+        runner = EpisodeRunner(
+            provider=ExplodingProvider(),
+            context=make_context(),
+            stages=stage_specs(SEED),
+            log=log,
+        )
+        with pytest.raises(ConnectionError):
+            runner.run_stage(runner.stages[0])
+        assert len(log.document["requests"]) == 1
+        assert log.document["turns"] == []
+        assert re.fullmatch(
+            r"[0-9a-f]{64}", log.document["requests"][0]["request_sha256"]
+        )
+
+    def test_complete_episode_and_qa_requests_pass_structural_provenance(
+        self, tmp_path
+    ):
+        runner, _, log = make_runner(
+            tmp_path,
+            [turn(call("get_observation")), turn(call(DECLARE_DONE))],
+            qa_text="1. a\n2. b\n3. c\n4. d\n5. e",
+        )
+        runner.context.playback.set_true_xy(target_true_xy(9.0))
+        runner.run()
+        for index in range(len(log.document["requests"])):
+            assert request_structure_problems(
+                log.document, index, tmp_path
+            ) == []
+
+    def test_self_consistent_injected_true_pose_fails_structural_provenance(
+        self, tmp_path
+    ):
+        _, document = self.two_turn_document(
+            tmp_path, turn(call("get_observation"))
+        )
+        manifest = document["requests"][1]
+        result = next(
+            block
+            for message in manifest["messages"]
+            for block in message.get("blocks", [])
+            if block.get("type") == "tool_result"
+        )
+        payload = json.loads(result["json_text"])
+        payload["true_pose"] = [7.77, -8.88, 123.45]
+        result["json_text"] = json.dumps(payload, sort_keys=True)
+        # Poison the independent source too, then re-hash: hash-only and
+        # source-equality audits now pass, while the structural key guard fails.
+        document["turns"][0]["tool_results"][0]["json_text"] = result["json_text"]
+        manifest["request_sha256"] = request_manifest_sha256(manifest)
+        reconstruct_neutral_request(document, 1, tmp_path)
+        problems = request_structure_problems(document, 1, tmp_path)
+        assert problems
+        assert any("scoring-only keys" in problem for problem in problems)
+
+    def test_audit_path_rejects_the_self_consistent_true_pose_leak(
+        self, tmp_path, capsys
+    ):
+        runner, _, log = make_runner(
+            tmp_path,
+            [turn(call("get_observation")), turn(call(DECLARE_DONE))],
+        )
+        runner.context.playback.set_true_xy(target_true_xy(9.0))
+        runner.run_stage(runner.stages[0])
+        manifest = log.document["requests"][1]
+        result = next(
+            block
+            for message in manifest["messages"]
+            for block in message.get("blocks", [])
+            if block.get("type") == "tool_result"
+        )
+        result["json_text"] = result["json_text"][:-1] + (
+            ',"true_pose":[7.77,-8.88,123.45]}'
+        )
+        log.document["turns"][0]["tool_results"][0]["json_text"] = result[
+            "json_text"
+        ]
+        manifest["request_sha256"] = request_manifest_sha256(manifest)
+        log.flush()
+
+        spec = importlib.util.spec_from_file_location(
+            "audit_trial_request_test", REPO_ROOT / "scripts" / "audit_trial.py"
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        assert module.audit(log.path) == 1
+        output = capsys.readouterr().out
+        assert (
+            "PASS  every provider-neutral request reconstructs to its logged hash"
+            in output
+        )
+        assert (
+            "FAIL  model-facing requests derive only from logged harness sources"
+            in output
+        )
+
+    def test_response_metadata_has_ids_and_hash_but_no_native_content(
+        self, tmp_path
+    ):
+        _, document = self.two_turn_document(
+            tmp_path, turn(call("get_observation"))
+        )
+        metadata = document["turns"][0]["response_metadata"]
+        assert metadata["configured_alias"] == "fake"
+        assert metadata["resolved_model_id"] == "fake-model-1"
+        assert re.fullmatch(r"[0-9a-f]{64}", metadata["native_response_sha256"])
+        assert set(metadata) == {
+            "configured_alias",
+            "resolved_model_id",
+            "response_id",
+            "provider_request_id",
+            "created",
+            "fingerprint",
+            "native_response_sha256",
+        }
+        assert "raw" not in metadata and "thinking" not in metadata
 
 
 # ===========================================================================
@@ -1837,7 +2066,10 @@ class TestErrorPolicy:
         logged = log.document["turns"][0]["model_output"]["tool_calls"][0]
         assert logged["args"]["distance_m"] == "nan"
         json.loads(log.path.read_text())  # parses; no bare NaN token on disk
-        assert "NaN" not in log.path.read_text()
+        # TR.5 logs the exact tool-result JSON text the model received; its
+        # human-readable validation detail may legitimately spell the word
+        # "NaN". What must never appear is the non-RFC bare JSON token.
+        assert not re.search(r":\s*(?:NaN|Infinity|-Infinity)(?:[,}\]])", log.path.read_text())
 
 
 # ===========================================================================

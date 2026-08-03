@@ -1979,13 +1979,38 @@ second-motion `not_executed` with later perception/memory still executing,
 distinct collision-event deduplication, and legacy bump preservation. No Isaac
 job was run for this harness-only wiring task.
 
-### TR.5–TR.9 `[ ]` Remaining remediation tasks
+### TR.5 `[x]` Reconstructable model-facing requests (2026-08-02)
 
-Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T5
-request reconstruction, T6 immutable provenance, T7 provider usage and cost, T8
-audit and reporting, T9 canary/mini-batch/full batch). Each still runs under
-AGENTS.md rules 10 and 11 and gets its own PLAN entry with evidence when it
-lands.
+Each provider call now flushes a provider-neutral request manifest **before**
+entering the SDK, so an exhausted request remains recoverable even when there is
+no response turn. The manifest hashes the frozen system identity and canonical
+tool schema; preserves ordered message descriptors, exact memory/harness text
+and tool-result JSON; content-addresses the exact outgoing image bytes with
+label/media type/SHA; and records context indexes plus retained/stripped image
+state. `reconstruct_neutral_request` verifies saved frame bytes and recomputes
+the canonical request hash. Turn records independently retain exact tool-result
+sources, allowing `scripts/audit_trial.py` to reject a self-consistent manifest
+that injects an unlogged oracle field rather than trusting hash consistency
+alone. Provider responses add configured alias, resolved model ID, response and
+request IDs, optional created/fingerprint values, and a native-response SHA;
+provider-native response content and reasoning are not copied into metadata.
+
+**Evidence:** `TERM=xterm bash scripts/run_tests.sh tests/ -q` → 1861 passed,
+3 skipped (2026-08-02). Focused tests cover context indexes and the K/K+1 image
+strip boundary, multi-tool ordering/exact JSON, Anthropic/OpenAI image carriers
+and response metadata, empty Anthropic refusal replay, pre-send persistence,
+saved-frame reconstruction, and an injected `true_pose` whose recomputed hash
+passes reconstruction but fails structural audit provenance. One cheap live
+call per provider passed with 64-character native-response hashes and both
+response/request IDs present (`claude-sonnet-5`, `gpt-5.6-sol`; 2026-08-02).
+No Isaac Sim job was needed for this harness-only task.
+
+### TR.6–TR.9 `[ ]` Remaining remediation tasks
+
+Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T6
+immutable provenance, T7 provider usage and cost, T8 audit and reporting, T9
+canary/mini-batch/full batch). Each still runs under AGENTS.md rules 10 and 11
+and gets its own PLAN entry with evidence when it lands.
 
 ---
 

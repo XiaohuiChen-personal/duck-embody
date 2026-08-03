@@ -99,6 +99,11 @@ def _refusal_response(content):
     from types import SimpleNamespace
 
     return SimpleNamespace(
+        id="msg_test",
+        model="claude-resolved-test",
+        _request_id="req_anthropic_test",
+        created_at="2026-08-02T00:00:00Z",
+        system_fingerprint="anthropic-fp",
         stop_reason="refusal",
         stop_details=SimpleNamespace(category="cyber"),
         content=content,
@@ -272,6 +277,16 @@ class TestAnthropicMessageShaping:
             assert turn.tool_calls == []
             assert turn.refusal == "refusal (category=cyber)"
             assert turn.stop_reason == "refusal"
+            assert turn.metadata == {
+                "configured_alias": "fable5",
+                "resolved_model_id": "claude-resolved-test",
+                "response_id": "msg_test",
+                "provider_request_id": "req_anthropic_test",
+                "created": "2026-08-02T00:00:00Z",
+                "fingerprint": "anthropic-fp",
+                "native_response_sha256": turn.metadata["native_response_sha256"],
+            }
+            assert len(turn.metadata["native_response_sha256"]) == 64
 
     def test_look_around_labels_precede_each_frame(self, anthropic_adapter):
         msg = UserMessage(
@@ -400,6 +415,31 @@ class TestOpenAIMessageShaping:
         texts = [p["text"] for p in parts if p["type"] == "input_text"]
         assert "view at compass 0 deg" in texts
         assert "view at compass 90 deg" in texts
+
+    def test_response_metadata_carries_resolved_ids_without_native_content(
+        self, openai_adapter
+    ):
+        from types import SimpleNamespace
+
+        response = SimpleNamespace(
+            id="resp_test",
+            model="gpt-resolved-test",
+            _request_id="req_openai_test",
+            created_at=1785715200,
+            system_fingerprint="fp_test",
+            status="completed",
+            output=[],
+            usage=SimpleNamespace(input_tokens=3, output_tokens=2),
+        )
+        turn = openai_adapter._parse(response)
+        assert turn.metadata["configured_alias"] == "gpt56sol"
+        assert turn.metadata["resolved_model_id"] == "gpt-resolved-test"
+        assert turn.metadata["response_id"] == "resp_test"
+        assert turn.metadata["provider_request_id"] == "req_openai_test"
+        assert turn.metadata["created"] == 1785715200
+        assert turn.metadata["fingerprint"] == "fp_test"
+        assert len(turn.metadata["native_response_sha256"]) == 64
+        assert "output" not in turn.metadata
 
 
 class TestSemanticEquivalence:

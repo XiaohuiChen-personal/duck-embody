@@ -54,6 +54,7 @@ from duck_embody.agent.providers.base import (
     UserMessage,
     load_env,
     require_key,
+    response_metadata,
 )
 
 load_env()
@@ -80,7 +81,7 @@ class OpenAIProvider:
     def _image_part(img: ImageBlock) -> dict:
         return {
             "type": "input_image",
-            "image_url": f"data:image/jpeg;base64,{img.data_b64}",
+            "image_url": f"data:{img.media_type};base64,{img.data_b64}",
         }
 
     @staticmethod
@@ -298,6 +299,9 @@ class OpenAIProvider:
             raw=native,
             stop_reason=getattr(response, "status", "") or "",
             refusal=refusal,
+            metadata=response_metadata(
+                response, alias=self.name, model_id=self.model_id
+            ),
         )
 
     # -- one-shot helper, mirroring the Anthropic adapter -------------------
