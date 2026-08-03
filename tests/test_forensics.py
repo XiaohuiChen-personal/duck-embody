@@ -409,7 +409,7 @@ class TestMalformedDocuments:
                 "reason": "phantom",
             }
         ]
-        with pytest.raises(ForensicsError, match="only 0 dispatched correct_position"):
+        with pytest.raises(ForensicsError, match="only 0 dispatched position-correction"):
             forensics.correction_events(_document([turn]))
 
     def test_load_batch_on_an_empty_directory_is_rejected(self, tmp_path) -> None:
@@ -520,6 +520,23 @@ class TestCorrectionOrdering:
         (effect,) = forensics.correction_error_effects(document)
         assert effect.error_before_m == pytest.approx(0.1)
         assert effect.error_after_m == pytest.approx(math.dist((2.0, 2.0), (0.5, 0.5)))
+
+    def test_anchor_correction_is_joined_to_its_memory_record(self) -> None:
+        document = _document(
+            [
+                _turn(
+                    1,
+                    ["correct_to_anchor"],
+                    [],
+                    end=None,
+                    corrections=[_correction(1, (0.6, 0.5), (0.5, 0.5))],
+                )
+            ]
+        )
+        (event,) = forensics.correction_events(document)
+        assert event.accepted is True
+        assert event.args == {}
+        assert event.true_xy == (0.5, 0.5)
 
     def test_rejected_correction_has_no_effect_but_is_still_listed(self) -> None:
         document = _document([_turn(1, ["correct_position"], [], corrections=[])])

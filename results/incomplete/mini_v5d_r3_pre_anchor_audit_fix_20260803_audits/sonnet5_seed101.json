@@ -1,0 +1,161 @@
+{
+  "trial_id": "sonnet5_seed101",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "complete JSON and QA",
+      "status": "PASS",
+      "detail": "qa_answers=5"
+    },
+    {
+      "name": "no infrastructure failure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "write-once manifest SHA",
+      "status": "PASS",
+      "detail": "stored=2930bf8497000c243ff4ef8f5dff47947e2ebb7adc528dacc0fca5603ad448b8 actual=2930bf8497000c243ff4ef8f5dff47947e2ebb7adc528dacc0fca5603ad448b8"
+    },
+    {
+      "name": "trial manifest SHA match",
+      "status": "PASS",
+      "detail": "trial=2930bf8497000c243ff4ef8f5dff47947e2ebb7adc528dacc0fca5603ad448b8 manifest=2930bf8497000c243ff4ef8f5dff47947e2ebb7adc528dacc0fca5603ad448b8"
+    },
+    {
+      "name": "request reconstruction",
+      "status": "PASS",
+      "detail": "41 request(s)"
+    },
+    {
+      "name": "frame files and hashes",
+      "status": "PASS",
+      "detail": "211 hashed image(s)"
+    },
+    {
+      "name": "video and filmstrip",
+      "status": "PASS",
+      "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/mini_v5d_r3_videos/sonnet5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/mini_v5d_r3_videos/sonnet5_seed101_filmstrip.png"
+    },
+    {
+      "name": "scorer replay",
+      "status": "PASS",
+      "detail": "canonical scorer completed"
+    },
+    {
+      "name": "no NaN or Infinity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "corrections accepted/rejected split",
+      "status": "PASS",
+      "detail": "calls=0 accepted=0 rejected=0"
+    },
+    {
+      "name": "drift via canonical parser",
+      "status": "PASS",
+      "detail": "{\"find_kitchen\": 0.08372102483844782, \"return_home\": \"\\u2014\"}"
+    },
+    {
+      "name": "resolved model consistency",
+      "status": "PASS",
+      "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+    },
+    {
+      "name": "provider usage completeness",
+      "status": "PASS",
+      "detail": "40 turn(s)"
+    }
+  ],
+  "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/mini_v5d_r3/sonnet5_seed101.json",
+  "corrections": {
+    "calls": 0,
+    "accepted": 0,
+    "rejected": 0,
+    "worsened": 0,
+    "improved": 0,
+    "error_before_sum_m": 0.0,
+    "error_after_sum_m": 0.0,
+    "net_added_error_m": 0.0,
+    "ledger": []
+  },
+  "drift_m": {
+    "find_kitchen": 0.08372102483844782,
+    "return_home": "—"
+  },
+  "score_replay": {
+    "trial_id": "sonnet5_seed101",
+    "model": "claude-sonnet-5",
+    "seed": 101,
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "outcome": "declared_elsewhere",
+        "end_reason": "declare_done",
+        "success": false,
+        "success_preregistered": false,
+        "outcome_preregistered": "declared_elsewhere",
+        "d_nearest_counter_face_m": 1.7915,
+        "d_initial_m": 2.0652,
+        "d_final_m": 1.8667,
+        "progress": 0.0961,
+        "oracle_path_m": 2.0521,
+        "true_path_m": 4.8991,
+        "spl": 0.0,
+        "time_s": "—",
+        "turns_used": 40,
+        "drift_m": 0.0837,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      },
+      "return_home": {
+        "stage": "return_home",
+        "outcome": "not_run",
+        "end_reason": "not_run",
+        "success": false,
+        "success_preregistered": false,
+        "outcome_preregistered": "not_run",
+        "d_nearest_counter_face_m": "—",
+        "d_initial_m": 0.7415,
+        "d_final_m": 0.7415,
+        "progress": 0.0,
+        "oracle_path_m": 0.7828,
+        "true_path_m": 0,
+        "spl": 0.0,
+        "time_s": "—",
+        "turns_used": 0,
+        "drift_m": "—",
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      }
+    },
+    "bumps": 22,
+    "falls": 0,
+    "map_accuracy": {
+      "claimed": 1,
+      "matched": 0,
+      "true_rooms_visited": 1,
+      "precision": 0.0,
+      "recall": 0.0,
+      "matches": [],
+      "edges_claimed": 0,
+      "edges_correct": 0,
+      "edges_unresolved": 0,
+      "edge_accuracy": "—"
+    },
+    "qa": {
+      "per_question": [
+        0.0,
+        0.0,
+        0.0,
+        0.5,
+        0.0
+      ],
+      "score": 0.1
+    },
+    "visited_rooms": [
+      "living_room"
+    ]
+  }
+}

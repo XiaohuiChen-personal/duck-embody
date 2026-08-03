@@ -50,6 +50,7 @@ from duck_embody import scoring
 #: describes *logs already written*, so it must keep reading historical batches
 #: unchanged even after a remediation task edits the live tool set.
 MOTION_TOOLS = ("turn_to_heading", "move", "send_velocity", "turn_and_move")
+CORRECTION_TOOLS = ("correct_position", "correct_to_anchor")
 
 #: The terminal tool. It ends the stage instead of being dispatched, which is
 #: the whole reason ``dispatched`` can be less than ``len(tool_calls)``.
@@ -114,7 +115,7 @@ class MotionCall:
 
 @dataclass(frozen=True)
 class CorrectionEvent:
-    """A ``correct_position`` call placed at its true physical instant.
+    """A position-correction call placed at its true physical instant.
 
     ``true_xy`` is where the robot actually was when the call executed,
     reconstructed per the TR.0 recipe: start from the previous turn's logged
@@ -459,7 +460,7 @@ def iter_motion_calls(document: dict) -> Iterator[MotionCall]:
 
 
 def correction_events(document: dict) -> list[CorrectionEvent]:
-    """Every ``correct_position`` call, placed at its true physical instant.
+    """Every position-correction call, placed at its true physical instant.
 
     The reconstruction the whole loop-closure finding (F-01) rests on. Within
     one turn the model may bundle motion and correction in any order, and the
@@ -486,7 +487,7 @@ def correction_events(document: dict) -> list[CorrectionEvent]:
             if name in MOTION_TOOLS:
                 motion_index += 1
                 continue
-            if name != "correct_position":
+            if name not in CORRECTION_TOOLS:
                 continue
             if motion_index == 0:
                 if previous_true_xy is None:
@@ -534,7 +535,7 @@ def correction_events(document: dict) -> list[CorrectionEvent]:
                 document,
                 f"turns[{index}].memory_snapshot.corrections",
                 f"{len(written)} record(s) written this turn but only "
-                f"{write_index} dispatched correct_position call(s) to match",
+                f"{write_index} dispatched position-correction call(s) to match",
             )
         previous_true_xy = _turn_true_xy(turn, records, previous_true_xy)
     return events

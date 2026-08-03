@@ -2218,6 +2218,18 @@ does not require the historical file. Full suite: **1899 passed, 3 skipped**.
 Because `runner.py` is manifest-bound, preserve the two cells and create a new
 manifest/mini gate once more.
 
+**L7 fourth-attempt audit refusal (2026-08-03, preserved).** Both production
+mini trials completed, but strict audit correctly failed seed 102: the model
+used the remediated `correct_to_anchor` tool twice and
+`memory_snapshot.corrections` recorded both, while the forensic join recognized
+only historical `correct_position` calls. Scoring saw two corrections, proving
+this was an audit-reader omission rather than a harness or model failure. The
+reader now treats both tools as position corrections at their exact physical
+instant; the trial replay reports 2 accepted / 2 improved and PASS. Added a
+direct anchor-correction regression; full suite: **1900 passed, 3 skipped**.
+Because audit code and tests change the bound repository commit, preserve these
+cells and create a fresh manifest before the final L7/L8 run.
+
 ---
 
 ## Standing constraints (every task)
