@@ -860,6 +860,23 @@ guard by design — move them out of <code>results/raw/</code> (to
 <code>results/logs/</code>, which keeps them citable) before launching the batch; the
 runner never moves a complete result itself, because auto-moving paid results is what
 <code>--force</code> would have been.</li>
+<li><strong>Write-once batch provenance (TR.6).</strong> Every new benchmark has one
+<code>results/manifests/&lt;batch_id&gt;.json</code> using schema
+<code>duck-embody-batch-manifest-v1</code>. Its self-SHA is computed over canonical JSON
+with the self field omitted, and the file is created with exclusive-create semantics:
+an existing path is never rewritten. It binds the frozen files plus the runner and
+pyproject bytes, exact checkpoint and checkpoint-keyed timeout calibration, parent
+commit/branch/tree and robot USD, verified asset checksums, runtime/SDK versions,
+model configs, success criterion, ordered matrix, CLI, and environment-variable
+<em>names</em> (never values). Every trial records the manifest SHA, checkpoint SHA,
+parent commit, criterion, and the provider-resolved model after the first response.
+Before Kit, benchmark mode hard-refuses dirty/mismatched parent or harness bytes,
+checkpoint/calibration drift, asset failure, matrix drift, corrupt manifest self-SHA,
+or a completed trial from another manifest. Explicit <code>--smoke</code> may print
+those provenance defects as warnings only when both output trees are outside all
+benchmark directories; its trial JSON is then marked <code>config.smoke=true</code>.
+The older <code>freeze.json</code> schemas remain readable historical artifacts and
+are never upgraded in place.</li>
 <li><strong><code>results/freeze.json</code> (written by <code>runner.py --freeze</code>
 at the freeze commit; schema pinned by T4.2):</strong>
 <pre><code>{

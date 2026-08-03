@@ -55,10 +55,13 @@ from duck_embody.runner import (
     STATUS_COMPLETE,
     STATUS_HASH_DRIFT,
     STATUS_INCOMPLETE,
+    STATUS_MANIFEST_DRIFT,
     STATUS_PENDING,
     STATUS_SMOKE_CAPPED,
     TrialPlan,
     append_rerun_log,
+    batch_manifest_refusals,
+    build_batch_manifest,
     build_parser,
     classify_trial,
     cmd_dry_run,
@@ -73,13 +76,19 @@ from duck_embody.runner import (
     freeze_refusals,
     freeze_tree_refusals,
     load_matrix,
+    load_calibration,
+    manifest_sha256,
     midbatch_refusals,
     plan_batch,
     plan_refusals,
+    provenance_disposition,
     read_freeze,
+    record_resolved_model,
     retire_incomplete,
     run_one_trial,
     trial_matrix,
+    verify_asset_checksums,
+    write_manifest_once,
     write_freeze,
 )
 
@@ -185,6 +194,243 @@ def run_args(root: Path) -> SimpleNamespace:
         headed=False,
         infra_retries=1,
     )
+
+
+def make_provenance_fixture(tmp_path: Path, monkeypatch):
+    """A complete, tiny pre-Kit runtime for T6 refusal tests."""
+    import hashlib
+
+    root = make_root(tmp_path)
+    for rel in ("duck_embody/runner.py", "pyproject.toml"):
+        destination = root / rel
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes((REPO_ROOT / rel).read_bytes())
+
+    asset = root / "assets" / "payload.bin"
+    asset.parent.mkdir(parents=True, exist_ok=True)
+    asset.write_bytes(b"asset-v1")
+    digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+    (root / "assets" / "checksums.txt").write_text(f"{digest}  ./payload.bin\n")
+
+    parent = tmp_path / "parent"
+    robot = parent / "mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd"
+    robot.parent.mkdir(parents=True)
+    robot.write_bytes(b"robot-usd-v1")
+    subprocess.run(["git", "-C", str(parent), "init", "-q", "-b", "v2"], check=True)
+    subprocess.run(["git", "-C", str(parent), "add", "-A"], check=True)
+    subprocess.run(
+        [
+            "git", "-C", str(parent), "-c", "user.email=t@t", "-c",
+            "user.name=t", "commit", "-qm", "parent",
+        ],
+        check=True,
+    )
+    parent_commit = subprocess.run(
+        ["git", "-C", str(parent), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    pyproject = root / "pyproject.toml"
+    pyproject.write_text(
+        re.sub(
+            r'parent_repo_commit = "[0-9a-f]+"',
+            f'parent_repo_commit = "{parent_commit}"',
+            pyproject.read_text(),
+        )
+    )
+    monkeypatch.setenv("DUCK_EMBODY_PARENT_REPO", str(parent))
+
+    checkpoint = tmp_path / "checkpoint.pt"
+    checkpoint.write_bytes(b"checkpoint-v1")
+    checkpoint_sha = file_sha256(checkpoint)
+    calibration = tmp_path / "calibration.json"
+    calibration.write_text(
+        json.dumps(
+            {
+                "id": "fixture-calibration",
+                "checkpoint_sha256": checkpoint_sha,
+                "values": {"k_velocity_realisation": 0.9617},
+            }
+        )
+    )
+    git_freeze(root)
+    document = build_batch_manifest(
+        batch_id="fixture",
+        checkpoint=checkpoint,
+        calibration_path=calibration,
+        argv=["runner.py", "--batch-id", "fixture"],
+        root=root,
+    )
+    assert batch_manifest_refusals(document, root) == []
+    return root, parent, checkpoint, calibration, document
+
+
+class TestImmutableBatchManifest:
+    def test_manifest_is_self_hashed_and_write_once(self, tmp_path, monkeypatch):
+        root, _, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        assert document["manifest_sha256"] == manifest_sha256(document)
+        path = root / "results" / "manifests" / "fixture.json"
+        write_manifest_once(path, document)
+        original = path.read_bytes()
+        with pytest.raises(FileExistsError, match="write-once"):
+            write_manifest_once(path, document)
+        assert path.read_bytes() == original
+
+    def test_one_byte_checkpoint_mutation_refuses(self, tmp_path, monkeypatch):
+        root, _, checkpoint, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        checkpoint.write_bytes(checkpoint.read_bytes() + b"x")
+        assert any(
+            "checkpoint SHA" in reason
+            for reason in batch_manifest_refusals(document, root)
+        )
+
+    def test_parent_commit_mismatch_refuses_benchmark_but_warns_smoke(
+        self, tmp_path, monkeypatch
+    ):
+        root, parent, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        (parent / "new.txt").write_text("new parent commit\n")
+        subprocess.run(["git", "-C", str(parent), "add", "-A"], check=True)
+        subprocess.run(
+            [
+                "git", "-C", str(parent), "-c", "user.email=t@t", "-c",
+                "user.name=t", "commit", "-qm", "advance",
+            ],
+            check=True,
+        )
+        reasons = batch_manifest_refusals(document, root)
+        assert any("parent commit differs" in reason for reason in reasons)
+        hard, warnings = provenance_disposition(
+            reasons,
+            smoke=False,
+            root=root,
+            out_dir=root / "results" / "smoke-a",
+            video_dir=root / "results" / "smoke-b",
+        )
+        assert hard and not warnings
+        hard, warnings = provenance_disposition(
+            reasons,
+            smoke=True,
+            root=root,
+            out_dir=root / "results" / "smoke-a",
+            video_dir=root / "results" / "smoke-b",
+        )
+        assert not hard and warnings == reasons
+
+    def test_smoke_cannot_downgrade_inside_benchmark_dirs(self, tmp_path):
+        hard, warnings = provenance_disposition(
+            ["parent mismatch"],
+            smoke=True,
+            root=tmp_path,
+            out_dir=tmp_path / "results" / "raw",
+            video_dir=tmp_path / "results" / "smoke-video",
+        )
+        assert hard and not warnings
+
+    def test_asset_mutation_refuses(self, tmp_path, monkeypatch):
+        root, _, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        (root / "assets" / "payload.bin").write_bytes(b"mutated")
+        assert verify_asset_checksums(root)["ok"] is False
+        assert any(
+            "asset checksum" in reason
+            for reason in batch_manifest_refusals(document, root)
+        )
+
+    def test_midbatch_runner_edit_refuses(self, tmp_path, monkeypatch):
+        root, _, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        with (root / "duck_embody" / "runner.py").open("ab") as handle:
+            handle.write(b"\n# edited mid-batch\n")
+        reasons = batch_manifest_refusals(document, root)
+        assert any("runner.py" in reason for reason in reasons)
+
+    def test_calibration_must_name_exact_checkpoint_sha(self, tmp_path):
+        checkpoint = tmp_path / "checkpoint.pt"
+        checkpoint.write_bytes(b"checkpoint")
+        calibration = tmp_path / "calibration.json"
+        calibration.write_text(
+            json.dumps(
+                {
+                    "id": "wrong",
+                    "checkpoint_sha256": "0" * 64,
+                    "values": {"k_velocity_realisation": 0.9617},
+                }
+            )
+        )
+        with pytest.raises(ValueError, match="not checkpoint"):
+            load_calibration(calibration, file_sha256(checkpoint))
+
+    def test_completed_trial_from_another_manifest_refuses(self, tmp_path):
+        path = tmp_path / "sonnet5_seed101.json"
+        document = write_trial(path, hash_value="a" * 64)
+        document["config"]["batch_manifest_sha256"] = "b" * 64
+        path.write_text(json.dumps(document))
+        status, detail = classify_trial(path, "a" * 64, "c" * 64)
+        assert status == STATUS_MANIFEST_DRIFT
+        plan = TrialPlan("sonnet5", 101, path.stem, path, status, detail)
+        assert any("another batch manifest" in reason for reason in plan_refusals([plan]))
+
+    def test_trial_config_binds_manifest_policy_parent_and_resolved_model(self, tmp_path):
+        provenance = {
+            "batch_manifest_sha256": "a" * 64,
+            "checkpoint_sha256": "b" * 64,
+            "parent_commit": "c" * 40,
+            "success_criterion": "criterion-v-test",
+            "resolved_model": None,
+        }
+        class ExplodingSession:
+            def reset(self, **kwargs):
+                raise RuntimeError("stop after TrialLog construction")
+
+        outcome = run_one_trial(
+            ExplodingSession(),
+            model_name="sonnet5",
+            cfg=SimpleNamespace(model_id="configured-model"),
+            provider=None,
+            seed=101,
+            out_dir=tmp_path,
+            video_dir=tmp_path / "videos",
+            no_video=True,
+            provenance=provenance,
+        )
+        stored = json.loads(outcome.json_path.read_text())["config"]
+        for key, value in provenance.items():
+            assert stored[key] == value
+        fake_log = SimpleNamespace(
+            document={"config": {"resolved_model": None}},
+            flush_calls=0,
+        )
+        fake_log.flush = lambda: setattr(
+            fake_log, "flush_calls", fake_log.flush_calls + 1
+        )
+        record_resolved_model(
+            fake_log,
+            {"response_metadata": {"resolved_model_id": "provider-resolved-model"}},
+        )
+        record_resolved_model(
+            fake_log,
+            {"response_metadata": {"resolved_model_id": "later-model"}},
+        )
+        assert fake_log.document["config"]["resolved_model"] == "provider-resolved-model"
+        assert fake_log.flush_calls == 1
+
+    def test_model_document_outside_matrix_refuses(self, tmp_path, monkeypatch):
+        root, _, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        document["models"]["judge"] = dict(next(iter(document["models"].values())))
+        document["manifest_sha256"] = manifest_sha256(document)
+        assert any(
+            "outside the live matrix" in reason
+            for reason in batch_manifest_refusals(document, root)
+        )
+
+    def test_manifest_contains_no_environment_values(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "secret-value-must-not-appear")
+        _, _, _, _, document = make_provenance_fixture(tmp_path, monkeypatch)
+        encoded = json.dumps(document)
+        assert "ANTHROPIC_API_KEY" in encoded
+        assert "secret-value-must-not-appear" not in encoded
+
+    def test_legacy_freeze_schema_remains_separate(self):
+        assert FREEZE_SCHEMA == "duck-embody-freeze-v1"
 
 
 # ===========================================================================

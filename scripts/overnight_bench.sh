@@ -18,8 +18,10 @@ REPO=/home/xiaohui_chen/Projects/duck-embody
 ISAACLAB=/home/xiaohui_chen/IsaacLab
 V5D=/home/xiaohui_chen/IsaacLab/logs/rsl_rl/open_duck_ppo_v5/2026-07-29_08-59-25/model_5998.pt
 BASELINE=$REPO/policy/model_2999.pt
-RAW=$REPO/results/raw_v5d_r2
-VIDEOS=$REPO/results/videos_v5d_r2
+RAW=$REPO/results/raw_v5d_r3
+VIDEOS=$REPO/results/videos_v5d_r3
+CALIBRATION=$REPO/results/calibrations/v5d_contact_wrench.json
+BATCH_ID=v5d-r3
 LOG=$REPO/results/logs/overnight_bench.log
 STATUSF=$REPO/results/logs/overnight_status.txt
 mkdir -p "$RAW" "$VIDEOS" "$(dirname "$LOG")"
@@ -96,7 +98,10 @@ if python3 -c "import sys; sys.exit(0 if float('$WT') > 0.5 else 1)"; then
 else
     say "ABORT: watchdog cost extractor returned '$WT' on a known-nonzero trial — spend cap would fail open"; exit 1
 fi
-if ! PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py --dry-run --out-dir "$RAW" > /tmp/overnight_dry.log 2>&1; then
+if ! PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py \
+    --dry-run --batch-id "$BATCH_ID" --checkpoint "$V5D" \
+    --calibration "$CALIBRATION" --out-dir "$RAW" --video-dir "$VIDEOS" \
+    > /tmp/overnight_dry.log 2>&1; then
     say "ABORT: dry-run refused"; grep -E "FATAL|refus" /tmp/overnight_dry.log | head -5; exit 1
 fi
 PENDING=$(grep -c "pending" /tmp/overnight_dry.log || true)
@@ -129,7 +134,8 @@ PYW
 ) &
 WATCHDOG=$!
 PYTHONUNBUFFERED=1 "$ISAACLAB/isaaclab.sh" -p duck_embody/runner.py \
-    --out-dir "$RAW" --video-dir "$VIDEOS" --checkpoint "$V5D"
+    --batch-id "$BATCH_ID" --out-dir "$RAW" --video-dir "$VIDEOS" \
+    --checkpoint "$V5D" --calibration "$CALIBRATION"
 BENCH_RC=$?
 kill "$WATCHDOG" 2>/dev/null
 say "batch finished rc=$BENCH_RC"
@@ -171,5 +177,5 @@ if [ "$SC_RC" -ne 0 ]; then
     tail -5 /tmp/overnight_score.log
     exit 1
 fi
-say "scoring OK -> results/scores_raw_v5d_r2.json"
+say "scoring OK -> results/scores_raw_v5d_r3.json"
 say "DONE-COMPLETE"

@@ -2005,12 +2005,49 @@ call per provider passed with 64-character native-response hashes and both
 response/request IDs present (`claude-sonnet-5`, `gpt-5.6-sol`; 2026-08-02).
 No Isaac Sim job was needed for this harness-only task.
 
-### TR.6–TR.9 `[ ]` Remaining remediation tasks
+### TR.6 `[x]` Immutable self-contained batch provenance
 
-Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T6
-immutable provenance, T7 provider usage and cost, T8 audit and reporting, T9
-canary/mini-batch/full batch). Each still runs under AGENTS.md rules 10 and 11
-and gets its own PLAN entry with evidence when it lands.
+**Adversarial plan review.** The old `results/freeze.json` protects the fairness
+files but not the executor, checkpoint, calibration, parent runtime, robot USD,
+assets, SDK versions, or batch identity. Its mutable singleton path also cannot
+honestly certify multiple batches. The implementation therefore leaves every
+legacy freeze readable and adds a separate write-once manifest; upgrading
+legacy files in place would destroy their evidentiary meaning. The current
+measured-odometry controller keeps policy calibration out of target completion,
+but its timeout forecast remains policy-specific, so benchmark mode now
+requires both `--checkpoint` and a calibration JSON keyed to that exact SHA.
+
+**Implemented.** `runner.py` exclusively creates
+`results/manifests/<batch_id>.json`, self-hashed over canonical JSON. It binds
+the frozen files plus runner/pyproject, checkpoint/archive/calibration, parent
+commit/branch/tree and robot USD, verified assets, runtime/provider SDK
+versions, criterion, complete model configs, ordered matrix, exact argv, and
+environment-variable names without values. Every trial records manifest SHA,
+checkpoint SHA, parent commit, criterion, and the first provider-resolved model.
+Benchmark checks run before Kit and between trials; explicit smoke mode can
+downgrade provenance failures only outside benchmark directories and marks its
+JSON. The overnight script now targets a fresh `v5d-r3` directory and supplies
+the explicit checkpoint/calibration pair.
+
+**Validation.** Focused runner tests cover one-byte checkpoint and asset
+mutations, parent mismatch benchmark refusal vs smoke warning, smoke path
+containment, mid-batch runner edits, write-once overwrite, wrong calibration
+binding, mixed-manifest resume, matrix contamination, no environment values,
+legacy schema readability, per-trial provenance, and resolved-model write-once
+behavior. `TERM=xterm bash scripts/run_tests.sh tests/test_runner.py tests/ -q`
+→ **1888 passed, 3 skipped** (2026-08-02); direct verification of
+`assets/checksums.txt` checked **221/221** files with zero failures. The dry-run
+printed manifest/checkpoint SHA, parent, criterion, matrix, and all 12 slots,
+then correctly refused before Kit because this in-progress tree is dirty, its
+legacy freeze is stale, and the checked-out parent is ahead of the pyproject
+pin. No Isaac job is required: every T6 refusal runs pre-Kit.
+
+### TR.7–TR.9 `[ ]` Remaining remediation tasks
+
+Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T7
+provider usage and cost, T8 audit and reporting, T9 canary/mini-batch/full
+batch). Each still runs under AGENTS.md rules 10 and 11 and gets its own PLAN
+entry with evidence when it lands.
 
 ---
 

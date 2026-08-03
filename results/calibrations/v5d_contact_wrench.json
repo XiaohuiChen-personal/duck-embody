@@ -1,0 +1,13 @@
+{
+  "id": "v5d-contact-wrench-2026-07-29",
+  "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+  "values": {
+    "k_velocity_realisation": 0.9617,
+    "measured_speed_mps": 0.1923,
+    "turn_rate_realisation": 0.9372,
+    "open_loop_yaw_drift_deg_per_s": 1.3475,
+    "heading_hold_residual_drift_deg_per_20s": 0.04,
+    "purpose": "timeout_forecast_only",
+    "target_completion_sensor": "simulated_leg_odometry"
+  }
+}

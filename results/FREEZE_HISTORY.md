@@ -34,3 +34,17 @@ mechanism changed, results across this boundary are **not** comparable; see
 
 `freeze_v4_baseline.json` remains the manifest for the published v4 batch and
 is untouched.
+
+## 2026-08-02 — write-once batch manifests
+
+TR.6 supersedes `freeze.json` as the complete provenance contract for every new
+batch. `results/manifests/<batch_id>.json` is exclusive-create and self-hashed;
+every trial points back to that SHA. The legacy freeze files above remain
+readable evidence for v4/v5d and are never rewritten or upgraded.
+
+The new manifest additionally binds the runner, pyproject, exact checkpoint,
+checkpoint-keyed timeout calibration, parent commit/tree and robot USD, asset
+verification, runtime/SDK versions, criterion, model configs, ordered slots,
+and invocation environment-variable names. Benchmark launch refuses all drift
+before Kit; explicit smoke output can downgrade provenance checks only outside
+the benchmark result directories and is marked `config.smoke=true`.

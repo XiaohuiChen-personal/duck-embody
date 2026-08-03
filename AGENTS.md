@@ -6,7 +6,7 @@ never duplicate rules there. **Update this file whenever a decision changes**; i
 the project's institutional memory and is deliberately context-rich so a fresh agent
 can pick up work with no other briefing.
 
-Last updated: 2026-07-27 (benchmark batch COMPLETE + scored + reported; see §8).
+Last updated: 2026-08-02 (TR.6 write-once batch provenance; see §5).
 
 ---
 
@@ -320,6 +320,13 @@ Agent harness (found in T3.4's review pass, 2026-07-26):
   `freeze_commit()` appends `-dirty` when a frozen file is uncommitted, because
   a bare `rev-parse HEAD` claimed trials ran code the commit does not contain —
   and this tree always carries uncommitted work (see below).
+- **New batches require a write-once provenance manifest.** `runner.py` creates
+  `results/manifests/<batch_id>.json` with exclusive-create semantics and stamps
+  its SHA into every trial. Benchmark mode requires explicit `--checkpoint` and
+  checkpoint-keyed `--calibration`, then refuses parent/runner/checkpoint/asset/
+  matrix/manifest drift before Kit and between trials. `results/freeze*.json`
+  remains readable legacy evidence, not the complete contract. `--smoke` may
+  warn only outside benchmark output directories and records `config.smoke=true`.
 - **A value-exact leak test is not a leak test.** `str(7.77) not in sent` says
   nothing about `"7.8"`, and nothing at all about a *derived* oracle
   (`math.dist(true_pose, goal)`). Both passed the whole suite when injected. The

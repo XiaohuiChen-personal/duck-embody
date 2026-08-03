@@ -68,11 +68,16 @@ Run (kit python, unbuffered — kit discards buffered stdout at exit):
 
 from __future__ import annotations
 
+import ast
 import hashlib
+import importlib.metadata
 import json
 import os
+import platform
 import shutil
+import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -96,10 +101,16 @@ DEFAULT_VIDEO_DIR = REPO_ROOT / "results" / "videos"
 DEFAULT_INCOMPLETE_DIR = REPO_ROOT / "results" / "incomplete"
 DEFAULT_RERUN_LOG = REPO_ROOT / "results" / "rerun_log.md"
 DEFAULT_FREEZE_JSON = REPO_ROOT / "results" / "freeze.json"
+DEFAULT_MANIFEST_DIR = REPO_ROOT / "results" / "manifests"
+ASSET_CHECKSUMS = "assets/checksums.txt"
+RUNNER_REL = "duck_embody/runner.py"
+PYPROJECT_REL = "pyproject.toml"
 
 #: Bumped only if the freeze.json layout changes shape — the guard refuses an
 #: unknown schema instead of guessing at its fields.
 FREEZE_SCHEMA = "duck-embody-freeze-v1"
+BATCH_MANIFEST_SCHEMA = "duck-embody-batch-manifest-v1"
+BATCH_MANIFEST_VERSION = 1
 
 # Trial statuses (--dry-run vocabulary; the refusing two are uppercase there).
 STATUS_PENDING = "pending"
@@ -107,6 +118,17 @@ STATUS_COMPLETE = "complete"
 STATUS_INCOMPLETE = "incomplete"
 STATUS_HASH_DRIFT = "hash-drift"
 STATUS_SMOKE_CAPPED = "smoke-capped"
+STATUS_MANIFEST_DRIFT = "manifest-drift"
+
+RELEVANT_ENV_NAMES = (
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "DUCK_EMBODY_PARENT_REPO",
+    "DUCK_EMBODY_RAW_DIR",
+    "CUDA_VISIBLE_DEVICES",
+    "PYTHONPATH",
+    "PYTHONUNBUFFERED",
+)
 
 RERUN_LOG_HEADER = """\
 # Rerun log — doc 06 §7
@@ -181,6 +203,405 @@ def file_sha256(path: Path) -> str:
     if not path.exists():
         return "<missing>"
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def canonical_manifest_bytes(document: dict) -> bytes:
+    """Canonical bytes hashed by ``manifest_sha256`` (self field excluded)."""
+    payload = {key: value for key, value in document.items() if key != "manifest_sha256"}
+    return json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+
+def manifest_sha256(document: dict) -> str:
+    return hashlib.sha256(canonical_manifest_bytes(document)).hexdigest()
+
+
+def _git_value(root: Path, *args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), *args],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def git_identity(root: Path) -> dict:
+    status = _git_value(root, "status", "--porcelain", "-uno")
+    return {
+        "commit": _git_value(root, "rev-parse", "HEAD") or "unknown",
+        "branch": _git_value(root, "branch", "--show-current") or "unknown",
+        "tree": _git_value(root, "rev-parse", "HEAD^{tree}") or "unknown",
+        "dirty": bool(status),
+        "dirty_paths": sorted(
+            line[3:].strip() for line in (status or "").splitlines() if line.strip()
+        ),
+    }
+
+
+def project_settings(root: Path = REPO_ROOT) -> dict:
+    data = tomllib.loads((root / PYPROJECT_REL).read_text(encoding="utf-8"))
+    return dict(data["tool"]["duck-embody"])
+
+
+def parent_repo_path(root: Path = REPO_ROOT) -> Path:
+    settings = project_settings(root)
+    value = os.environ.get("DUCK_EMBODY_PARENT_REPO", settings["parent_repo_path"])
+    return Path(value).expanduser().resolve()
+
+
+def robot_usd_path(parent: Path) -> Path:
+    return parent / "mini_bdx/robots/open_duck_mini_v2/usd/open_duck_mini_v2.usd"
+
+
+def verify_asset_checksums(root: Path = REPO_ROOT) -> dict:
+    """Verify the committed sha256sum-format asset inventory."""
+    checksum_path = root / ASSET_CHECKSUMS
+    failures: list[dict[str, str]] = []
+    checked = 0
+    if not checksum_path.exists():
+        return {
+            "ok": False,
+            "checked": 0,
+            "failures": [{"path": ASSET_CHECKSUMS, "reason": "missing checksum file"}],
+            "checksums_sha256": "<missing>",
+        }
+    for number, line in enumerate(checksum_path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            expected, relative = line.split(maxsplit=1)
+        except ValueError:
+            failures.append({"path": f"{ASSET_CHECKSUMS}:{number}", "reason": "malformed"})
+            continue
+        relative = relative.removeprefix("*").removeprefix("./")
+        path = root / "assets" / relative
+        actual = file_sha256(path)
+        checked += 1
+        if actual != expected:
+            failures.append(
+                {"path": f"assets/{relative}", "expected": expected, "actual": actual}
+            )
+    return {
+        "ok": not failures,
+        "checked": checked,
+        "failures": failures,
+        "checksums_sha256": file_sha256(checksum_path),
+    }
+
+
+def _package_version(*names: str) -> str | None:
+    for name in names:
+        try:
+            return importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+    return None
+
+
+def _text_version(path: Path) -> str | None:
+    try:
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+
+
+def runtime_versions() -> dict:
+    isaac_sim = Path.home() / "IsaacSim" / "VERSION"
+    isaac_lab = Path.home() / "IsaacLab" / "VERSION"
+    cuda = _text_version(Path("/usr/local/cuda/version.json"))
+    return {
+        "python": platform.python_version(),
+        "isaac_sim": _text_version(isaac_sim),
+        "isaac_lab": _text_version(isaac_lab),
+        "cuda": cuda,
+        "torch": _package_version("torch"),
+        "rsl_rl": _package_version("rsl-rl-lib", "rsl_rl"),
+        "provider_sdks": {
+            "anthropic": _package_version("anthropic"),
+            "openai": _package_version("openai"),
+        },
+    }
+
+
+def load_calibration(path: Path, checkpoint_sha: str) -> dict:
+    """Read an explicit checkpoint-keyed timeout-forecast calibration."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("checkpoint_sha256") != checkpoint_sha:
+        raise ValueError(
+            f"calibration {path} is keyed to {data.get('checkpoint_sha256')!r}, "
+            f"not checkpoint sha256 {checkpoint_sha}"
+        )
+    if not data.get("id") or not isinstance(data.get("values"), dict):
+        raise ValueError(f"calibration {path} requires non-empty `id` and `values`")
+    k = data["values"].get("k_velocity_realisation")
+    if not isinstance(k, (int, float)) or k <= 0:
+        raise ValueError(f"calibration {path} has invalid k_velocity_realisation")
+    return {
+        "id": data["id"],
+        "checkpoint_sha256": checkpoint_sha,
+        "values": data["values"],
+        "source": str(path.resolve()),
+        "source_sha256": file_sha256(path),
+    }
+
+
+def timeout_forecast_k(root: Path = REPO_ROOT) -> float:
+    """Read the frozen runtime constant without importing sim modules pre-Kit."""
+    path = root / "duck_embody" / "sim" / "policy_wrapper.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in tree.body:
+        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            if any(isinstance(target, ast.Name) and target.id == "K_VELOCITY_REALISATION" for target in targets):
+                return float(ast.literal_eval(node.value))
+    raise ValueError("policy_wrapper.py has no literal K_VELOCITY_REALISATION")
+
+
+def load_model_documents(models: tuple[str, ...], root: Path = REPO_ROOT) -> dict:
+    import yaml
+
+    result = {}
+    for alias in models:
+        path = root / "configs" / "models" / f"{alias}.yaml"
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        result[alias] = {
+            "path": str(path.relative_to(root)),
+            "sha256": file_sha256(path),
+            "configured_alias": alias,
+            "model_id": raw["model_id"],
+            "provider": raw["provider"],
+            "snapshot_id": raw.get("snapshot_id"),
+            "config": raw,
+        }
+    return result
+
+
+def build_batch_manifest(
+    *,
+    batch_id: str,
+    checkpoint: Path,
+    calibration_path: Path,
+    argv: list[str],
+    root: Path = REPO_ROOT,
+) -> dict:
+    """Build the complete pre-Kit provenance contract."""
+    models, seeds = load_matrix(root)
+    ordered = [
+        {"index": index, "model": model, "seed": seed, "trial_id": trial_id}
+        for index, (model, seed, trial_id) in enumerate(trial_matrix(models, seeds), 1)
+    ]
+    checkpoint = checkpoint.expanduser().resolve()
+    checkpoint_sha = file_sha256(checkpoint)
+    if checkpoint_sha == "<missing>":
+        raise ValueError(f"checkpoint does not exist: {checkpoint}")
+    calibration = load_calibration(calibration_path.expanduser().resolve(), checkpoint_sha)
+    if calibration["values"]["k_velocity_realisation"] != timeout_forecast_k(root):
+        raise ValueError(
+            "calibration k_velocity_realisation differs from the frozen runtime "
+            "timeout forecast"
+        )
+    parent = parent_repo_path(root)
+    parent_git = git_identity(parent)
+    settings = project_settings(root)
+    asset_result = verify_asset_checksums(root)
+    robot = robot_usd_path(parent)
+    repo_git = git_identity(root)
+    archive_rel = settings.get("candidate_checkpoint_archive")
+    archive_path = parent / archive_rel if archive_rel else None
+    if archive_path is not None and archive_path.exists():
+        if file_sha256(archive_path) != checkpoint_sha:
+            raise ValueError(
+                f"archived checkpoint {archive_path} does not match selected checkpoint"
+            )
+    else:
+        archive_rel = None
+    document = {
+        "schema": BATCH_MANIFEST_SCHEMA,
+        "version": BATCH_MANIFEST_VERSION,
+        "created_at": _utc_now(),
+        "batch_id": batch_id,
+        "duck_embody": {
+            **repo_git,
+            "frozen_files": {rel: file_sha256(root / rel) for rel in FROZEN_FILES},
+            "config_hash": config_hash(FROZEN_FILES, root),
+            "runner": {"path": RUNNER_REL, "sha256": file_sha256(root / RUNNER_REL)},
+            "pyproject": {
+                "path": PYPROJECT_REL,
+                "sha256": file_sha256(root / PYPROJECT_REL),
+            },
+        },
+        "policy": {
+            "checkpoint_path": str(checkpoint),
+            "archived_relative_path": archive_rel or (
+                str(checkpoint.relative_to(root)) if checkpoint.is_relative_to(root) else None
+            ),
+            "archive_repository": (
+                settings["parent_repo"] if archive_rel else "duck-embody"
+            ),
+            "archived_sha256": checkpoint_sha,
+            "checkpoint_sha256": checkpoint_sha,
+            "calibration": calibration,
+        },
+        "parent_repo": {
+            "url": settings["parent_repo"],
+            "configured_branch": settings["parent_repo_branch"],
+            "pinned_commit": settings["parent_repo_commit"],
+            "path": str(parent),
+            **parent_git,
+            "runtime_file_tree": {
+                "algorithm": "git-tree-sha1",
+                "digest": parent_git["tree"],
+            },
+            "robot_usd": {"path": str(robot), "sha256": file_sha256(robot)},
+        },
+        "runtime_versions": runtime_versions(),
+        "models": load_model_documents(models, root),
+        "success_criterion": SUCCESS_CRITERION,
+        "matrix": {"models": list(models), "seeds": list(seeds)},
+        "ordered_trials": ordered,
+        "invocation": {
+            "argv": list(argv),
+            "environment_variable_names": [
+                name for name in RELEVANT_ENV_NAMES if name in os.environ
+            ],
+        },
+        "assets": {
+            "checksums_path": ASSET_CHECKSUMS,
+            "verification": asset_result,
+        },
+    }
+    document["manifest_sha256"] = manifest_sha256(document)
+    return document
+
+
+def manifest_path(batch_id: str, root: Path = REPO_ROOT) -> Path:
+    if not batch_id or any(ch not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_" for ch in batch_id):
+        raise ValueError("batch_id must contain only letters, digits, '-' and '_'")
+    return root / "results" / "manifests" / f"{batch_id}.json"
+
+
+def write_manifest_once(path: Path, document: dict) -> None:
+    """Create a manifest atomically; an existing path is immutable."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    try:
+        fd = os.open(path, flags, 0o644)
+    except FileExistsError:
+        raise FileExistsError(f"refusing to overwrite write-once manifest: {path}") from None
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(document, handle, indent=2, ensure_ascii=False, allow_nan=False)
+        handle.write("\n")
+
+
+def read_batch_manifest(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def batch_manifest_refusals(document: dict, root: Path = REPO_ROOT) -> list[str]:
+    """Compare the live pre-Kit runtime against its immutable manifest."""
+    out: list[str] = []
+    if document.get("schema") != BATCH_MANIFEST_SCHEMA:
+        return [f"batch manifest schema is {document.get('schema')!r}, expected {BATCH_MANIFEST_SCHEMA!r}"]
+    stored_sha = document.get("manifest_sha256")
+    actual_sha = manifest_sha256(document)
+    if stored_sha != actual_sha:
+        out.append(f"batch manifest SHA differs: stored {stored_sha}, actual {actual_sha}")
+    duck = document.get("duck_embody") or {}
+    for rel, expected in (duck.get("frozen_files") or {}).items():
+        if file_sha256(root / rel) != expected:
+            out.append(f"frozen file differs from batch manifest: {rel}")
+    for rel, field in ((RUNNER_REL, "runner"), (PYPROJECT_REL, "pyproject")):
+        expected = (duck.get(field) or {}).get("sha256")
+        if file_sha256(root / rel) != expected:
+            out.append(f"{rel} differs from batch manifest")
+    repo_git = git_identity(root)
+    if repo_git["commit"] != duck.get("commit"):
+        out.append("duck-embody commit differs from batch manifest")
+    if repo_git["dirty"]:
+        out.append("duck-embody tracked tree is dirty: " + ", ".join(repo_git["dirty_paths"]))
+    policy = document.get("policy") or {}
+    checkpoint = Path(policy.get("checkpoint_path", ""))
+    live_checkpoint_sha = file_sha256(checkpoint)
+    if live_checkpoint_sha != policy.get("checkpoint_sha256"):
+        out.append("checkpoint SHA differs from batch manifest")
+    calibration = policy.get("calibration") or {}
+    if calibration.get("checkpoint_sha256") != live_checkpoint_sha:
+        out.append("calibration is not keyed to the live checkpoint SHA")
+    calibration_source = Path(calibration.get("source", ""))
+    if file_sha256(calibration_source) != calibration.get("source_sha256"):
+        out.append("calibration source SHA differs from batch manifest")
+    if (calibration.get("values") or {}).get("k_velocity_realisation") != timeout_forecast_k(root):
+        out.append("calibration k differs from the frozen runtime timeout forecast")
+    parent_record = document.get("parent_repo") or {}
+    parent = Path(parent_record.get("path", ""))
+    parent_git = git_identity(parent)
+    if parent_git["commit"] != parent_record.get("commit"):
+        out.append("parent commit differs from batch manifest")
+    if parent_git["tree"] != (
+        parent_record.get("runtime_file_tree") or {}
+    ).get("digest"):
+        out.append("parent runtime file-tree hash differs from batch manifest")
+    if parent_git["commit"] != parent_record.get("pinned_commit"):
+        out.append("parent commit differs from pyproject pin recorded in manifest")
+    if parent_git["branch"] != parent_record.get("configured_branch"):
+        out.append("parent branch differs from configured branch")
+    if parent_git["dirty"]:
+        out.append("parent tracked tree is dirty: " + ", ".join(parent_git["dirty_paths"]))
+    robot = parent_record.get("robot_usd") or {}
+    if file_sha256(Path(robot.get("path", ""))) != robot.get("sha256"):
+        out.append("robot USD SHA differs from batch manifest")
+    archive_rel = policy.get("archived_relative_path")
+    if policy.get("archive_repository") == parent_record.get("url") and archive_rel:
+        if file_sha256(parent / archive_rel) != policy.get("archived_sha256"):
+            out.append("archived checkpoint SHA differs from batch manifest")
+    assets = verify_asset_checksums(root)
+    if not assets["ok"]:
+        out.append(
+            "asset checksum verification failed: "
+            + ", ".join(item["path"] for item in assets["failures"][:5])
+        )
+    if assets["checksums_sha256"] != (
+        (document.get("assets") or {}).get("verification") or {}
+    ).get("checksums_sha256"):
+        out.append("assets/checksums.txt differs from batch manifest")
+    models, seeds = load_matrix(root)
+    if document.get("matrix") != {"models": list(models), "seeds": list(seeds)}:
+        out.append("live model/seed matrix differs from batch manifest")
+    expected_trials = [
+        {"index": index, "model": model, "seed": seed, "trial_id": trial_id}
+        for index, (model, seed, trial_id) in enumerate(trial_matrix(models, seeds), 1)
+    ]
+    if document.get("ordered_trials") != expected_trials:
+        out.append("ordered trial slots differ from the live matrix")
+    if set((document.get("models") or {})) != set(models):
+        out.append("batch manifest model configs are outside the live matrix")
+    if document.get("success_criterion") != SUCCESS_CRITERION:
+        out.append("success criterion differs from batch manifest")
+    if document.get("runtime_versions") != runtime_versions():
+        out.append("runtime or provider SDK versions differ from batch manifest")
+    return out
+
+
+def provenance_disposition(
+    refusals: list[str],
+    *,
+    smoke: bool,
+    root: Path,
+    out_dir: Path,
+    video_dir: Path,
+) -> tuple[list[str], list[str]]:
+    """Return ``(hard_refusals, warnings)`` for benchmark vs explicit smoke."""
+    if not smoke:
+        return list(refusals), []
+    path_refusals = smoke_output_refusals(root, out_dir, video_dir)
+    if path_refusals:
+        return path_refusals, []
+    return [], list(refusals)
 
 
 def freeze_manifest(
@@ -364,7 +785,9 @@ class TrialPlan:
     detail: str
 
 
-def classify_trial(json_path: Path, live_hash: str) -> tuple[str, str]:
+def classify_trial(
+    json_path: Path, live_hash: str, expected_manifest_sha: str | None = None
+) -> tuple[str, str]:
     """One trial JSON -> (status, human detail). Read-only.
 
     The completeness half is ``scoring.is_complete`` — the runner and the
@@ -412,6 +835,16 @@ def classify_trial(json_path: Path, live_hash: str) -> tuple[str, str]:
             STATUS_HASH_DRIFT,
             f"stored config_hash {str(stored)[:12]}… != live {live_hash[:12]}…",
         )
+    if (
+        expected_manifest_sha is not None
+        and config.get("batch_manifest_sha256") != expected_manifest_sha
+    ):
+        return (
+            STATUS_MANIFEST_DRIFT,
+            "stored batch_manifest_sha256 "
+            f"{str(config.get('batch_manifest_sha256'))[:12]}… != expected "
+            f"{expected_manifest_sha[:12]}…",
+        )
     return STATUS_COMPLETE, "final present, config_hash matches"
 
 
@@ -420,11 +853,12 @@ def plan_batch(
     seeds: tuple[int, ...],
     raw_dir: Path,
     live_hash: str,
+    expected_manifest_sha: str | None = None,
 ) -> list[TrialPlan]:
     plans = []
     for model, seed, trial_id in trial_matrix(models, seeds):
         json_path = raw_dir / f"{trial_id}.json"
-        status, detail = classify_trial(json_path, live_hash)
+        status, detail = classify_trial(json_path, live_hash, expected_manifest_sha)
         plans.append(
             TrialPlan(
                 model=model,
@@ -474,6 +908,11 @@ def plan_refusals(plans: list[TrialPlan], foreign: list[Path] = ()) -> list[str]
                 "since it ran, revert the change or start a new batch "
                 "directory. No --force exists (doc 06 §7)."
             )
+        elif plan.status == STATUS_MANIFEST_DRIFT:
+            out.append(
+                f"{plan.json_path}: completed trial references another batch "
+                f"manifest ({plan.detail}); mixed-manifest resume is forbidden."
+            )
         elif plan.status == STATUS_SMOKE_CAPPED:
             out.append(
                 f"{plan.json_path}: {plan.detail}. It occupies matrix slot "
@@ -493,7 +932,11 @@ def format_dry_run(plans: list[TrialPlan]) -> str:
     for index, plan in enumerate(plans, 1):
         status = (
             plan.status.upper()
-            if plan.status in (STATUS_HASH_DRIFT, STATUS_SMOKE_CAPPED)
+            if plan.status in (
+                STATUS_HASH_DRIFT,
+                STATUS_MANIFEST_DRIFT,
+                STATUS_SMOKE_CAPPED,
+            )
             else plan.status
         )
         lines.append(
@@ -629,6 +1072,15 @@ def announce(record: dict) -> None:
     )
 
 
+def record_resolved_model(log, record: dict) -> None:
+    """Write the provider-resolved model exactly once, after first response."""
+    metadata = record.get("response_metadata") or {}
+    resolved = metadata.get("resolved_model_id")
+    if resolved and log.document["config"].get("resolved_model") is None:
+        log.document["config"]["resolved_model"] = resolved
+        log.flush()
+
+
 def run_one_trial(
     session,
     *,
@@ -642,6 +1094,8 @@ def run_one_trial(
     no_video: bool = False,
     max_turns: int | None = None,
     on_turn=None,
+    provenance: dict | None = None,
+    smoke: bool = False,
 ) -> TrialOutcome:
     """One trial against an ALREADY-RUNNING session.
 
@@ -700,6 +1154,17 @@ def run_one_trial(
         spawn_xy=spawn_xy,
         spawn_heading_deg=spawn_heading,
     )
+    if provenance:
+        log.document["config"].update(provenance)
+    if smoke:
+        log.document["config"]["smoke"] = True
+    if provenance or smoke:
+        log.flush()
+
+    def _record_resolved_model(record: dict) -> None:
+        record_resolved_model(log, record)
+        if on_turn is not None:
+            on_turn(record)
     if max_turns is not None:
         # Recorded so a capped smoke run can never be mistaken for a result —
         # the batch runner's resume gate hard-refuses on this field.
@@ -746,7 +1211,7 @@ def run_one_trial(
             context=context,
             stages=stage_specs(seed),
             log=log,
-            on_turn=on_turn,
+            on_turn=_record_resolved_model,
         )
         final = runner.run()
     except BaseException as exc:  # noqa: BLE001 — deliberate, see below
@@ -851,8 +1316,26 @@ def build_parser():
     )
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     parser.add_argument("--video-dir", default=str(DEFAULT_VIDEO_DIR))
-    parser.add_argument("--checkpoint", default=None,
-                        help="policy .pt (default: policy/model_2999.pt)")
+    parser.add_argument(
+        "--batch-id",
+        default=None,
+        help="write-once manifest id (results/manifests/<batch-id>.json)",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        default=None,
+        help="policy .pt; required explicitly for benchmark mode",
+    )
+    parser.add_argument(
+        "--calibration",
+        default=None,
+        help="checkpoint-keyed timeout forecast calibration JSON; required",
+    )
+    parser.add_argument(
+        "--smoke",
+        action="store_true",
+        help="exploratory mode; only legal outside benchmark result directories",
+    )
     parser.add_argument("--video-every-n", type=int, default=1,
                         help="grab every Nth recording chunk (1 = 25 fps)")
     parser.add_argument("--no-video", action="store_true")
@@ -863,6 +1346,77 @@ def build_parser():
              "aborts (model failures are final and never retried)",
     )
     return parser
+
+
+def smoke_output_refusals(root: Path, out_dir: Path, video_dir: Path) -> list[str]:
+    """A smoke may warn only when it cannot be pooled as benchmark output."""
+    benchmark_dirs = [
+        root / "results" / "raw",
+        root / "results" / "raw_v5d",
+        root / "results" / "raw_v5d_r2",
+        root / "results" / "videos",
+        root / "results" / "videos_v5d",
+        root / "results" / "videos_v5d_r2",
+    ]
+    out = []
+    for candidate in (out_dir.resolve(), video_dir.resolve()):
+        if any(candidate == path.resolve() or path.resolve() in candidate.parents for path in benchmark_dirs):
+            out.append(
+                f"smoke output {candidate} is inside a benchmark directory; "
+                "use a separate smoke directory"
+            )
+    return out
+
+
+def _load_or_build_manifest(args, root: Path, *, write: bool) -> tuple[dict | None, list[str]]:
+    missing = [
+        flag
+        for flag, value in (
+            ("--batch-id", args.batch_id),
+            ("--checkpoint", args.checkpoint),
+            ("--calibration", args.calibration),
+        )
+        if not value
+    ]
+    if missing:
+        return None, [
+            "benchmark provenance requires explicit " + ", ".join(missing)
+        ]
+    try:
+        path = manifest_path(args.batch_id, root)
+    except ValueError as error:
+        return None, [str(error)]
+    if path.exists():
+        try:
+            document = read_batch_manifest(path)
+        except (json.JSONDecodeError, UnicodeDecodeError) as error:
+            return None, [f"{path} is unparseable ({error})"]
+        checkpoint_sha = file_sha256(Path(args.checkpoint).expanduser().resolve())
+        if checkpoint_sha != (document.get("policy") or {}).get("checkpoint_sha256"):
+            return document, ["requested checkpoint SHA differs from existing batch manifest"]
+        calibration_source = (
+            ((document.get("policy") or {}).get("calibration") or {}).get("source")
+        )
+        if calibration_source != str(Path(args.calibration).expanduser().resolve()):
+            return document, ["requested calibration differs from existing batch manifest"]
+        return document, batch_manifest_refusals(document, root)
+    try:
+        document = build_batch_manifest(
+            batch_id=args.batch_id,
+            checkpoint=Path(args.checkpoint),
+            calibration_path=Path(args.calibration),
+            argv=getattr(args, "invocation_argv", sys.argv),
+            root=root,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return None, [str(error)]
+    refusals = batch_manifest_refusals(document, root)
+    if write and not refusals:
+        try:
+            write_manifest_once(path, document)
+        except FileExistsError as error:
+            return None, [str(error)]
+    return document, refusals
 
 
 def _print_refusals(refusals: list[str]) -> None:
@@ -918,7 +1472,9 @@ def _startup_refusals(
     return refusals
 
 
-def midbatch_refusals(root: Path = REPO_ROOT) -> list[str]:
+def midbatch_refusals(
+    root: Path = REPO_ROOT, batch_manifest: dict | None = None
+) -> list[str]:
     """The freeze half of the guard, RE-RUN before every trial launch.
 
     A startup-only guard leaves the whole unattended batch exposed: an edit to
@@ -940,12 +1496,17 @@ def midbatch_refusals(root: Path = REPO_ROOT) -> list[str]:
         return [f"results/freeze.json became unparseable mid-batch ({error})"]
     if manifest is None:
         return ["results/freeze.json disappeared mid-batch — refusing to continue"]
-    return freeze_refusals(manifest, root) + commit_refusals(root)
+    out = freeze_refusals(manifest, root) + commit_refusals(root)
+    if batch_manifest is not None:
+        out += batch_manifest_refusals(batch_manifest, root)
+    return out
 
 
-def _abort_on_midbatch_drift(root: Path, prefix: str) -> bool:
+def _abort_on_midbatch_drift(
+    root: Path, prefix: str, batch_manifest: dict | None = None
+) -> bool:
     """True (and prints the refusal) iff the frozen tree drifted mid-batch."""
-    refusals = midbatch_refusals(root)
+    refusals = midbatch_refusals(root, batch_manifest)
     if not refusals:
         return False
     print(
@@ -960,16 +1521,35 @@ def _abort_on_midbatch_drift(root: Path, prefix: str) -> bool:
     return True
 
 
-def cmd_dry_run(root: Path = REPO_ROOT, raw_dir: Path | None = None) -> int:
+def cmd_dry_run(
+    root: Path = REPO_ROOT, raw_dir: Path | None = None, args=None
+) -> int:
     raw_dir = Path(raw_dir) if raw_dir is not None else root / "results" / "raw"
     models, seeds = load_matrix(root)
     live = config_hash(FROZEN_FILES, root)
-    plans = plan_batch(models, seeds, raw_dir, live)
+    batch_manifest = None
+    manifest_refusals: list[str] = []
+    if args is not None:
+        batch_manifest, manifest_refusals = _load_or_build_manifest(
+            args, root, write=False
+        )
+    expected_manifest_sha = (
+        batch_manifest.get("manifest_sha256") if batch_manifest is not None else None
+    )
+    plans = plan_batch(models, seeds, raw_dir, live, expected_manifest_sha)
     print(
         f"== dry run: {len(models)} models x {len(seeds)} seeds = "
         f"{len(plans)} trials ==",
     )
     print(f"  live config_hash : {live}")
+    if batch_manifest is not None:
+        policy = batch_manifest["policy"]
+        parent = batch_manifest["parent_repo"]
+        print(f"  manifest SHA    : {batch_manifest['manifest_sha256']}")
+        print(f"  checkpoint SHA  : {policy['checkpoint_sha256']}")
+        print(f"  parent commit   : {parent['commit']}")
+        print(f"  criterion       : {batch_manifest['success_criterion']}")
+        print(f"  matrix          : {batch_manifest['matrix']}")
     try:
         manifest = read_freeze(root)
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -986,7 +1566,18 @@ def cmd_dry_run(root: Path = REPO_ROOT, raw_dir: Path | None = None) -> int:
     pending = sum(p.status in (STATUS_PENDING, STATUS_INCOMPLETE) for p in plans)
     skips = sum(p.status == STATUS_COMPLETE for p in plans)
     print(f"  would run {pending}, skip {skips} — nothing touched")
-    refusals = _startup_refusals(root, plans, raw_dir)
+    refusals = _startup_refusals(root, plans, raw_dir) + manifest_refusals
+    if args is not None and args.smoke:
+        hard, warnings = provenance_disposition(
+            manifest_refusals,
+            smoke=True,
+            root=root,
+            out_dir=raw_dir,
+            video_dir=Path(args.video_dir),
+        )
+        refusals = [r for r in refusals if r not in manifest_refusals] + hard
+        for warning in warnings:
+            print(f"WARNING (smoke): {warning}")
     if refusals:
         _print_refusals(refusals)
         return 2
@@ -999,17 +1590,51 @@ def cmd_run(args, root: Path = REPO_ROOT) -> int:
     incomplete_dir = root / "results" / "incomplete"
     rerun_log = root / "results" / "rerun_log.md"
 
+    smoke = bool(getattr(args, "smoke", False))
     models, seeds = load_matrix(root)
     live = config_hash(FROZEN_FILES, root)
     plans = plan_batch(models, seeds, raw_dir, live)
 
+    # Preserve the legacy freeze/result guard as the first, cheapest gate. This
+    # also keeps old freeze manifests readable without rewriting them.
+    legacy_refusals = _startup_refusals(root, plans, raw_dir)
+    if legacy_refusals:
+        _print_refusals(legacy_refusals)
+        return 2
+
+    batch_manifest, manifest_refusals = _load_or_build_manifest(args, root, write=False)
+    if batch_manifest is None:
+        _print_refusals(manifest_refusals)
+        return 2
+    expected_manifest_sha = batch_manifest["manifest_sha256"]
+
+    plans = plan_batch(models, seeds, raw_dir, live, expected_manifest_sha)
+
     # Every guard, BEFORE the multi-minute cold start and before any file is
     # touched: a refusal after launch would waste the cold start, and a
     # refusal after a retirement would have already moved someone's file.
-    refusals = _startup_refusals(root, plans, raw_dir)
+    refusals = plan_refusals(plans, foreign_trials(raw_dir, plans))
+    hard_provenance, warnings = provenance_disposition(
+        manifest_refusals,
+        smoke=smoke,
+        root=root,
+        out_dir=raw_dir,
+        video_dir=video_dir,
+    )
+    if smoke:
+        for warning in warnings:
+            print(f"WARNING (smoke): {warning}")
+    refusals += hard_provenance
     if refusals:
         _print_refusals(refusals)
         return 2
+    manifest_file = manifest_path(args.batch_id, root)
+    if not manifest_file.exists():
+        try:
+            write_manifest_once(manifest_file, batch_manifest)
+        except FileExistsError as error:
+            _print_refusals([str(error)])
+            return 2
 
     # Fail fast on a missing key or an unknown provider for EVERY model in the
     # matrix — WITHOUT importing the vendor SDKs (the Omit hazard): a bad
@@ -1061,7 +1686,7 @@ def cmd_run(args, root: Path = REPO_ROOT) -> int:
             # The freeze guard again, before EVERY launch — and before the
             # retirement below, so a drifted tree moves nobody's file. See
             # midbatch_refusals for why startup-only is not enough.
-            if _abort_on_midbatch_drift(root, prefix):
+            if _abort_on_midbatch_drift(root, prefix, batch_manifest):
                 return 2
             if plan.status == STATUS_INCOMPLETE:
                 dest = retire_incomplete(
@@ -1075,7 +1700,9 @@ def cmd_run(args, root: Path = REPO_ROOT) -> int:
             attempts = 0
             while True:
                 attempts += 1
-                if attempts > 1 and _abort_on_midbatch_drift(root, prefix):
+                if attempts > 1 and _abort_on_midbatch_drift(
+                    root, prefix, batch_manifest
+                ):
                     # An infra retry is a launch too — the drift may have
                     # landed during the failed attempt.
                     return 2
@@ -1091,6 +1718,16 @@ def cmd_run(args, root: Path = REPO_ROOT) -> int:
                     video_every_n=args.video_every_n,
                     no_video=args.no_video,
                     on_turn=announce,
+                    provenance={
+                        "batch_manifest_sha256": expected_manifest_sha,
+                        "checkpoint_sha256": batch_manifest["policy"][
+                            "checkpoint_sha256"
+                        ],
+                        "parent_commit": batch_manifest["parent_repo"]["commit"],
+                        "success_criterion": batch_manifest["success_criterion"],
+                        "resolved_model": None,
+                    },
+                    smoke=smoke,
                 )
                 if outcome.interrupted:
                     retire_incomplete(
@@ -1153,7 +1790,9 @@ def main() -> int:
     # Parsed BEFORE anything launches: AppLauncher inside SimSession.launch()
     # parses sys.argv for its own flags and would choke on ours. Stripping
     # them afterwards leaves kit exactly the argv it expects.
+    invocation_argv = list(sys.argv)
     args, kit_argv = build_parser().parse_known_args()
+    args.invocation_argv = invocation_argv
     sys.argv = [sys.argv[0], *kit_argv]
 
     if args.freeze and args.dry_run:
@@ -1162,7 +1801,7 @@ def main() -> int:
     if args.freeze:
         return cmd_freeze(REPO_ROOT)
     if args.dry_run:
-        return cmd_dry_run(REPO_ROOT, Path(args.out_dir))
+        return cmd_dry_run(REPO_ROOT, Path(args.out_dir), args)
     return cmd_run(args, REPO_ROOT)
 
 
