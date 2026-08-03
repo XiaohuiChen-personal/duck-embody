@@ -10,6 +10,16 @@ computed the distance differently, a trial could be logged
 ``find_kitchen: success`` (and run a stage 2) while the published table said
 failure, with nothing raising. Both call :func:`score_stage`.
 
+**That is exactly what happened between 2026-07-27 and TR.2, in the other
+direction.** Criterion v2 was adopted in ``scoring.py`` alone while this
+module — the live gate — stayed on the pre-registered point disc, so the
+published benchmark and the task the robot was actually running were two
+different tasks (forensics F-02). ``opus5_seed101`` is the receipt: a published
+success that the live loop scored ``declared_elsewhere`` and never offered its
+return leg. TR.2 moved the criterion here, versioned it
+(:data:`SUCCESS_CRITERION`), and made the scorer import it. Add a new criterion
+by adding a VERSION, never by editing a predicate in one consumer.
+
 **Radii come from the layout dict, never from a literal here.** AGENTS.md §2:
 ``duck_embody/env/apartment_layout.py`` is simultaneously the scene spec and the
 scoring ground truth. ``configs/benchmark.yaml`` mirrors both radii for the
@@ -32,7 +42,46 @@ from dataclasses import dataclass
 
 from duck_embody.agent.memory import STAGE_FIND_KITCHEN, STAGE_RETURN_HOME
 from duck_embody.agent.prompts import STAGE1_OBJECTIVE, STAGE2_OBJECTIVE_TOOL_RESULT
-from duck_embody.env.apartment_layout import LAYOUT, spawn_pose, target_point
+from duck_embody.env.apartment_layout import (
+    LAYOUT,
+    nearest_counter_face,
+    room_at,
+    spawn_pose,
+    target_point,
+)
+
+# ---------------------------------------------------------------------------
+# The success criterion — ONE versioned predicate, two consumers (TR.2)
+# ---------------------------------------------------------------------------
+
+#: The pre-registered criterion the v4 and v5d_r2 batches RAN under: Euclidean
+#: distance to the pinned target point, inside ``success_radius_m``. Kept as a
+#: named, callable version rather than deleted, because every legacy trial JSON
+#: must still be validated against the predicate that actually decided it —
+#: see :func:`score_stage`'s ``criterion`` argument.
+CRITERION_PREREGISTERED = "v1_point_disc"
+
+#: Criterion v2, "any counter face" (adopted post-batch 2026-07-27 at owner
+#: direction; definition in ``docs/METRICS.md`` §2.1, change log in
+#: ``results/rerun_log.md``). ``find_kitchen`` succeeds inside the pre-registered
+#: point disc **OR** within the same radius of any of the five kitchen counter
+#: footprints *while standing in the kitchen*. ``return_home`` is unchanged.
+CRITERION_V2_ANY_COUNTER = "v2_any_counter"
+
+#: The criterion the LIVE loop and the published scorer both use, and the value
+#: every new trial JSON stamps into ``config.success_criterion``.
+#:
+#: **This constant is the F-02 fix.** Until TR.2 criterion v2 existed only in
+#: post-hoc ``scoring.py`` while this module — the live stage gate — was still
+#: on the point disc, so the two were different tasks. Measured consequence:
+#: ``opus5_seed101`` declared 0.3607 m from the point (live failure) but
+#: 0.0577 m from a counter face inside the kitchen (published success), and the
+#: return leg it had earned was never offered. That trial is unrecoverable; the
+#: split is not. Widening v2 further needs owner approval, a NEW version string
+#: here, and a sensitivity report (remediation plan T2).
+SUCCESS_CRITERION = CRITERION_V2_ANY_COUNTER
+
+CRITERIA: tuple[str, ...] = (CRITERION_PREREGISTERED, CRITERION_V2_ANY_COUNTER)
 
 # ---------------------------------------------------------------------------
 # The stage-2 gate — RESOLVED BY T3.4 (doc 05 §12, doc 06 §12)
@@ -217,27 +266,80 @@ class StageSpec:
 
 @dataclass(frozen=True)
 class StageScore:
-    """The distance verdict at ``declare_done`` (or at a stage's end).
+    """The position verdict at ``declare_done`` (or at a stage's end).
 
     Every input to the decision is carried so the trial log can record them and
     T4.1's scorer can **recompute** the verdict rather than trust it — doc 06 §4:
     "The log is the single source for scoring — the scorer never touches the
     simulator."
+
+    TR.2 stopped overloading one distance. Under criterion v2 the goal is a
+    REGION (disc ∪ counter band), so a single ``distance_m`` could not answer
+    "how did this pose pass?" or "how far outside was it?" without the reader
+    re-deriving the geometry — which is how two readings of one batch appear.
+    The point distance keeps its own field (and its legacy ``distance_m`` name
+    in the JSON) because doc 06 §5.2's continuous progress metric is defined
+    against the point and stays comparable across criterion versions.
+
+    Scoring/audit channels ONLY. Nothing here is ever rendered to a model
+    (doc 06 §4) — it is all ground truth.
     """
 
+    criterion_version: str
     success: bool
-    distance_m: float
+    #: Euclidean distance to the pinned target point. Under
+    #: ``return_home`` this is the distance to the spawn point.
+    distance_to_point_m: float
+    #: How much closer the robot would have had to be, in a straight line, for
+    #: the pose to satisfy SOME branch of this criterion. ``0.0`` on a success.
+    #: A slack, deliberately not a walking distance: through a wall the nearest
+    #: counter is centimetres away and metres of walking away, and only the
+    #: boolean verdict is allowed to depend on the in-room condition.
+    distance_to_success_region_m: float
     radius_m: float
     goal_xy: tuple[float, float]
     true_xy: tuple[float, float]
+    #: Stage-1 only (``None`` for ``return_home``, whose goal has no counter
+    #: semantics): the nearest kitchen counter and the distance to its
+    #: footprint rectangle, reported whether or not the counter branch fired.
+    nearest_counter_name: str | None = None
+    distance_to_counter_m: float | None = None
+    #: Was the robot inside the kitchen? The load-bearing half of the counter
+    #: branch — counter_4/5 back onto the bedroom partition, so a bedroom pose
+    #: 4 cm through that wall is within 0.35 m of their rectangles.
+    in_goal_room: bool | None = None
+
+    @property
+    def distance_m(self) -> float:
+        """The pre-registered point distance, under its historical name.
+
+        Kept so every existing reader (``scoring.stage_success_preregistered``'s
+        log cross-check, the audit scripts, the committed batches' JSON) keeps
+        meaning exactly what it meant before TR.2.
+        """
+        return self.distance_to_point_m
 
     def as_dict(self) -> dict:
         return {
+            "criterion_version": self.criterion_version,
             "success": self.success,
-            "distance_m": round(self.distance_m, 4),
+            # Legacy name, unchanged semantics: distance to the pinned point.
+            # Emitted alongside the explicit name so old and new readers agree.
+            "distance_m": round(self.distance_to_point_m, 4),
+            "distance_to_point_m": round(self.distance_to_point_m, 4),
+            "distance_to_success_region_m": round(
+                self.distance_to_success_region_m, 4
+            ),
             "radius_m": self.radius_m,
             "goal_xy": [self.goal_xy[0], self.goal_xy[1]],
             "true_xy": [round(self.true_xy[0], 4), round(self.true_xy[1], 4)],
+            "nearest_counter_name": self.nearest_counter_name,
+            "distance_to_counter_m": (
+                None
+                if self.distance_to_counter_m is None
+                else round(self.distance_to_counter_m, 4)
+            ),
+            "in_goal_room": self.in_goal_room,
         }
 
 
@@ -275,19 +377,85 @@ def stage_specs(seed: int) -> tuple[StageSpec, StageSpec]:
     return find_kitchen_spec(), return_home_spec(spawn_xy)
 
 
-def score_stage(spec: StageSpec, true_xy: tuple[float, float]) -> StageScore:
-    """THE predicate. The boundary is inclusive — doc 06 §3.1 says "within".
+def _counter_branch_applies(stage: str, criterion: str) -> bool:
+    """Does the counter half of v2 exist for this stage under this criterion?"""
+    return criterion == CRITERION_V2_ANY_COUNTER and stage == STAGE_FIND_KITCHEN
+
+
+def position_success(
+    stage: str,
+    true_xy: tuple[float, float],
+    spec: StageSpec,
+    *,
+    criterion: str = SUCCESS_CRITERION,
+) -> bool:
+    """THE position predicate, for one stage under one named criterion.
+
+    ``find_kitchen`` under v2: the pre-registered point disc **OR** within the
+    same radius of any kitchen counter footprint *while standing in the
+    kitchen*. The UNION, not the counter branch alone, because the two regions
+    are NOT nested — the pinned target point is 0.397 m from the nearest counter
+    footprint, so a pure any-counter test would fail a robot standing exactly on
+    the pre-registered goal. The in-kitchen condition is the other load-bearing
+    half: counter_4/5 back onto the bedroom partition.
+
+    ``return_home`` is the pre-registered disc under BOTH criteria. Its goal has
+    no counter semantics, and a pose near a counter is not "home".
+
+    The boundary is inclusive — doc 06 §3.1 says "within" — on both branches.
+    """
+    if criterion not in CRITERIA:
+        raise ValueError(f"unknown success criterion {criterion!r}; expected {CRITERIA}")
+    if math.dist(true_xy, spec.goal_xy) <= spec.success_radius_m:
+        return True
+    if not _counter_branch_applies(stage, criterion):
+        return False
+    if room_at(true_xy[0], true_xy[1]) != LAYOUT["target"]["room"]:
+        return False
+    return nearest_counter_face(true_xy)[1] <= spec.success_radius_m
+
+
+def score_stage(
+    spec: StageSpec,
+    true_xy: tuple[float, float],
+    *,
+    criterion: str = SUCCESS_CRITERION,
+) -> StageScore:
+    """THE verdict, with every input that produced it.
 
     Takes the **true** base XY (``PolicyPlayback.true_xy()``, scoring-only), not
     the dead-reckoned estimate: doc 06 §5.1 scores the distance condition from
     ground truth, and a model whose estimate drifted onto the counter while the
     robot stood in the hallway must fail. That asymmetry is the benchmark.
+
+    ``criterion`` defaults to :data:`SUCCESS_CRITERION`, which is what the live
+    loop and the published scorer both get. It is an argument at all so a
+    LEGACY trial (logged before the live gate was unified) can still be
+    validated against the predicate that actually decided it — never
+    reinterpreted as though v2 had run live.
     """
-    distance = math.dist(true_xy, spec.goal_xy)
+    point_distance = math.dist(true_xy, spec.goal_xy)
+    xy = (float(true_xy[0]), float(true_xy[1]))
+    success = position_success(spec.name, xy, spec, criterion=criterion)
+    slack = max(0.0, point_distance - spec.success_radius_m)
+
+    counter_name: str | None = None
+    counter_distance: float | None = None
+    in_goal_room: bool | None = None
+    if _counter_branch_applies(spec.name, criterion):
+        counter_name, counter_distance = nearest_counter_face(xy)
+        in_goal_room = room_at(xy[0], xy[1]) == LAYOUT["target"]["room"]
+        if in_goal_room:
+            slack = min(slack, max(0.0, counter_distance - spec.success_radius_m))
     return StageScore(
-        success=distance <= spec.success_radius_m,
-        distance_m=distance,
+        criterion_version=criterion,
+        success=success,
+        distance_to_point_m=point_distance,
+        distance_to_success_region_m=0.0 if success else slack,
         radius_m=spec.success_radius_m,
         goal_xy=spec.goal_xy,
-        true_xy=(float(true_xy[0]), float(true_xy[1])),
+        true_xy=xy,
+        nearest_counter_name=counter_name,
+        distance_to_counter_m=counter_distance,
+        in_goal_room=in_goal_room,
     )

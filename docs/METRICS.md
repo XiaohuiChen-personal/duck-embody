@@ -106,9 +106,20 @@ conservative.
 
 `SR = successes / N`, per model **per stage**, `N = 4`.
 
-**The published `find_kitchen` success predicate is criterion v2 ("any counter
-face"), adopted POST-BATCH** (2026-07-27, owner-directed;
-[`results/rerun_log.md`](../results/rerun_log.md)). A stage-1 declare succeeds
+**The `find_kitchen` success predicate is criterion v2 ("any counter face").**
+Adopted POST-BATCH (2026-07-27, owner-directed;
+[`results/rerun_log.md`](../results/rerun_log.md)) and **unified with the live
+stage machine by TR.2** (2026-08-02). Until TR.2 it was published-only: v2 lived
+in `scoring.py` while the running task still gated on the point disc, so the
+benchmark reported one task and the robot played another. `opus5_seed101`
+declared 0.3607 m from the point (a live failure, `declared_elsewhere`) and
+0.0577 m from a counter face inside the kitchen (a published success), and the
+`return_home` leg it had earned was never offered. There is now ONE
+implementation — `duck_embody.tasks.find_kitchen.position_success` — consulted
+by the live loop and by the scorer, with the counter geometry in
+`env/apartment_layout.py` so neither side owns a private copy.
+
+A stage-1 declare succeeds
 if the true base position is within 0.35 m of the pre-registered target point
 **or** within the same 0.35 m of any of the five kitchen counters' footprint
 rectangles *while standing inside the kitchen room polygon*. Rationale: the
@@ -136,22 +147,38 @@ demonstrate localization". v2 widened only WHERE arrival counts, never HOW.
   model whose belief drifted onto the counter while the robot stood in the
   hallway fails. That asymmetry is the benchmark.
 - the log carries two different flags and confusing them inflates SR:
-  `stages.*.score.success` is the bare distance test, `stages.*.success` is
-  distance **and** `declare_done` — both written by the live loop under the
-  PRE-REGISTERED predicate. The scorer still recomputes and validates the
-  as-run verdicts (raising if the log disagrees with itself), then publishes
-  the v2 verdict beside them: `success_preregistered` /
-  `outcome_preregistered` per stage in `scores.json`. On the frozen batch:
-  v2 1/12, pre-registered 0/12; the single flip is `gpt56sol_seed103`.
+  `stages.*.score.success` is the bare position test, `stages.*.success` is
+  position **and** `declare_done`. **Which predicate wrote them depends on the
+  trial**, and the trial says so: `config.success_criterion` is
+  `"v2_any_counter"` on any log written after TR.2, and absent on a legacy log
+  whose live gate was the point disc. The scorer branches on that field and
+  never on the freeze commit:
+  - **stamped `v2_any_counter`** — recompute under v2 and validate the logged
+    live outcome against it. Live and published agree by construction; a
+    disagreement is a corrupt log and raises.
+  - **unstamped (legacy: v4, `raw_v5d`, `raw_v5d_r2`)** — validate the as-run
+    point-disc verdict, then publish the v2 sensitivity result beside it
+    exactly as before: `success_preregistered` / `outcome_preregistered` per
+    stage in `scores.json`. An old `stages.*.success` is **never** re-read as
+    though v2 had decided it.
+
+  On the frozen v4 batch: v2 1/12, pre-registered 0/12; the single flip is
+  `gpt56sol_seed103`.
 
 `return_home` is reported twice, per doc 06 §3.2: `x/4` with an unrun stage
 counted a failure and the denominator printed literally, **plus** a conditional
-`x/k` over the stage-1 successes **whose return leg actually ran** — the live
-gate consulted the pre-registered predicate, so a v2-only success was never
-offered stage 2, and counting it in `k` would report a failure for a leg the
-model never attempted. The exclusion is published as
+`x/k` over the stage-1 successes **whose return leg actually ran** — on a legacy
+batch the live gate consulted the pre-registered predicate, so a v2-only success
+was never offered stage 2, and counting it in `k` would report a failure for a
+leg the model never attempted. The exclusion is published as
 `stage1_successes_never_offered_return`; `x/k` prints `—` when `k = 0`, and no
 confidence interval when `k < 3`.
+
+On a TR.2-stamped batch that exclusion must be **empty**: the live gate is v2,
+so every v2 stage-1 success is offered its return leg. A nonzero
+`stage1_successes_never_offered_return` on a stamped batch is a defect, not a
+disclosure — the two predicates have drifted apart again — and it is asserted as
+zero in `tests/test_scoring.py`.
 
 **SR ships with an interval like every other column.** Doc 06 §10's README table
 asks for "SR (both stages), progress, SPL, … each as mean ± 95 % CI", so every
@@ -350,8 +377,25 @@ drift = ‖position_estimate − true_pose‖               [metres]
 
 measured **per stage** at the stage's last logged turn — which is the
 `declare_done` turn when the stage ended that way. Reported alongside it: the
-count of `correct_position` calls in that stage and the magnitude
+count of accepted corrections in that stage and the magnitude
 `‖old_xy − new_xy‖` of each.
+
+**Two correction tools since TR.1 (2026-08-02), one record.** A correction now
+comes from either `correct_to_anchor(name, reason)` — snapping to a point the
+model recorded with `record_anchor` while standing on it — or coordinate-only
+`correct_position(x, y, reason)`. Both append the same `Correction`, so the
+count and the magnitudes mean what they meant before; the record additionally
+carries `anchor` (the name, or `null`), so the two arms can be separated. Report
+them separately whenever both occur: they are different cognitive acts, and on
+the batch that motivated the split they had very different consequences. The
+pre-TR.1 `correct_position(place=…)` mode resolved a room's or a doorway's
+*first-sighting* position — where the robot happened to stand when it described
+an area, not a point it could return to — and across `raw_v5d_r2`, **14 of 15
+accepted corrections made the true error worse, for a net +3.72 m**
+(`results/forensics_v5d_r2/batch_summary.json`; worst single case
+`sonnet5_seed101` t21, 0.024 m → 1.504 m). A drift table from that batch is
+therefore not comparable to one from a post-TR.1 batch on the corrections axis:
+the tool the model was offered is different.
 
 Dead reckoning integrates **simulated leg odometry** (the call's true
 displacement through a seeded error model), so it drifts because measurement

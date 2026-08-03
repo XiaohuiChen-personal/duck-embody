@@ -180,22 +180,27 @@ def number_arg(value: object, field: str, tool: str) -> tuple[float | None, dict
 class Room:
     """A place the model says it saw. Created only by ``update_room``.
 
-    ``anchor_xy`` is the INTEGRATOR's estimate at the moment the model first
-    asserted this room — declared-exception class (b), the same as breadcrumbs:
-    it records what the robot believed, never ground truth. It exists because
-    the 2026-07-30 investigation found `correct_position` was called ZERO times
-    across 3 models x 13 trials, and the primary mechanical cause was that its
-    required (x, y) had no source anywhere in the payloads: the map stored
-    names, the tool demanded coordinates, and nothing bridged them. The anchor
-    is that bridge — SLAM's data-association step. Correcting to an anchor
-    restores MAP-FRAME consistency, not world truth: if the anchor itself was
-    laid down with drift, that offset survives, exactly as in real SLAM.
+    ``observed_from_xy`` is the INTEGRATOR's estimate at the moment the model
+    first asserted this room — declared-exception class (b), the same as
+    breadcrumbs: what the robot believed, never ground truth. It is **audit
+    metadata only**: never rendered, never resolvable by any correction tool.
+
+    TR.1 (2026-08-02) renamed it from ``anchor_xy`` and cut it out of loop
+    closure entirely. As an anchor it was systematically wrong, because a room
+    is an AREA and this coordinate is wherever the robot happened to stand when
+    it first described that area. Measured over the 15 accepted corrections of
+    the ``raw_v5d_r2`` batch, snapping to these auto-anchors added a net 3.72 m
+    of true localisation error; 14 of 15 accepted corrections made the estimate
+    worse (``results/forensics_v5d_r2/batch_summary.json``). Loop closure now
+    runs on :class:`Anchor` — points the model recorded deliberately, while
+    standing on them.
     """
 
     name: str
     description: str
     landmarks: list[str] = field(default_factory=list)
-    anchor_xy: tuple[float, float] | None = None
+    #: Audit only (see class docstring). NOT a correctable point.
+    observed_from_xy: tuple[float, float] | None = None
 
 
 @dataclass
@@ -214,11 +219,37 @@ class Exit:
     room: str
     direction_deg: float  # absolute compass direction of the doorway
     status: str  # "unexplored" | "leads_to:<room>"
-    #: Integrator estimate when the exit was marked (see Room.anchor_xy).
-    #: Doorways are the highest-value anchors: a 0.35 m gap bounds the true
-    #: position to ~0.175 m — inside the success radius — where a room-sized
-    #: anchor leaves metres of ambiguity.
-    anchor_xy: tuple[float, float] | None = None
+    #: Where the robot BELIEVED it stood when the exit was marked. Audit only
+    #: (see :class:`Room`). Not an anchor and not resolvable: an exit is
+    #: routinely marked from across the room it is seen from, so this
+    #: coordinate is not the threshold — treating it as one is exactly the F-01
+    #: defect (``sonnet5_seed101`` t21 moved a 0.024 m estimate to 1.504 m).
+    observed_from_xy: tuple[float, float] | None = None
+
+
+@dataclass
+class Anchor:
+    """One recognizable POINT the model recorded while standing on it.
+
+    The TR.1 replacement for automatic room/exit anchors. The distinction is
+    the whole fix: a room is an area and an exit may be sighted from metres
+    away, but ``record_anchor`` is a deliberate act at a specific spot, so its
+    coordinate means "the estimate at the place I can recognise again".
+
+    ``xy`` is the :class:`PositionIntegrator` estimate at the moment of
+    recording — declared exception (b), never ground truth. Correcting back to
+    it restores MAP-FRAME consistency, not world truth: whatever drift the
+    estimate carried at registration survives the correction, exactly as in
+    real SLAM. That residual is the anchor-registration error the T1 smoke
+    bounds.
+    """
+
+    name: str
+    description: str
+    xy: tuple[float, float]
+    room: str | None = None
+    created_turn: int = 0
+    stage: str = STAGE_FIND_KITCHEN
 
 
 @dataclass
@@ -254,6 +285,11 @@ class Correction:
     new_xy: tuple[float, float]
     reason: str
     stage: str = STAGE_FIND_KITCHEN
+    #: The :class:`Anchor` name this correction snapped to, or ``None`` for an
+    #: explicit-coordinate ``correct_position``. Added by TR.1: after the batch
+    #: the two are otherwise indistinguishable, and "did loop closure to a
+    #: recorded point help?" is the question the whole task exists to answer.
+    anchor: str | None = None
 
 
 @dataclass
@@ -270,6 +306,10 @@ class Memory:
 
     rooms: dict[str, Room] = field(default_factory=dict)
     exits: list[Exit] = field(default_factory=list)
+    #: Point anchors, keyed by the model's own name, in recording order (TR.1).
+    #: The ONLY thing ``correct_to_anchor`` can resolve — rooms and exits are
+    #: deliberately unreachable from it.
+    anchors: dict[str, Anchor] = field(default_factory=dict)
     breadcrumbs: list[Crumb] = field(default_factory=list)
     current_room: str | None = None
     plan: str = ""
@@ -287,7 +327,7 @@ class Memory:
 
     # -- model-asserted writes (doc 05 §4.3) --------------------------------
 
-    def update_room(self, name: str, description: str, anchor_xy=None) -> dict:
+    def update_room(self, name: str, description: str, observed_from_xy=None) -> dict:
         """Upsert a room node. Overwriting a description is legal — the model
         may revise what it thinks a place looks like (doc 05 §4.3)."""
         for value, field_name in ((name, "name"), (description, "description")):
@@ -308,14 +348,16 @@ class Memory:
             )
         room = self.rooms.get(name)
         if room is None:
-            # The anchor is stamped ONCE, at creation: it means "where the
-            # integrator believed the robot stood when this place was first
-            # asserted". Re-describing the room later must not move it, or a
-            # drifted revisit would silently corrupt the map frame.
+            # AUDIT metadata, stamped once at creation: where the integrator
+            # believed the robot stood when this place was first asserted. It
+            # is NOT an anchor — nothing resolves it, nothing renders it, and
+            # `correct_to_anchor` cannot reach it (TR.1 / forensics F-01). To
+            # make a point correctable the model must call `record_anchor`.
             self.rooms[name] = Room(
                 name=name, description=description,
-                anchor_xy=(round(anchor_xy[0], 2), round(anchor_xy[1], 2))
-                if anchor_xy is not None else None,
+                observed_from_xy=(
+                    round(observed_from_xy[0], 2), round(observed_from_xy[1], 2)
+                ) if observed_from_xy is not None else None,
             )
             action = "created"
         else:
@@ -347,7 +389,9 @@ class Memory:
             "landmarks": len(target.landmarks),
         }
 
-    def mark_exit(self, room: str, direction_deg: float, status: str, anchor_xy=None) -> dict:
+    def mark_exit(
+        self, room: str, direction_deg: float, status: str, observed_from_xy=None
+    ) -> dict:
         """Record or update an exit, keyed on (room, direction snapped to 15°)."""
         error = text_error(room, "room", "mark_exit")
         if error is not None:
@@ -374,10 +418,14 @@ class Memory:
         snapped = quantise_direction(bearing)
         existing = self._find_exit(room, snapped)
         if existing is None:
+            # Audit metadata only (see `update_room`): an exit is routinely
+            # marked from across the room, so this is a sighting position, not
+            # a threshold, and TR.1 forbids correcting to it.
             self.exits.append(Exit(
                 room=room, direction_deg=snapped, status=clean,
-                anchor_xy=(round(anchor_xy[0], 2), round(anchor_xy[1], 2))
-                if anchor_xy is not None else None,
+                observed_from_xy=(
+                    round(observed_from_xy[0], 2), round(observed_from_xy[1], 2)
+                ) if observed_from_xy is not None else None,
             ))
             action = "recorded"
         else:
@@ -408,6 +456,101 @@ class Memory:
         if not self.room_sequence or self.room_sequence[-1] != name:
             self.room_sequence.append(name)
         return {"ok": True, "detail": f"current room set to {name!r}"}
+
+    def record_anchor(
+        self,
+        name: str,
+        description: str,
+        xy: tuple[float, float],
+        *,
+        turn: int = 0,
+        room: str | None = None,
+        replace: bool = False,
+    ) -> dict:
+        """Register the CURRENT estimate as a named, recognizable point (TR.1).
+
+        ``xy`` comes from the caller's :class:`PositionIntegrator`, never from
+        ground truth, and the harness makes no judgement about whether the spot
+        is actually recognizable — deciding that is perception, which is the
+        model's job (doc 05 §1).
+
+        **Re-recording an existing name updates the description and never the
+        coordinate** unless ``replace=True``. This is the one rule that keeps
+        the anchor set from decaying into the auto-anchors it replaced: a model
+        that re-records on a drifted revisit would otherwise overwrite a good
+        map point with a worse one, and the very next ``correct_to_anchor``
+        would snap it to the drift it was meant to remove. Moving an anchor
+        stays possible — the model may genuinely decide its first registration
+        was wrong — but it has to say so.
+        """
+        for value, field_name in ((name, "name"), (description, "description")):
+            error = text_error(value, field_name, "record_anchor")
+            if error is not None:
+                return error
+        if not name.strip():
+            return invalid_args(
+                "anchor name is empty in record_anchor",
+                "give the point a short name you can refer to later, e.g. "
+                "'tiled_threshold'",
+            )
+        if room is not None:
+            error = text_error(room, "room", "record_anchor")
+            if error is not None:
+                return error
+            if room not in self.rooms:
+                return self._unknown_room_error(room, "record_anchor")
+        if not isinstance(replace, bool):
+            return invalid_args(
+                f"replace must be true or false in record_anchor, got {replace!r}",
+                "omit replace to update an existing anchor's description, or "
+                "pass replace=true to move it to your current estimate",
+            )
+        point = (round(float(xy[0]), 2), round(float(xy[1]), 2))
+        existing = self.anchors.get(name)
+        if existing is None:
+            self.anchors[name] = Anchor(
+                name=name,
+                description=description,
+                xy=point,
+                room=room,
+                created_turn=turn,
+                stage=self.stage,
+            )
+            return {
+                "ok": True,
+                "detail": (
+                    f"anchor {name!r} recorded at "
+                    f"(x={point[0]:.2f}, y={point[1]:.2f})"
+                ),
+                "anchors": len(self.anchors),
+            }
+        existing.description = description
+        if room is not None:
+            existing.room = room
+        if not replace:
+            return {
+                "ok": True,
+                "detail": (
+                    f"anchor {name!r} description updated; its position stays "
+                    f"(x={existing.xy[0]:.2f}, y={existing.xy[1]:.2f}) — pass "
+                    "replace=true to move it to your current estimate"
+                ),
+                "anchors": len(self.anchors),
+                "moved": False,
+            }
+        old = existing.xy
+        existing.xy = point
+        existing.created_turn = turn
+        existing.stage = self.stage
+        return {
+            "ok": True,
+            "detail": (
+                f"anchor {name!r} moved from (x={old[0]:.2f}, y={old[1]:.2f}) "
+                f"to (x={point[0]:.2f}, y={point[1]:.2f})"
+            ),
+            "anchors": len(self.anchors),
+            "moved": True,
+        }
 
     def update_plan(self, text: str) -> dict:
         """Replace the standing plan verbatim — no re-wrapping, no editing.
@@ -494,6 +637,16 @@ class Memory:
         # Creation order, not alphabetical: it is the order the model sees its
         # own rooms numbered in the map block.
         return ", ".join(self.rooms) if self.rooms else "(none yet)"
+
+    def _known_anchors_text(self) -> str:
+        # Recording order, with coordinates: the model needs both to decide
+        # which point it is standing on. Rooms and exits are deliberately
+        # absent — they are not anchors (TR.1).
+        if not self.anchors:
+            return "(none yet)"
+        return ", ".join(
+            f"{a.name} (x={a.xy[0]:g}, y={a.xy[1]:g})" for a in self.anchors.values()
+        )
 
     def _unknown_room_error(self, room: str, tool: str) -> dict:
         return {
@@ -742,6 +895,7 @@ def correct_position(
     x: float,
     y: float,
     reason: str,
+    anchor: str | None = None,
 ) -> dict:
     """Cognitive loop closure: re-anchor the estimate and log the correction.
 
@@ -772,14 +926,70 @@ def correct_position(
     new = (new_x, new_y)
     memory.corrections.append(
         Correction(
-            turn=turn, old_xy=old, new_xy=new, reason=reason, stage=memory.stage
+            turn=turn, old_xy=old, new_xy=new, reason=reason, stage=memory.stage,
+            anchor=anchor,
         )
     )
-    return {
+    detail = (
+        f"position estimate re-anchored from ({old[0]:.2f}, {old[1]:.2f}) "
+        f"to ({new[0]:.2f}, {new[1]:.2f}); heading unchanged"
+    )
+    if anchor is not None:
+        detail = f"{detail} (anchor {anchor!r})"
+    ack = {
         "ok": True,
-        "detail": (
-            f"position estimate re-anchored from ({old[0]:.2f}, {old[1]:.2f}) "
-            f"to ({new[0]:.2f}, {new[1]:.2f}); heading unchanged"
-        ),
+        "detail": detail,
         "delta_m": round(math.dist(old, new), 3),
     }
+    if anchor is not None:
+        ack["anchor"] = anchor
+    return ack
+
+
+def correct_to_anchor(
+    memory: Memory,
+    integrator: PositionIntegrator,
+    turn: int,
+    name: str,
+    reason: str,
+) -> dict:
+    """Snap the estimate to a point the model recorded with ``record_anchor``.
+
+    The TR.1 split of the old overloaded ``correct_position(place=…)``: this
+    tool takes a NAME, the other takes coordinates, and neither has a mode the
+    other can be mistaken for. (Forensics F-10: one live call sent
+    ``place=""`` *and* a valid x/y, and the empty string won — the rejected
+    call cost that trial a turn. With separate schemas the ambiguity has no
+    shape to occur in.)
+
+    Nothing here compares the anchor to ground truth, and nothing checks that
+    the robot is plausibly near it: recognising the place is the model's job,
+    and validating it geometrically would need the truth the model is never
+    given (doc 05 §4.3, AGENTS.md rule 5).
+    """
+    error = text_error(name, "name", "correct_to_anchor")
+    if error is not None:
+        return error
+    reason_error = text_error(reason, "reason", "correct_to_anchor")
+    if reason_error is not None:
+        return reason_error
+    anchor = memory.anchors.get(name)
+    if anchor is None:
+        return {
+            "error": "invalid_args",
+            "detail": f"unknown anchor {name!r} in correct_to_anchor",
+            "hint": (
+                "correct_to_anchor only resolves points you recorded with "
+                "record_anchor — rooms and doorways are not anchors. Your "
+                f"anchors: {memory._known_anchors_text()}"
+            ),
+        }
+    return correct_position(
+        memory,
+        integrator,
+        turn,
+        anchor.xy[0],
+        anchor.xy[1],
+        reason,
+        anchor=anchor.name,
+    )

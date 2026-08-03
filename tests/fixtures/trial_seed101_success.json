@@ -12,7 +12,8 @@
         0.5
       ],
       "heading_deg": 90.0
-    }
+    },
+    "success_criterion": "v2_any_counter"
   },
   "turns": [
     {
@@ -63,12 +64,13 @@
       "memory_snapshot": {
         "rooms": {},
         "exits": [],
+        "anchors": [],
         "trajectory": [],
         "current_room": null,
         "plan": "",
         "corrections": [],
         "stage": "find_kitchen",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 1,
@@ -123,13 +125,21 @@
             }
           },
           {
+            "name": "record_anchor",
+            "args": {
+              "name": "rug_edge",
+              "description": "north edge of the blue rug",
+              "room": "living room"
+            }
+          },
+          {
             "name": "move",
             "args": {
               "distance_m": 0.8
             }
           }
         ],
-        "dispatched": 3,
+        "dispatched": 4,
         "parse_errors": [],
         "nudged": false
       },
@@ -227,6 +237,19 @@
           }
         },
         "exits": [],
+        "anchors": [
+          {
+            "name": "rug_edge",
+            "description": "north edge of the blue rug",
+            "xy": [
+              0.5,
+              0.5
+            ],
+            "room": "living room",
+            "created_turn": 2,
+            "stage": "find_kitchen"
+          }
+        ],
         "trajectory": [
           "living room"
         ],
@@ -234,7 +257,7 @@
         "plan": "",
         "corrections": [],
         "stage": "find_kitchen",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nBudget: turns 2/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 2/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 2,
@@ -421,6 +444,19 @@
             "status": "leads_to:kitchen"
           }
         ],
+        "anchors": [
+          {
+            "name": "rug_edge",
+            "description": "north edge of the blue rug",
+            "xy": [
+              0.5,
+              0.5
+            ],
+            "room": "living room",
+            "created_turn": 2,
+            "stage": "find_kitchen"
+          }
+        ],
         "trajectory": [
           "living room",
           "kitchen"
@@ -429,7 +465,7 @@
         "plan": "",
         "corrections": [],
         "stage": "find_kitchen",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\nTrajectory: living room\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.18, y=0.92  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): living room\nBreadcrumbs (last 5): (none yet)\nBudget: turns 3/40, policy-seconds 4.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\nTrajectory: living room\nAnchors (points YOU recorded; correct_to_anchor snaps you back):\n  - rug_edge [x=0.50, y=0.50] in living room -- north edge of the blue rug\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.18, y=0.92  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): living room\nBreadcrumbs (last 5): (none yet)\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 3/40, policy-seconds 4.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 3,
@@ -600,6 +636,19 @@
             "status": "leads_to:kitchen"
           }
         ],
+        "anchors": [
+          {
+            "name": "rug_edge",
+            "description": "north edge of the blue rug",
+            "xy": [
+              0.5,
+              0.5
+            ],
+            "room": "living room",
+            "created_turn": 2,
+            "stage": "find_kitchen"
+          }
+        ],
         "trajectory": [
           "living room",
           "kitchen"
@@ -618,11 +667,12 @@
               1.05
             ],
             "reason": "counter in view",
-            "stage": "find_kitchen"
+            "stage": "find_kitchen",
+            "anchor": null
           }
         ],
         "stage": "find_kitchen",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.24, y=1.01  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nBudget: turns 4/40, policy-seconds 10.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\nAnchors (points YOU recorded; correct_to_anchor snaps you back):\n  - rug_edge [x=0.50, y=0.50] in living room -- north edge of the blue rug\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.24, y=1.01  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 4/40, policy-seconds 10.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 4,
@@ -781,6 +831,19 @@
             "status": "leads_to:kitchen"
           }
         ],
+        "anchors": [
+          {
+            "name": "rug_edge",
+            "description": "north edge of the blue rug",
+            "xy": [
+              0.5,
+              0.5
+            ],
+            "room": "living room",
+            "created_turn": 2,
+            "stage": "find_kitchen"
+          }
+        ],
         "trajectory": [
           "living room",
           "kitchen"
@@ -799,11 +862,12 @@
               1.05
             ],
             "reason": "counter in view",
-            "stage": "find_kitchen"
+            "stage": "find_kitchen",
+            "anchor": null
           }
         ],
         "stage": "return_home",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.50, y=0.75  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\nAnchors (points YOU recorded; correct_to_anchor snaps you back):\n  - rug_edge [x=0.50, y=0.50] in living room -- north edge of the blue rug\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=2.50, y=0.75  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 1/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 1,
@@ -966,6 +1030,19 @@
             "status": "leads_to:kitchen"
           }
         ],
+        "anchors": [
+          {
+            "name": "rug_edge",
+            "description": "north edge of the blue rug",
+            "xy": [
+              0.5,
+              0.5
+            ],
+            "room": "living room",
+            "created_turn": 2,
+            "stage": "find_kitchen"
+          }
+        ],
         "trajectory": [
           "living room",
           "kitchen"
@@ -984,11 +1061,12 @@
               1.05
             ],
             "reason": "counter in view",
-            "stage": "find_kitchen"
+            "stage": "find_kitchen",
+            "anchor": null
           }
         ],
         "stage": "return_home",
-        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.28, y=0.90  (dead-reckoned from commanded velocity; drifts)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 2/40, policy-seconds 7.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+        "block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\nPlace 1: living room -- sofa, blue rug\n  landmarks: blue rug\nPlace 2: kitchen -- counter\nConnections: living room <-> kitchen\nTrajectory: living room -> kitchen\nAnchors (points YOU recorded; correct_to_anchor snaps you back):\n  - rug_edge [x=0.50, y=0.50] in living room -- north edge of the blue rug\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=1.28, y=0.90  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 90 deg\nCurrent room (your assertion): kitchen\nBreadcrumbs (last 5): (none yet)\nRe-anchored: 1 time (latest moved the estimate 0.06 m; breadcrumbs before it are in the old frame)\nBudget: turns 2/40, policy-seconds 7.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
       },
       "budget": {
         "stage_turns_used": 2,
@@ -1025,8 +1103,11 @@
         "turns_used": 4,
         "policy_seconds_used": 12.5,
         "score": {
+          "criterion_version": "v2_any_counter",
           "success": true,
           "distance_m": 0.03,
+          "distance_to_point_m": 0.03,
+          "distance_to_success_region_m": 0.0,
           "radius_m": 0.35,
           "goal_xy": [
             2.55,
@@ -1035,7 +1116,10 @@
           "true_xy": [
             2.55,
             0.72
-          ]
+          ],
+          "nearest_counter_name": "counter_1",
+          "distance_to_counter_m": 0.367,
+          "in_goal_room": true
         },
         "true_pose": {
           "x": 2.55,
@@ -1051,8 +1135,11 @@
         "turns_used": 2,
         "policy_seconds_used": 11.5,
         "score": {
+          "criterion_version": "v2_any_counter",
           "success": true,
           "distance_m": 0.1442,
+          "distance_to_point_m": 0.1442,
+          "distance_to_success_region_m": 0.0,
           "radius_m": 0.5,
           "goal_xy": [
             0.5,
@@ -1061,7 +1148,10 @@
           "true_xy": [
             0.62,
             0.58
-          ]
+          ],
+          "nearest_counter_name": null,
+          "distance_to_counter_m": null,
+          "in_goal_room": null
         },
         "true_pose": {
           "x": 0.62,

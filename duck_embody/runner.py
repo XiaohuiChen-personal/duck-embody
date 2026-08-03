@@ -78,6 +78,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from duck_embody.agent.loop import FROZEN_FILES, _git, config_hash, freeze_commit
+from duck_embody.tasks.find_kitchen import SUCCESS_CRITERION
 from duck_embody.scoring import is_complete
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -200,6 +201,11 @@ def freeze_manifest(
         "frozen_at": _utc_now(),
         "freeze_commit": freeze_commit(root, files),
         "config_hash": config_hash(files, root),
+        # TR.2: the success predicate the batch will RUN under, named in the
+        # manifest as well as in every trial JSON. A batch directory can outlive
+        # the code that produced it, and "which criterion decided these
+        # verdicts?" must be answerable from the artifacts alone.
+        "success_criterion": SUCCESS_CRITERION,
         "matrix": {"models": list(models), "seeds": [int(s) for s in seeds]},
         "files": {rel: file_sha256(root / rel) for rel in files},
     }

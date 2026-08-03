@@ -74,10 +74,15 @@ def _fell_res(diag: dict, **kw) -> ExecResult:
 
 
 class TestChunkedExecuteMerge:
-    """recorder.chunked_execute is the merge every RECORDED command runs through
-    (attach_recorder patches playback.execute, and run_trial attaches unless
-    --no-video). Its merge block must not lose fields that only the
-    terminating/bumping chunk carries."""
+    """recorder.chunked_execute — **LEGACY, NON-BENCHMARK since TR.3.**
+
+    It was the merge every RECORDED command ran through while
+    ``attach_recorder`` patched ``playback.execute``; that seam is gone (see
+    ``TestAttachIsObservational`` below) and the helper now serves only
+    ``scripts/replay_falls.py``, which replays the frozen v5d batches the way
+    they really executed. These pins stay because that replay tool is how a
+    frozen trial gets re-examined, and the merge losing ``fall_diagnostics`` or
+    ``contact_groups`` is exactly what made T3.5's fall unauditable."""
 
     @staticmethod
     def _run(parts):
@@ -421,6 +426,213 @@ class TestExecuteContactUnion:
 
         assert result.bumped is True
         assert result.contact_groups == ["head", "torso"]
+
+
+class TestAttachIsObservational:
+    """TR.3 / forensics F-03: attaching a recorder must change NOTHING.
+
+    ``attach_recorder`` used to replace ``playback.execute`` with a wrapper that
+    re-entered it in 0.04 s pieces. Moving the command boundary moved five
+    things that hang off it — the bump debounce window, the pose-trace phase,
+    the clamp-note list, the fall-diagnostics stamp and the odometry noise draw
+    — and each was found and fixed as its own bug before the seam itself was
+    recognised as the defect. A recorded run and an unrecorded run were
+    different experiments; the paid batch only ever ran the recorded one.
+    """
+
+    @staticmethod
+    def _playback():
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
+        return pb
+
+    def test_attach_does_not_replace_execute(self):
+        from duck_embody.sim.recorder import attach_recorder
+
+        pb = self._playback()
+        before = pb.execute
+        attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+        # Same bound method, and no shadowing instance attribute.
+        assert pb.execute.__func__ is before.__func__
+        assert "execute" not in vars(pb)
+
+    def test_attach_registers_a_step_observer_and_detach_removes_it(self):
+        from duck_embody.sim.recorder import attach_recorder
+
+        pb = self._playback()
+        assert pb.step_observer is None
+        detach = attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+        assert callable(pb.step_observer)
+        detach()
+        assert pb.step_observer is None
+
+    def test_a_second_attach_refuses_rather_than_starving_a_consumer(self):
+        """Two observers each believing they get every step means one silently
+        gets none — a video that is quietly empty, which is the exact rule-11
+        failure mode. runner.py's nested-recorder hazard, made loud."""
+        import pytest
+
+        from duck_embody.sim.recorder import attach_recorder
+
+        pb = self._playback()
+        detach = attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+        with pytest.raises(RuntimeError, match="already registered"):
+            attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+        detach()
+        attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+
+    def test_attaching_does_not_change_duration_to_steps(self):
+        from duck_embody.sim.policy_wrapper import duration_to_steps
+        from duck_embody.sim.recorder import attach_recorder
+
+        pb = self._playback()
+        before = [duration_to_steps(d) for d in (0.04, 0.2, 3.0)]
+        attach_recorder(pb, object(), SimpleNamespace(grab=lambda env: None))
+        assert [duration_to_steps(d) for d in (0.04, 0.2, 3.0)] == before == [2, 10, 150]
+
+
+class TestStepGrabberSampling:
+    """The frame-sampling rule, tested on synthetic observations (no kit)."""
+
+    @staticmethod
+    def _obs(step_index: int, terminated: bool = False):
+        from duck_embody.sim.policy_wrapper import StepObservation
+
+        return StepObservation(
+            step_index=step_index,
+            terminated=terminated,
+            true_pose=(0.0, 0.0, 0.0),
+            contact_force_n=0.0,
+            contact_groups=(),
+            in_contact=False,
+        )
+
+    def test_it_grabs_every_second_control_step_for_25_fps(self):
+        from duck_embody.sim.recorder import step_grabber
+
+        grabs = []
+        observe = step_grabber(object(), SimpleNamespace(grab=lambda env: grabs.append(1)))
+        for i in range(1, 11):
+            observe(self._obs(i))
+        assert len(grabs) == 5
+
+    def test_a_terminating_step_is_never_grabbed(self):
+        """Isaac auto-resets inside step(), so the viewport already shows a
+        healthy duck at spawn: grabbing here ended every fall video on a
+        post-teleport frame and deleted rule 11's evidence for the event that
+        ends trials."""
+        from duck_embody.sim.recorder import step_grabber
+
+        grabs = []
+        observe = step_grabber(object(), SimpleNamespace(grab=lambda env: grabs.append(1)))
+        observe(self._obs(2))
+        observe(self._obs(4, terminated=True))
+        assert len(grabs) == 1
+
+    def test_the_grid_is_indexed_by_the_trial_step_counter_not_by_call(self):
+        """The stride must not restart when a command does — a per-call grid
+        would sample at ~50 Hz under the old 2-step chunking, which is the
+        pose-trace bug's shape applied to frames."""
+        from duck_embody.sim.recorder import step_grabber
+
+        grabs = []
+        observe = step_grabber(object(), SimpleNamespace(grab=lambda env: grabs.append(1)))
+        # Three separate "calls" covering steps 1-2, 3-4, 5-6: one grab each,
+        # never two, because the grid belongs to the trial.
+        for i in (1, 2, 3, 4, 5, 6):
+            observe(self._obs(i))
+        assert len(grabs) == 3
+
+    def test_the_stride_follows_the_requested_interval(self):
+        from duck_embody.sim.recorder import step_grabber, steps_per_grab
+
+        assert steps_per_grab(0.04) == 2
+        assert steps_per_grab(0.2) == 10
+        grabs = []
+        observe = step_grabber(
+            object(), SimpleNamespace(grab=lambda env: grabs.append(1)), chunk_s=0.2
+        )
+        for i in range(1, 21):
+            observe(self._obs(i))
+        assert len(grabs) == 2
+
+
+class TestExecuteEmitsStepObservations:
+    """``execute()`` emits one observation per non-teleported control step."""
+
+    def test_every_step_is_observed_with_the_trial_step_index(self):
+        pb = TestExecuteTerminationOrdering._playback(terminated=False)
+        pb.bump_contact_force = lambda: 0.0
+        pb.contact_groups = lambda: []
+        pb._bump_run = 0
+        seen = []
+        pb.step_observer = seen.append
+
+        pb.execute(0.2, 0.0, 0.0, 0.06)  # 3 control steps
+
+        assert [o.step_index for o in seen] == [1, 2, 3]
+        assert all(o.terminated is False for o in seen)
+        assert all(o.true_pose == (1.0, 2.0, 45.0) for o in seen)
+
+    def test_the_terminating_step_is_emitted_and_flagged(self):
+        pb = TestExecuteTerminationOrdering._playback(terminated=True)
+        seen = []
+        pb.step_observer = seen.append
+
+        result = pb.execute(0.2, 0.0, 0.0, 0.2)
+
+        assert result.fell is True
+        assert len(seen) == 1
+        assert seen[0].terminated is True
+        # The PRE-step pose, like fall_diagnostics: live state is the teleport.
+        assert seen[0].true_pose == (1.0, 2.0, 45.0)
+
+    def test_contact_state_reaches_the_observer(self):
+        pb = TestExecuteTerminationOrdering._playback(terminated=False)
+        pb._bump_run = BUMP_DEBOUNCE_STEPS - 1  # confirms on the first step
+        seen = []
+        pb.step_observer = seen.append
+
+        pb.execute(0.2, 0.0, 0.0, 0.04, stop_on_bump=False)
+
+        assert seen[0].in_contact is True
+        assert seen[0].contact_groups == ("head",)
+        assert seen[0].contact_force_n == 500.0
+
+    def test_an_observer_cannot_change_the_result(self):
+        """Passive by construction: the return value is ignored and the
+        observation is frozen, so a consumer cannot reach back into physics."""
+        import dataclasses
+
+        import pytest
+
+        pb = TestExecuteTerminationOrdering._playback(terminated=False)
+        pb.bump_contact_force = lambda: 0.0
+        pb.contact_groups = lambda: []
+        pb._bump_run = 0
+        quiet = pb.execute(0.2, 0.0, 0.0, 0.06)
+
+        pb2 = TestExecuteTerminationOrdering._playback(terminated=False)
+        pb2.bump_contact_force = lambda: 0.0
+        pb2.contact_groups = lambda: []
+        pb2._bump_run = 0
+        captured = []
+
+        def greedy(obs):
+            captured.append(obs)
+            return "ignored"
+
+        pb2.step_observer = greedy
+        observed = pb2.execute(0.2, 0.0, 0.0, 0.06)
+
+        assert dataclasses.is_dataclass(captured[0])
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            captured[0].terminated = True
+        for field_name in ("steps", "policy_seconds", "bumped", "fell",
+                           "contact_steps", "odom_dxy", "odom_distance_m",
+                           "sampled_xy", "true_pose", "stop_reason"):
+            assert getattr(observed, field_name) == getattr(quiet, field_name), field_name
 
 
 class TestSustainedContactAbort:

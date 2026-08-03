@@ -559,6 +559,16 @@ VALID_ARGS: dict[str, dict] = {
     "add_landmark": {"room": "living_room", "description": "coffee table"},
     "mark_exit": {"room": "living_room", "direction_deg": 90, "status": "unexplored"},
     "set_current_room": {"name": "living_room"},
+    # The two optional fields are listed so the never-raise sweep fuzzes them
+    # too: `replace` is the only boolean in the whole surface, and a coerced
+    # `"false"` would move a map point the model asked to keep.
+    "record_anchor": {
+        "name": "rug_edge",
+        "description": "north edge of the rug",
+        "room": "living_room",
+        "replace": False,
+    },
+    "correct_to_anchor": {"name": "rug_edge", "reason": "back on the rug"},
     "correct_position": {"x": 0.6, "y": 0.6, "reason": "recognized the blue rug"},
     "update_plan": {"text": "follow the hallway east"},
     DECLARE_DONE: {},
@@ -570,6 +580,9 @@ def seeded_context(**kwargs) -> ToolContext:
     that require an existing room have one to address)."""
     memory = Memory()
     memory.update_room("living_room", "sofa, blue rug")
+    # …and one recorded point anchor, so `correct_to_anchor` has something to
+    # resolve in the sweeps. Rooms deliberately cannot serve as anchors (TR.1).
+    memory.record_anchor("rug_edge", "north edge of the rug", (0.5, 0.5))
     return make_context(memory=memory, **kwargs)
 
 
@@ -579,13 +592,18 @@ def seeded_context(**kwargs) -> ToolContext:
 
 
 class TestSchemaMatchesTheDesignDoc:
-    def test_the_tool_set_is_the_docs_twelve_in_the_docs_order(self):
+    def test_the_tool_set_is_the_docs_fourteen_in_the_docs_order(self):
+        """12 until TR.1, which split the overloaded correction tool into
+        `record_anchor` / `correct_to_anchor` / coordinate-only
+        `correct_position`. Three schemas with disjoint required fields cannot
+        express the F-10 failure (a live call that sent `place=""` alongside a
+        valid x/y and was rejected)."""
         assert [s["name"] for s in TOOL_SCHEMAS] == [
             s["name"] for s in doc_tool_schemas()
         ]
-        assert len(TOOL_SCHEMAS) == 12
+        assert len(TOOL_SCHEMAS) == 14
 
-    @pytest.mark.parametrize("index", range(12))
+    @pytest.mark.parametrize("index", range(14))
     def test_every_description_string_is_the_docs_verbatim(self, index):
         """PLAN T3.2 (a): compare the STRINGS, not just the names.
 
@@ -618,22 +636,21 @@ class TestSchemaMatchesTheDesignDoc:
         assert body["type"] == "object"
         assert isinstance(body["properties"], dict)
         assert isinstance(body["required"], list)
-        # Doc 05 §4 had ZERO optional parameters until 2026-07-30. The one
-        # amendment: `correct_position` takes EITHER `place` (a mapped room
-        # name, resolved to its anchor) OR explicit x/y — an either-or that
-        # JSON Schema's flat `required` cannot express, so those three are
-        # optional at schema level and the handler enforces the combination
-        # with a structured error (`_correct_position`, tested below). Every
-        # other tool keeps the all-required invariant, and any NEW optional
-        # parameter must be added here deliberately or this fails.
-        declared_optional = {"correct_position": {"place", "x", "y"}}
+        # Doc 05 §4 had ZERO optional parameters until 2026-07-30, when
+        # `correct_position` grew an either-or (`place` OR x/y) that JSON
+        # Schema's flat `required` cannot express — and that ambiguity then
+        # cost a live trial a turn (forensics F-10). TR.1 removed it: the only
+        # optional parameters left are `record_anchor`'s two genuinely
+        # additive ones, and no tool has two modes. Any NEW optional parameter
+        # must be added here deliberately or this fails.
+        declared_optional = {"record_anchor": {"room", "replace"}}
         optional = declared_optional.get(schema["name"], set())
         assert sorted(body["required"]) == sorted(
             set(body["properties"]) - optional
         )
         assert optional <= set(body["properties"])
         for name, spec in body["properties"].items():
-            assert spec["type"] in ("number", "string"), name
+            assert spec["type"] in ("number", "string", "boolean"), name
 
     @pytest.mark.parametrize("schema", TOOL_SCHEMAS, ids=lambda s: s["name"])
     def test_no_machine_readable_bounds_were_added_to_the_schema(self, schema):
@@ -1185,6 +1202,8 @@ PAYLOAD_KEYS: dict[str, tuple[set[str], set[str]]] = {
     "add_landmark": ({"ok", "detail", "landmarks"}, set()),
     "mark_exit": ({"ok", "detail", "exits"}, set()),
     "set_current_room": ({"ok", "detail"}, set()),
+    "record_anchor": ({"ok", "detail", "anchors"}, {"moved"}),
+    "correct_to_anchor": ({"ok", "detail", "delta_m", "anchor"}, set()),
     "correct_position": ({"ok", "detail", "delta_m"}, set()),
     "update_plan": ({"ok", "detail"}, set()),
     DECLARE_DONE: ({"ok", "stage_ended", "detail"}, set()),
@@ -2277,61 +2296,150 @@ class TestWedgedSendVelocityReportsOdometryAtToolLevel:
         assert out.payload["status"]["distance_moved_m"] == pytest.approx(0.3, abs=1e-6)
 
 
-class TestCorrectPositionByPlaceName:
-    """The 2026-07-30 data-association bridge: `correct_position(place=...)`.
+class TestExplicitPointAnchorsOverTheWire:
+    """TR.1 through the real dispatch path (forensics F-01 / F-10).
 
-    Zero uptake across 3 models x 13 trials traced primarily to the tool
-    demanding an (x, y) that no payload supplied — recognition yields a NAME.
-    These drive the real dispatch path.
+    The three live regressions this replaces — `sonnet5_seed101` t21
+    (0.024 m → 1.504 m), `gpt56sol_seed101` t16 (0.028 → 0.764),
+    `sonnet5_seed104` t20 (0.072 → 1.097) — were all `correct_position(place=…)`
+    calls resolving a room or doorway stamp. Neither the mode nor the stamp
+    exists any more, and the tests below say so from the model's side of the
+    wire.
     """
 
-    def _context_with_anchored_room(self):
-        playback = FakePlayback()
-        context = make_context(playback=playback)
-        context.integrator = PositionIntegrator(0.0, 0.0)
-        # Map a room the way the tools do: anchor stamped from the estimate.
-        context.integrator.x, context.integrator.y = 1.20, 0.80
-        dispatch(call("update_room", name="kitchen", description="counters"), context)
+    def _context_at(self, x, y):
+        context = make_context(playback=FakePlayback())
+        context.integrator = PositionIntegrator(x, y)
         return context
 
-    def test_place_resolves_to_the_rooms_anchor(self):
-        context = self._context_with_anchored_room()
-        # Drift the estimate away from the anchor.
+    def test_mapping_a_room_and_an_exit_creates_no_correctable_point(self):
+        context = self._context_at(1.20, 0.80)
+        dispatch(call("update_room", name="kitchen", description="counters"), context)
+        dispatch(
+            call("mark_exit", room="kitchen", direction_deg=0, status="unexplored"),
+            context,
+        )
+        assert context.memory.anchors == {}
+
+    def test_correct_position_no_longer_accepts_a_place(self):
+        """The exact argument shape of all 15 accepted live corrections."""
+        context = self._context_at(1.20, 0.80)
+        dispatch(call("update_room", name="kitchen", description="counters"), context)
         context.integrator.x, context.integrator.y = 3.00, 3.00
         out = dispatch(
             call("correct_position", place="kitchen", reason="back at the counters"),
             context,
         )
-        assert not out.is_error, out.payload
-        assert context.integrator.xy == pytest.approx((1.20, 0.80))
-
-    def test_unknown_place_returns_a_structured_error_listing_anchors(self):
-        context = self._context_with_anchored_room()
-        out = dispatch(
-            call("correct_position", place="ballroom", reason="lost"), context
-        )
         assert out.is_error
         assert out.payload["error"] == "invalid_args"
-        assert "kitchen" in out.payload["hint"], (
-            "the hint must list the anchored places the model CAN use"
+        assert context.integrator.xy == pytest.approx((3.00, 3.00))
+
+    def test_the_f10_blank_place_plus_coordinates_call_can_no_longer_occur(self):
+        """`gpt56sol_seed103` t10 sent `place=""` AND a valid x/y; the empty
+        string won the mode race, the call was rejected, and the trial paid a
+        turn. With `place` gone the same JSON is a surplus-argument error and
+        the shape it exploited does not exist."""
+        context = self._context_at(3.0, 3.0)
+        out = dispatch(
+            call("correct_position", place="", x=1.12, y=2.76, reason="doorway"),
+            context,
         )
-        # A failed correction must not move the estimate.
-        assert context.integrator.xy == pytest.approx((1.20, 0.80))
-
-    def test_neither_place_nor_xy_is_a_structured_error(self):
-        context = self._context_with_anchored_room()
-        out = dispatch(call("correct_position", reason="vibes"), context)
         assert out.is_error
-        assert "place" in out.payload["hint"]
+        assert "place" in out.payload["detail"]
+        assert "place" not in TOOL_SCHEMAS[TOOL_NAMES.index("correct_position")][
+            "input_schema"
+        ]["properties"]
 
-    def test_explicit_xy_still_works_unchanged(self):
-        context = self._context_with_anchored_room()
+    def test_record_anchor_stores_the_live_estimate_not_a_model_argument(self):
+        context = self._context_at(2.55, 2.70)
+        out = dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.memory.anchors["tile_edge"].xy == pytest.approx((2.55, 2.70))
+
+    def test_correct_to_anchor_snaps_back_after_drifting_away(self):
+        context = self._context_at(2.55, 2.70)
+        dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts"),
+            context,
+        )
+        context.integrator.x, context.integrator.y = 4.0, 4.0
+        out = dispatch(
+            call("correct_to_anchor", name="tile_edge", reason="standing on it again"),
+            context,
+        )
+        assert not out.is_error, out.payload
+        assert context.integrator.xy == pytest.approx((2.55, 2.70))
+        assert context.memory.corrections[-1].anchor == "tile_edge"
+        assert context.memory.corrections[-1].turn == context.turn
+        assert context.memory.corrections[-1].stage == context.memory.stage
+
+    def test_a_re_record_on_a_drifted_revisit_does_not_move_the_anchor(self):
+        context = self._context_at(2.55, 2.70)
+        dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts"),
+            context,
+        )
+        context.integrator.x, context.integrator.y = 3.4, 3.1  # drifted revisit
+        dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts, wider"),
+            context,
+        )
+        assert context.memory.anchors["tile_edge"].xy == pytest.approx((2.55, 2.70))
+        dispatch(
+            call(
+                "record_anchor", name="tile_edge", description="tile starts",
+                replace=True,
+            ),
+            context,
+        )
+        assert context.memory.anchors["tile_edge"].xy == pytest.approx((3.4, 3.1))
+
+    def test_an_unknown_anchor_is_a_model_error_that_moves_nothing(self):
+        context = self._context_at(3.0, 3.0)
+        dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts"),
+            context,
+        )
+        out = dispatch(
+            call("correct_to_anchor", name="kitchen", reason="lost"), context
+        )
+        assert out.is_error
+        assert "tile_edge" in out.payload["hint"]
+        assert context.integrator.xy == pytest.approx((3.0, 3.0))
+        assert context.memory.corrections == []
+
+    def test_explicit_xy_correction_remains_available(self):
+        context = self._context_at(1.20, 0.80)
         out = dispatch(
             call("correct_position", x=0.5, y=0.6, reason="recognized the rug"),
             context,
         )
         assert not out.is_error, out.payload
         assert context.integrator.xy == pytest.approx((0.5, 0.6))
+        assert context.memory.corrections[-1].anchor is None
+
+    def test_the_anchor_renders_in_the_block_and_can_then_be_addressed(self):
+        """The round trip the model actually depends on: what it reads back
+        must be a name `correct_to_anchor` accepts."""
+        from duck_embody.agent.prompts import render_memory_block
+
+        context = self._context_at(2.55, 2.70)
+        dispatch(
+            call("record_anchor", name="tile_edge", description="tile starts"),
+            context,
+        )
+        block = render_memory_block(
+            context.memory, context.counters, context.integrator.xy, 90.0
+        )
+        assert "  - tile_edge [x=2.55, y=2.70] -- tile starts" in block
+        out = dispatch(
+            call("correct_to_anchor", name="tile_edge", reason="recognized it"),
+            context,
+        )
+        assert not out.is_error, out.payload
 
 
 class TestTurnFeedsMeasuredWanderToTheEstimate:
@@ -2380,21 +2488,23 @@ class TestTurnFeedsMeasuredWanderToTheEstimate:
         assert context.integrator.xy != pytest.approx((0.0, 0.0))
 
 
-class TestDoorwayAnchorResolution:
-    """`correct_position(place="name@bearing")` — the doorway affordance.
+class TestDoorwaysAreNotAnchors:
+    """The retired doorway affordance (forensics F-01).
 
-    The prompt tells the model a doorway pins position tightest (a 0.35 m gap
-    versus a room centroid metres away), but before 2026-07-30 only ROOM
-    anchors resolved, so following that instruction silently snapped to the
-    wrong anchor. Exit anchors also vanished from the rendered map the moment
-    the exit flipped to `leads_to:` — i.e. on walking through it.
+    Until TR.1 the prompt claimed "a doorway anchor pins you tightest" and
+    `correct_position(place="room@bearing")` resolved the exit's *sighting*
+    position. An exit is routinely marked from across the room it is seen
+    from, so that coordinate is not the threshold: `sonnet5_seed101` t21 used
+    it and moved a 0.024 m estimate to 1.504 m. Standing in a doorway is still
+    an excellent thing to anchor — the model just has to be standing there and
+    say so.
     """
 
     def _ctx_with_doorway(self):
-        playback = FakePlayback()
-        context = make_context(playback=playback)
+        context = make_context(playback=FakePlayback())
         context.integrator = PositionIntegrator(0.0, 0.0)
         dispatch(call("update_room", name="hall", description="narrow"), context)
+        # Marked from across the room — metres from the doorway it describes.
         context.integrator.x, context.integrator.y = 2.55, 2.70
         dispatch(
             call("mark_exit", room="hall", direction_deg=270, status="unexplored"),
@@ -2402,37 +2512,46 @@ class TestDoorwayAnchorResolution:
         )
         return context
 
-    def test_a_doorway_anchor_resolves_by_name_at_bearing(self):
+    def test_a_marked_doorway_is_not_addressable_by_any_correction_tool(self):
         context = self._ctx_with_doorway()
-        context.integrator.x, context.integrator.y = 4.0, 4.0  # drift away
-        out = dispatch(
-            call("correct_position", place="hall@270", reason="back in the doorway"),
-            context,
-        )
-        assert not out.is_error, out.payload
-        assert context.integrator.xy == pytest.approx((2.55, 2.70)), (
-            "snapped to the room anchor instead of the doorway anchor"
-        )
+        context.integrator.x, context.integrator.y = 4.0, 4.0
+        for args in (
+            {"name": "hall@270", "reason": "back in the doorway"},
+            {"name": "hall", "reason": "back in the doorway"},
+        ):
+            out = dispatch(call("correct_to_anchor", **args), context)
+            assert out.is_error, args
+            assert context.integrator.xy == pytest.approx((4.0, 4.0))
+        assert context.memory.corrections == []
 
-    def test_the_doorway_anchor_survives_the_exit_being_explored(self):
-        """The exact moment the model is told to re-anchor."""
+    def test_the_exit_keeps_its_sighting_position_for_audit_only(self):
+        """Not deleted — the forensic parser wants to know where the model
+        believed it was when it claimed to see a doorway. Just never rendered,
+        and never resolvable."""
+        from duck_embody.agent.prompts import render_memory_block
+
         context = self._ctx_with_doorway()
+        assert context.memory.exits[0].observed_from_xy == (2.55, 2.70)
+        block = render_memory_block(
+            context.memory, context.counters, context.integrator.xy, 90.0
+        )
+        assert "2.55" not in block.split("== STATE")[0]
+
+    def test_standing_in_the_doorway_and_recording_it_still_works(self):
+        """The capability is not removed, only the false automatic version."""
+        context = self._ctx_with_doorway()
+        context.integrator.x, context.integrator.y = 2.10, 3.40  # in the gap
         dispatch(
-            call("mark_exit", room="hall", direction_deg=270, status="leads_to:kitchen"),
+            call(
+                "record_anchor", name="hall_doorway",
+                description="in the gap, hall behind me", room="hall",
+            ),
             context,
         )
         context.integrator.x, context.integrator.y = 4.0, 4.0
         out = dispatch(
-            call("correct_position", place="hall@270", reason="walked back through"),
+            call("correct_to_anchor", name="hall_doorway", reason="back in the gap"),
             context,
         )
         assert not out.is_error, out.payload
-        assert context.integrator.xy == pytest.approx((2.55, 2.70))
-
-    def test_an_unknown_doorway_lists_the_resolvable_anchors(self):
-        context = self._ctx_with_doorway()
-        out = dispatch(
-            call("correct_position", place="hall@999", reason="lost"), context
-        )
-        assert out.is_error
-        assert "hall@270" in out.payload["hint"], out.payload["hint"]
+        assert context.integrator.xy == pytest.approx((2.10, 3.40))

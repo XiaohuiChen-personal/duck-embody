@@ -38,12 +38,14 @@ from duck_embody.agent.memory import (
     STAGE_RETURN_HOME,
     STATUS_UNEXPLORED,
     TURN_CAP,
+    Anchor,
     Correction,
     Counters,
     Crumb,
     Memory,
     PositionIntegrator,
     correct_position,
+    correct_to_anchor,
     exit_status_target,
     quantise_direction,
 )
@@ -171,27 +173,42 @@ def seed_101_fixture() -> tuple[Memory, Counters]:
     which is the block's first breadcrumb.
     """
     memory = Memory()
-    # anchor_xy mirrors what the tools stamp since 2026-07-30: the integrator
-    # estimate at the moment of first assertion. Values follow the breadcrumb
-    # story below (mapped the living room at spawn, the hallway on arrival).
+    # `observed_from_xy` mirrors what the tools stamp: the integrator estimate
+    # at the moment of first assertion. AUDIT ONLY since TR.1 — none of it
+    # renders, which is half of what the golden block now pins.
     memory.update_room(
         "living_room",
         "sofa along the west wall, armchair opposite, blue rug in center",
-        anchor_xy=(0.50, 0.50),
+        observed_from_xy=(0.50, 0.50),
     )
     memory.set_current_room("living_room")
     memory.add_landmark("living_room", "coffee table")
     memory.add_landmark("living_room", "armchair by the south wall")
-    memory.mark_exit("living_room", 0, STATUS_UNEXPLORED, anchor_xy=(0.50, 0.50))
-    memory.mark_exit("living_room", 90, "leads_to:hallway", anchor_xy=(0.53, 1.11))
+    memory.mark_exit("living_room", 0, STATUS_UNEXPLORED, observed_from_xy=(0.50, 0.50))
+    memory.mark_exit(
+        "living_room", 90, "leads_to:hallway", observed_from_xy=(0.53, 1.11)
+    )
+    # The two anchors the model recorded deliberately, while standing on them.
+    memory.record_anchor(
+        "rug_edge",
+        "north edge of the blue rug, sofa on my left",
+        (0.50, 0.50),
+        room="living_room",
+    )
+    memory.record_anchor(
+        "hall_threshold",
+        "standing in the doorway, hallway runs north",
+        (0.53, 1.11),
+        room="living_room",
+    )
 
     memory.update_room(
         "hallway", "narrow, wooden floor, doorways along the south side",
-        anchor_xy=(0.88, 2.56),
+        observed_from_xy=(0.88, 2.56),
     )
     memory.set_current_room("hallway")
-    memory.mark_exit("hallway", 0, STATUS_UNEXPLORED, anchor_xy=(0.90, 2.75))
-    memory.mark_exit("hallway", 270, STATUS_UNEXPLORED, anchor_xy=(0.90, 2.75))
+    memory.mark_exit("hallway", 0, STATUS_UNEXPLORED, observed_from_xy=(0.90, 2.75))
+    memory.mark_exit("hallway", 270, STATUS_UNEXPLORED, observed_from_xy=(0.90, 2.75))
 
     for x, y, heading in (
         (0.50, 0.50, 90),
@@ -396,6 +413,212 @@ class TestPositionIntegrator:
         assert integrator.x == pytest.approx(
             duration_to_steps(duration) * CONTROL_DT, abs=EPS
         )
+
+
+class TestAnchorsAreExplicitPointsOnly:
+    """TR.1 / forensics F-01.
+
+    The defect these pin is not hypothetical arithmetic: in the frozen
+    `raw_v5d_r2` batch the harness stamped an "anchor" whenever a room or an
+    exit was first mentioned, and told the model to snap to it. 14 of the 15
+    accepted corrections made true localisation WORSE, +3.72 m net
+    (`results/forensics_v5d_r2/batch_summary.json`). The three worst calls, and
+    what the old code did with them:
+
+    * `sonnet5_seed101` t21 — `place="RedRoom@0"`, a doorway sighted from
+      across the room: 0.024 m error became 1.504 m.
+    * `gpt56sol_seed101` t16 — `place="Living room@0"`: 0.028 m became 0.764 m.
+    * `sonnet5_seed104` t20 — `place="LivingRoomRed@270"`: 0.072 m became
+      1.097 m.
+
+    Each of those calls needed TWO things the API no longer provides: a
+    coordinate auto-stamped onto a room/exit record, and a correction mode that
+    resolves a room or doorway NAME to it. The tests below assert both are gone
+    — a re-introduction of either has to break one of them.
+    """
+
+    def test_update_room_creates_no_correctable_point(self):
+        memory = Memory()
+        memory.update_room("kitchen", "counters", observed_from_xy=(1.2, 0.8))
+        assert memory.anchors == {}, "a room must not create a point anchor"
+        assert not hasattr(memory.rooms["kitchen"], "anchor_xy")
+        # The sighting position survives for audit under an honest name.
+        assert memory.rooms["kitchen"].observed_from_xy == (1.2, 0.8)
+
+    def test_an_exit_marked_from_afar_creates_no_correctable_point(self):
+        """The `sonnet5_seed101` t21 shape: the model marks a doorway it can
+        SEE, from 1.5 m away. Nothing about that call says where the doorway
+        is, which is why its stamp must not be correctable to."""
+        memory = Memory()
+        memory.update_room("red_room", "red walls", observed_from_xy=(1.0, 1.0))
+        memory.mark_exit(
+            "red_room", 0, STATUS_UNEXPLORED, observed_from_xy=(1.0, 1.0)
+        )
+        assert memory.anchors == {}
+        assert not hasattr(memory.exits[0], "anchor_xy")
+
+    def test_set_current_room_creates_no_correctable_point(self):
+        memory = Memory()
+        memory.update_room("kitchen", "counters")
+        memory.set_current_room("kitchen")
+        assert memory.anchors == {}
+
+    def test_a_room_name_cannot_be_corrected_to(self):
+        """The dead defect path, asserted as an error rather than an absence:
+        every one of the 15 accepted live corrections addressed a room or a
+        `room@bearing`, and all of them must now be refused."""
+        memory = Memory()
+        integrator = PositionIntegrator(3.0, 3.0)
+        memory.update_room("living_room", "sofa", observed_from_xy=(1.2, 0.8))
+        memory.mark_exit(
+            "living_room", 0, STATUS_UNEXPLORED, observed_from_xy=(1.2, 0.8)
+        )
+        for name in ("living_room", "living_room@0", "LivingRoomRed@270"):
+            result = correct_to_anchor(
+                memory, integrator, turn=21, name=name, reason="recognized it"
+            )
+            assert result["error"] == "invalid_args", name
+            assert integrator.xy == (3.0, 3.0), f"{name} moved the estimate"
+            assert memory.corrections == []
+
+    def test_record_anchor_stores_the_current_estimate_exactly(self):
+        memory = Memory()
+        ack = memory.record_anchor(
+            "tiled_threshold", "tile starts here", (1.234, -0.567), turn=4
+        )
+        assert ack["ok"] is True
+        assert memory.anchors["tiled_threshold"] == Anchor(
+            name="tiled_threshold",
+            description="tile starts here",
+            # 2 dp, the precision every model-facing coordinate is rendered at.
+            xy=(1.23, -0.57),
+            room=None,
+            created_turn=4,
+            stage=STAGE_FIND_KITCHEN,
+        )
+
+    def test_an_anchor_records_the_stage_it_was_laid_in(self):
+        memory = Memory()
+        memory.stage = STAGE_RETURN_HOME
+        memory.record_anchor("home_mat", "door mat", (0.5, 0.5), turn=2)
+        assert memory.anchors["home_mat"].stage == STAGE_RETURN_HOME
+
+    def test_re_recording_updates_the_description_but_never_moves_the_point(self):
+        """Without this rule the anchor set decays back into the auto-anchors
+        it replaced: a re-record on a drifted revisit overwrites a good map
+        point with a worse one, and the next correction snaps to the drift it
+        was supposed to remove."""
+        memory = Memory()
+        memory.record_anchor("rug_edge", "blue rug", (0.5, 0.5), turn=1)
+        ack = memory.record_anchor("rug_edge", "blue rug, sofa left", (2.9, 1.4), turn=9)
+        assert ack["moved"] is False
+        assert "replace=true" in ack["detail"]
+        assert memory.anchors["rug_edge"].xy == (0.5, 0.5)
+        assert memory.anchors["rug_edge"].description == "blue rug, sofa left"
+        assert len(memory.anchors) == 1, "a duplicate name must not fork the anchor"
+
+    def test_replace_true_moves_the_point_deliberately(self):
+        memory = Memory()
+        memory.record_anchor("rug_edge", "blue rug", (0.5, 0.5), turn=1)
+        ack = memory.record_anchor(
+            "rug_edge", "blue rug", (2.9, 1.4), turn=9, replace=True
+        )
+        assert ack["moved"] is True
+        assert memory.anchors["rug_edge"].xy == (2.9, 1.4)
+        assert memory.anchors["rug_edge"].created_turn == 9
+
+    @pytest.mark.parametrize("blank", ["", "   ", "\n"])
+    def test_a_blank_anchor_name_is_rejected(self, blank):
+        memory = Memory()
+        result = memory.record_anchor(blank, "somewhere", (0.0, 0.0))
+        assert result["error"] == "invalid_args"
+        assert memory.anchors == {}
+
+    @pytest.mark.parametrize("bad", [None, 3, [], {"a": 1}])
+    def test_malformed_anchor_arguments_return_errors_instead_of_raising(self, bad):
+        memory = Memory()
+        assert memory.record_anchor(bad, "d", (0.0, 0.0))["error"] == "invalid_args"
+        assert memory.record_anchor("n", bad, (0.0, 0.0))["error"] == "invalid_args"
+        assert memory.anchors == {}
+
+    def test_an_unknown_room_on_an_anchor_is_a_structured_error(self):
+        memory = Memory()
+        result = memory.record_anchor("p", "d", (0.0, 0.0), room="ballroom")
+        assert result["error"] == "invalid_args"
+        assert memory.anchors == {}
+
+    def test_a_non_boolean_replace_is_rejected_rather_than_coerced(self):
+        """`replace="false"` is truthy in Python; coercing it would silently
+        move the anchor the model asked to keep."""
+        memory = Memory()
+        memory.record_anchor("p", "d", (0.0, 0.0))
+        result = memory.record_anchor("p", "d", (5.0, 5.0), replace="false")
+        assert result["error"] == "invalid_args"
+        assert memory.anchors["p"].xy == (0.0, 0.0)
+
+    def test_correct_to_anchor_moves_the_estimate_and_logs_the_anchor(self):
+        memory = Memory()
+        integrator = PositionIntegrator(0.5, 0.5)
+        memory.record_anchor("rug_edge", "blue rug", integrator.xy, turn=2)
+        integrator.apply_delta(2.4, 0.9)  # walk away, accumulating drift
+        ack = correct_to_anchor(
+            memory, integrator, turn=18, name="rug_edge", reason="back on the rug"
+        )
+        assert ack["ok"] is True
+        assert ack["anchor"] == "rug_edge"
+        assert integrator.xy == (0.5, 0.5)
+        assert memory.corrections == [
+            Correction(
+                turn=18,
+                old_xy=(2.9, 1.4),
+                new_xy=(0.5, 0.5),
+                reason="back on the rug",
+                stage=STAGE_FIND_KITCHEN,
+                anchor="rug_edge",
+            )
+        ]
+
+    def test_an_unknown_anchor_lists_the_recorded_ones_and_moves_nothing(self):
+        memory = Memory()
+        integrator = PositionIntegrator(3.0, 3.0)
+        memory.record_anchor("rug_edge", "blue rug", (0.5, 0.5))
+        result = correct_to_anchor(
+            memory, integrator, turn=5, name="ballroom", reason="lost"
+        )
+        assert result["error"] == "invalid_args"
+        assert "rug_edge" in result["hint"]
+        assert integrator.xy == (3.0, 3.0)
+        assert memory.corrections == []
+
+    def test_the_unknown_anchor_hint_says_rooms_are_not_anchors(self):
+        """The model has to be able to learn the distinction from the error,
+        not just from the frozen prompt."""
+        memory = Memory()
+        result = correct_to_anchor(
+            memory, PositionIntegrator(0.0, 0.0), turn=1, name="kitchen", reason="r"
+        )
+        assert "record_anchor" in result["hint"]
+        assert "not anchors" in result["hint"]
+
+    @pytest.mark.parametrize("bad", [None, 3, [], {"a": 1}])
+    def test_correct_to_anchor_never_raises_on_a_model_argument(self, bad):
+        memory = Memory()
+        integrator = PositionIntegrator(1.0, 1.0)
+        memory.record_anchor("p", "d", (0.0, 0.0))
+        assert correct_to_anchor(memory, integrator, 1, bad, "r")["error"]
+        assert correct_to_anchor(memory, integrator, 1, "p", bad)["error"]
+        assert integrator.xy == (1.0, 1.0)
+
+    def test_no_anchor_payload_can_carry_ground_truth(self):
+        """The harness only ever writes the integrator estimate into an anchor;
+        it has no access to a true pose here at all. Asserted by construction:
+        the recorded coordinate is byte-identical to the estimate passed in,
+        whatever the robot's real position is."""
+        memory = Memory()
+        integrator = PositionIntegrator(1.11, 2.22)
+        ack = memory.record_anchor("p", "d", integrator.xy)
+        assert "1.11" in ack["detail"] and "2.22" in ack["detail"]
+        assert memory.anchors["p"].xy == integrator.xy
 
 
 class TestCorrectPosition:
@@ -1063,8 +1286,8 @@ class TestRenderMemoryBlock:
         block = render_memory_block(Memory(), Counters(), (0.0, 0.0), 0.0)
         never = [ln for ln in block.splitlines() if ln.startswith("Re-anchored")]
         assert never == [
-            "Re-anchored: never — if the view disagrees with the estimate, "
-            "correct_position with a mapped anchor"
+            "Re-anchored: never — record_anchor at points you could recognize, "
+            "then correct_to_anchor when you stand on one again"
         ]
         # (First attempt asserted `"time" not in line` to exclude the
         # post-correction "N time(s)" render — and failed on the substring
@@ -1551,14 +1774,35 @@ class TestMemoryBlockStructureIndependentOfTheGolden:
         memory, counters = seed_101_fixture()
         return render_memory_block(memory, counters, (0.90, 2.75), 88.0)
 
-    def test_a_used_doorway_exposes_its_anchor_handle(self):
-        """The prompt tells the model to re-anchor on passing a doorway; before
-        2026-07-30 the anchor vanished at exactly that moment (exits rendered
-        anchors only while `unexplored`)."""
-        lines = self._block().splitlines()
-        doorway = [ln for ln in lines if ln.startswith("  - living_room@90")]
-        assert doorway, "the used doorway lost its anchor line"
-        assert "[anchor x=0.53, y=1.11]" in doorway[0]
+    def test_the_only_coordinates_in_the_map_section_are_recorded_anchors(self):
+        """TR.1's central invariant, stated against the rendered text.
+
+        Room lines and exit lines carried an `[anchor x=…, y=…]` until
+        2026-08-02, and correcting to those coordinates added a net 3.72 m of
+        true error across the v5d_r2 batch (forensics F-01). A coordinate in
+        the MAP section is now a promise that the model stood there and said
+        so.
+        """
+        map_section = self._block().split("== STATE")[0]
+        coordinate_lines = [
+            ln for ln in map_section.splitlines() if "x=" in ln or "y=" in ln
+        ]
+        assert coordinate_lines == [
+            "  - rug_edge [x=0.50, y=0.50] in living_room -- north edge of the "
+            "blue rug, sofa on my left",
+            "  - hall_threshold [x=0.53, y=1.11] in living_room -- standing in "
+            "the doorway, hallway runs north",
+        ], coordinate_lines
+        assert "Doorways you have used" not in map_section
+        assert "[anchor " not in map_section
+
+    def test_the_anchors_section_names_the_tool_that_consumes_it(self):
+        header = [
+            ln for ln in self._block().splitlines() if ln.startswith("Anchors")
+        ]
+        assert header == [
+            "Anchors (points YOU recorded; correct_to_anchor snaps you back):"
+        ]
 
     def test_adjacency_is_asserted_exactly_once(self):
         """doc 06 §5.7 keeps frontier and adjacency separate; the doorway list
@@ -1580,6 +1824,8 @@ class TestMemoryBlockStructureIndependentOfTheGolden:
     def test_every_rendered_anchor_is_two_decimal_places(self):
         import re as _re
 
-        for value in _re.findall(r"anchor x=([\d.-]+), y=([\d.-]+)", self._block()):
+        found = _re.findall(r"\[x=([\d.-]+), y=([\d.-]+)\]", self._block())
+        assert found, "the fixture renders no anchors at all"
+        for value in found:
             for v in value:
                 assert len(v.split(".")[1]) == 2, f"anchor not 2dp: {v}"

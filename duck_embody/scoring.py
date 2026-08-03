@@ -79,12 +79,13 @@ from duck_embody.agent.prompts import LAYOUT_QA_QUESTIONS, ROOM_SYNONYMS
 from duck_embody.env.apartment_layout import (
     COMPASS_8,
     LAYOUT,
-    _dist_point_rect,
     adjacency,
     bearing_deg,
     compass_8,
     connecting_rooms,
     grid,
+    kitchen_counter_rects,
+    nearest_counter_face,
     oracle_length,
     room_at,
     room_centroid,
@@ -92,11 +93,15 @@ from duck_embody.env.apartment_layout import (
     spawn_pose,
 )
 from duck_embody.tasks.find_kitchen import (
+    CRITERION_PREREGISTERED,
+    CRITERION_V2_ANY_COUNTER,
     REASON_DECLARE_DONE,
     REASON_FALL,
     REASON_NOT_RUN,
+    SUCCESS_CRITERION,
     find_kitchen_spec,
     outcome_for,
+    position_success,
     return_home_spec,
     score_stage,
 )
@@ -551,90 +556,56 @@ def stage_end_xy(document: dict, stage: str) -> tuple[float, float]:
 # module docstring and results/rerun_log.md)
 # ---------------------------------------------------------------------------
 
-#: Identifier stamped into results/scores.json so a reader of the numbers can
-#: tell which predicate produced them without diffing this file.
-SUCCESS_CRITERION = "v2_any_counter"
-
-#: The asset every kitchen counter is an instance of. The counters are selected
-#: structurally (kitchen + this asset), never by name, so a renamed counter
-#: cannot silently fall out of the success region.
-_COUNTER_ASSET = "sektion_cabinet"
-
-#: How many counters the frozen layout is known to contain. A different count
-#: means the criterion definition no longer matches the scene — raise, don't
-#: guess.
-_COUNTER_COUNT = 5
-
-
-@lru_cache(maxsize=1)
-def kitchen_counter_rects() -> tuple[tuple[str, tuple[float, float, float, float]], ...]:
-    """The five kitchen counters' footprint AABBs, from the frozen layout only.
-
-    ``LAYOUT["furniture"]`` footprints are world-axis full extents (the same
-    reading ``furniture_rects`` uses), so the rectangles are axis-aligned by
-    construction. This reads the furniture list despite its "SCENE SPEC ONLY —
-    scoring never reads this" header: criterion v2 makes the counter footprints
-    scoring ground truth, and that header's rule is amended by the v2 change
-    (module docstring; results/rerun_log.md) rather than silently ignored.
-    """
-    rects: list[tuple[str, tuple[float, float, float, float]]] = []
-    for item in LAYOUT["furniture"]:
-        if item["room"] == "kitchen" and item["asset"] == _COUNTER_ASSET:
-            cx, cy = item["pos"]
-            w, d = item["footprint"]
-            rects.append(
-                (item["name"], (cx - w / 2.0, cy - d / 2.0, cx + w / 2.0, cy + d / 2.0))
-            )
-    if len(rects) != _COUNTER_COUNT:
-        raise ScoringError(
-            f"expected {_COUNTER_COUNT} kitchen {_COUNTER_ASSET} counters in the "
-            f"frozen layout, found {len(rects)} — criterion v2 no longer matches "
-            "the scene"
-        )
-    return tuple(rects)
-
-
-def nearest_counter_face(xy: tuple[float, float]) -> tuple[str, float]:
-    """``(counter name, Euclidean distance to its footprint rectangle)``.
-
-    Distance is to the rectangle (0 inside), via the layout's own
-    ``_dist_point_rect`` so the scorer and the free-space grid share one
-    geometry. A corner approach is credited up to the radius off a footprint
-    corner — the natural rectangle generalisation of the primary disc's
-    semantics, same inclusive boundary, same radius.
-    """
-    name, dist = min(
-        (
-            (name, _dist_point_rect(xy[0], xy[1], rect))
-            for name, rect in kitchen_counter_rects()
-        ),
-        key=lambda pair: pair[1],
-    )
-    return name, dist
+# TR.2: the criterion, its geometry and its predicate all moved OUT of this
+# module. `SUCCESS_CRITERION`, `position_success` and `score_stage` come from
+# `tasks/find_kitchen.py` (the live gate consults them too, which is the F-02
+# fix), and the counter rectangles from `env/apartment_layout.py` (the frozen
+# ground truth). The names below stay importable from `duck_embody.scoring`
+# because scripts, charts and tests already address them here — but each is now
+# a re-export, not a second implementation. A criterion this file could define
+# on its own is a criterion that can drift from the one the robot ran under.
+__all_criterion_reexports__ = (
+    "SUCCESS_CRITERION",
+    "CRITERION_PREREGISTERED",
+    "CRITERION_V2_ANY_COUNTER",
+    "kitchen_counter_rects",
+    "nearest_counter_face",
+)
 
 
 def position_success_v2(stage: str, xy: tuple[float, float], spec) -> bool:
-    """The position half of criterion v2 for one stage.
+    """The position half of criterion v2 — :func:`position_success` at v2.
 
-    ``find_kitchen``: the pre-registered point disc **OR** within the same
-    radius of any kitchen counter footprint *while standing in the kitchen*.
-    The union, not the counter branch alone, because the two regions are NOT
-    nested: the pinned target point is 0.397 m from the nearest counter
-    footprint, so a pure any-counter test would fail a robot standing exactly
-    on the pre-registered goal (adversarial review, 2026-07-27). The in-kitchen
-    condition is load-bearing: counter_4/5 back onto the bedroom partition, and
-    a bedroom pose 4 cm through that wall is within 0.35 m of their rectangles.
-
-    ``return_home``: unchanged — the pre-registered disc. Its goal has no
-    counter semantics.
+    Retained as a named alias because "v2" is the vocabulary of
+    ``results/rerun_log.md`` and ``docs/METRICS.md`` §2.1, and because the
+    scorer must be able to ask for v2 EXPLICITLY when reading a legacy trial
+    whose live gate ran the pre-registered predicate.
     """
-    if math.dist(xy, spec.goal_xy) <= spec.success_radius_m:
-        return True
-    if stage != STAGE_FIND_KITCHEN:
-        return False
-    if room_at(xy[0], xy[1]) != "kitchen":
-        return False
-    return nearest_counter_face(xy)[1] <= spec.success_radius_m
+    return position_success(stage, xy, spec, criterion=CRITERION_V2_ANY_COUNTER)
+
+
+def trial_success_criterion(document: dict) -> str:
+    """Which criterion did this trial's LIVE stage machine run under?
+
+    New logs stamp ``config.success_criterion`` (TR.2). Logs written before
+    that — the v4 baseline and ``raw_v5d_r2`` — carry no such field, and for
+    them the answer is the pre-registered point disc, because that is what
+    ``score_stage`` computed at the time. Defaulting the other way would
+    silently re-interpret ``final.stages.*.success`` as a v2 verdict it never
+    was, and every log-consistency cross-check below would then either raise on
+    a healthy legacy log or, worse, pass while comparing two different
+    predicates.
+    """
+    criterion = (document.get("config") or {}).get("success_criterion")
+    if criterion is None:
+        return CRITERION_PREREGISTERED
+    if criterion not in (CRITERION_PREREGISTERED, CRITERION_V2_ANY_COUNTER):
+        raise ScoringError(
+            f"trial {document.get('trial_id')!r} stamps an unknown "
+            f"success_criterion {criterion!r}; this scorer knows "
+            f"{(CRITERION_PREREGISTERED, CRITERION_V2_ANY_COUNTER)}"
+        )
+    return str(criterion)
 
 
 def region_oracle_length_m(start: tuple[float, float], spec) -> float | None:
@@ -749,38 +720,51 @@ def _round_or_na(value: float | str, digits: int) -> float | str:
     return value if isinstance(value, str) else round(value, digits)
 
 
-def stage_success_preregistered(document: dict, stage: str) -> bool:
-    """The AS-RUN §5.1 success flag, recomputed rather than trusted.
+def _stage_verdict(document: dict, stage: str, criterion: str) -> bool:
+    """§5.1 for one stage under one named criterion: position AND declare_done.
 
-    This is the predicate the live loop's gate consulted (point disc AND
-    ``declare_done``) — the pre-registered criterion the batch ran under. It is
-    still recomputed and validated on every scoring pass, for two reasons:
-    the log-consistency guarantees below must survive the v2 change untouched,
-    and the pre-registered verdict is still published per trial
-    (``success_preregistered``) so the original reading stays reproducible.
-
-    Two distinct predicates live in the log and confusing them inflates SR:
-    ``stages[*].score.success`` is ``score_stage``'s pure distance test, while
-    ``stages[*].success`` additionally requires ``declare_done`` ("the model must
-    *know* it arrived"). A trial that times out standing inside the radius logs
+    "The model must *know* it arrived" — criterion v2 widened only WHERE
+    arrival counts, never HOW. Two distinct predicates live in the log and
+    confusing them inflates SR: ``stages[*].score.success`` is the pure
+    position test, while ``stages[*].success`` additionally requires
+    ``declare_done``. A trial that times out standing inside the region logs
     the first as ``true`` and the second as ``false``.
-
-    The distance half is recomputed here with the very predicate the live loop
-    consulted — ``tasks/find_kitchen.py::score_stage`` — so, per doc 06
-    §9.1(iii), "the scorer and the gate cannot disagree". If they do, that is a
-    corrupt log and this raises rather than publishing either number.
     """
+    result = document["final"]["stages"][stage]
+    score = result.get("score")
+    if score is None or result["end_reason"] != REASON_DECLARE_DONE:
+        return False
+    return bool(
+        score_stage(
+            stage_spec(document, stage), _score_xy(score), criterion=criterion
+        ).success
+    )
+
+
+def validate_stage_log(document: dict, stage: str) -> str:
+    """Cross-check the logged verdict against the criterion the trial RAN.
+
+    doc 06 §9.1(iii): "the same predicate the live loop consulted, so the
+    scorer and the gate cannot disagree". TR.2 makes the criterion explicit
+    instead of implicit — the as-run predicate is now whatever
+    :func:`trial_success_criterion` says the trial stamped, so this check is
+    just as strict for a v2 trial as it was for a pre-registered one, and it
+    NEVER re-interprets a legacy log's ``success`` field as a v2 verdict.
+
+    Returns the as-run criterion so callers do not look it up twice.
+    """
+    criterion = trial_success_criterion(document)
     result = document["final"]["stages"][stage]
     logged = bool(result["success"])
     score = result.get("score")
-    end_reason = result["end_reason"]
     if score is None:
         # `not_run` only. StageResult.not_run is the sole writer of score=None.
         if logged:
             raise ScoringError(f"{stage}: success with no score block")
-        return False
-    spec = stage_spec(document, stage)
-    recomputed = score_stage(spec, _score_xy(score))
+        return criterion
+    recomputed = score_stage(
+        stage_spec(document, stage), _score_xy(score), criterion=criterion
+    )
     if not math.isclose(
         recomputed.distance_m,
         _finite(score["distance_m"], f"{stage}: score.distance_m"),
@@ -791,35 +775,55 @@ def stage_success_preregistered(document: dict, stage: str) -> bool:
             f"score_stage's {recomputed.distance_m:.4f} for true_xy "
             f"{tuple(score['true_xy'])} (doc 06 §9.1(iii))"
         )
-    expected = bool(recomputed.success) and end_reason == REASON_DECLARE_DONE
+    logged_criterion = score.get("criterion_version")
+    if logged_criterion is not None and logged_criterion != criterion:
+        raise ScoringError(
+            f"{stage}: the score block claims criterion {logged_criterion!r} "
+            f"but the trial config stamps {criterion!r} — one trial cannot have "
+            "run two predicates"
+        )
+    expected = _stage_verdict(document, stage, criterion)
     if expected != logged:
         raise ScoringError(
-            f"{stage}: logged success={logged} but the distance predicate says "
-            f"{recomputed.success} with end_reason={end_reason!r}; doc 06 §5.1 "
-            "requires BOTH the radius and declare_done"
+            f"{stage}: logged success={logged} but the {criterion} predicate "
+            f"says {recomputed.success} with end_reason={result['end_reason']!r}; "
+            "doc 06 §5.1 requires BOTH the goal region and declare_done"
         )
-    return logged
+    return criterion
+
+
+def stage_success_preregistered(document: dict, stage: str) -> bool:
+    """The PRE-REGISTERED §5.1 verdict — the point disc, recomputed.
+
+    Published per trial (``success_preregistered``) so the original reading
+    stays reproducible whatever the trial ran under, and validated on every
+    scoring pass via :func:`validate_stage_log`.
+
+    Recomputed, never read off ``final.stages[*].success``: for a v2-stamped
+    trial that logged flag IS the v2 verdict, and returning it here would
+    publish "pre-registered" numbers that are nothing of the sort.
+    """
+    validate_stage_log(document, stage)
+    return _stage_verdict(document, stage, CRITERION_PREREGISTERED)
 
 
 def stage_success(document: dict, stage: str) -> bool:
     """The PUBLISHED §5.1 success flag — criterion v2 (module docstring).
 
-    Runs :func:`stage_success_preregistered` first, unconditionally: every
-    log-consistency check the as-run predicate enforced still raises on a
-    corrupt log, and the v2 verdict is only ever computed on a log that passed
-    them. Then applies the v2 position test to the same logged ``true_xy``.
-    ``declare_done`` is still required — the model must *know* it arrived; v2
-    widens only WHERE arrival counts, never HOW.
+    Runs :func:`validate_stage_log` first, unconditionally: every
+    log-consistency check still raises on a corrupt log, and the published
+    verdict is only ever computed on a log that passed them.
+
+    For a v2-stamped trial this equals the logged flag by construction — the
+    live gate ran the same predicate, which is the whole point of TR.2. For a
+    legacy trial it is the disclosed v2 SENSITIVITY result: what the published
+    criterion says about a pose the live gate judged under the point disc. The
+    live consequence of that gap (a return leg never offered) is not
+    recoverable post hoc and is reported by
+    ``stage1_successes_never_offered_return``.
     """
-    preregistered = stage_success_preregistered(document, stage)
-    result = document["final"]["stages"][stage]
-    score = result.get("score")
-    if score is None or result["end_reason"] != REASON_DECLARE_DONE:
-        return False
-    if preregistered:
-        # v2 is a superset of the pre-registered region by construction.
-        return True
-    return position_success_v2(stage, _score_xy(score), stage_spec(document, stage))
+    validate_stage_log(document, stage)
+    return _stage_verdict(document, stage, CRITERION_V2_ANY_COUNTER)
 
 
 def check_stage_turns(document: dict, stage: str) -> list[dict]:
@@ -870,15 +874,22 @@ def stage_metrics(document: dict, stage: str) -> StageMetrics:
     as-run predicate so the log stays internally consistent under BOTH readings.
     """
     result = document["final"]["stages"][stage]
+    as_run_criterion = validate_stage_log(document, stage)
     success = stage_success(document, stage)
     preregistered = stage_success_preregistered(document, stage)
     outcome = outcome_for(result["end_reason"], success)
-    expected_logged = outcome_for(result["end_reason"], preregistered)
+    # Against the AS-RUN criterion, which for a legacy trial is the point disc
+    # and for a v2-stamped trial is v2 — the same check either way, asked of
+    # the predicate that actually wrote the field.
+    expected_logged = outcome_for(
+        result["end_reason"], _stage_verdict(document, stage, as_run_criterion)
+    )
     if result["outcome"] != expected_logged:
         raise ScoringError(
             f"{stage}: logged outcome {result['outcome']!r} disagrees with the "
-            f"as-run predicate's {expected_logged!r} (end_reason "
-            f"{result['end_reason']!r}); the log is internally inconsistent"
+            f"as-run ({as_run_criterion}) predicate's {expected_logged!r} "
+            f"(end_reason {result['end_reason']!r}); the log is internally "
+            "inconsistent"
         )
     spec = stage_spec(document, stage)
     check_stage_turns(document, stage)
@@ -913,7 +924,11 @@ def stage_metrics(document: dict, stage: str) -> StageMetrics:
         end_reason=result["end_reason"],
         success=success,
         success_preregistered=preregistered,
-        outcome_preregistered=result["outcome"],
+        # COMPUTED, not the logged field. For a legacy trial the two are equal
+        # (the check above proves it); for a v2-stamped trial the logged
+        # outcome IS the v2 outcome, so copying it would publish a
+        # "pre-registered" column that silently duplicated the v2 one.
+        outcome_preregistered=outcome_for(result["end_reason"], preregistered),
         d_nearest_counter_face_m=d_counter,
         d_initial_m=d_initial,
         d_final_m=d_final,

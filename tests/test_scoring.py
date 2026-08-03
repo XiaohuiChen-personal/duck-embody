@@ -44,6 +44,7 @@ from duck_embody.agent.memory import (
     Memory,
     PositionIntegrator,
     correct_position,
+    correct_to_anchor,
 )
 from duck_embody.agent.prompts import (
     LAYOUT_QA_QUESTIONS,
@@ -65,11 +66,15 @@ from duck_embody.env.apartment_layout import (
 )
 from duck_embody.scoring import NA
 from duck_embody.tasks.find_kitchen import (
+    CRITERION_PREREGISTERED,
+    CRITERION_V2_ANY_COUNTER,
     REASON_DECLARE_DONE,
     REASON_TURN_CAP,
+    SUCCESS_CRITERION,
     StageSpec,
     find_kitchen_spec,
     outcome_for,
+    position_success,
     return_home_spec,
     score_stage,
 )
@@ -127,7 +132,22 @@ class TrialBuilder:
     harness could actually have produced.
     """
 
-    def __init__(self, seed: int = 101, model: str = "claude-fable-5") -> None:
+    def __init__(
+        self,
+        seed: int = 101,
+        model: str = "claude-fable-5",
+        *,
+        criterion: str = SUCCESS_CRITERION,
+        stamp_criterion: bool = True,
+    ) -> None:
+        # TR.2: `criterion` is which success predicate the LIVE loop would have
+        # consulted, and `stamp_criterion` is whether the log records it.
+        # Default = what the harness writes TODAY (v2, stamped). A LEGACY batch
+        # is `TrialBuilder(criterion=CRITERION_PREREGISTERED,
+        # stamp_criterion=False)` — the v4 and raw_v5d_r2 shape, which carries
+        # no `config.success_criterion` at all.
+        self.criterion = criterion
+        self.stamp_criterion = stamp_criterion
         self.seed = seed
         self.spawn, self.spawn_heading = spawn_pose(seed)
         self.memory = Memory()
@@ -156,6 +176,8 @@ class TrialBuilder:
             "turns": self.turns,
             "video_path": None,
         }
+        if stamp_criterion:
+            self.document["config"]["success_criterion"] = criterion
 
     # -- memory writes, through the real methods ---------------------------
 
@@ -169,6 +191,26 @@ class TrialBuilder:
             memory.add_landmark(args["room"], args.get("description", "thing"))
         elif name == "mark_exit":
             memory.mark_exit(args["room"], args["direction_deg"], args["status"])
+        elif name == "record_anchor":
+            # TR.1. The coordinate is the integrator's estimate, exactly as
+            # `tools._record_anchor` takes it — a fixture must not be able to
+            # place an anchor anywhere the harness could not have placed it.
+            memory.record_anchor(
+                args["name"],
+                args.get("description", "a recognizable spot"),
+                self.integrator.xy,
+                turn=self.stage_turns[self.stage],
+                room=args.get("room"),
+                replace=args.get("replace", False),
+            )
+        elif name == "correct_to_anchor":
+            correct_to_anchor(
+                memory,
+                self.integrator,
+                self.stage_turns[self.stage],
+                args["name"],
+                args.get("reason", "back at the rug edge"),
+            )
         elif name == "correct_position":
             correct_position(
                 memory,
@@ -314,7 +356,9 @@ class TrialBuilder:
         spec = self._spec(stage)
         if end_reason == "not_run":
             return StageResult.not_run(spec)
-        score = score_stage(spec, (self.true_pose[0], self.true_pose[1]))
+        score = score_stage(
+            spec, (self.true_pose[0], self.true_pose[1]), criterion=self.criterion
+        )
         success = bool(score.success) and end_reason == REASON_DECLARE_DONE
         return StageResult(
             stage=stage,
@@ -415,6 +459,18 @@ def successful_trial(seed: int = 101, qa_answers=None) -> dict:
                 "args": {"name": "living room", "description": "sofa, blue rug"},
             },
             {"name": "set_current_room", "args": {"name": "living room"}},
+            # TR.1: the workhorse fixture records one point anchor, so
+            # `memory_snapshot.anchors` is exercised by the doc 06 §4
+            # conformance sweep. An anchor that is never corrected to leaves no
+            # other trace in a log, which is exactly why it is logged.
+            {
+                "name": "record_anchor",
+                "args": {
+                    "name": "rug_edge",
+                    "description": "north edge of the blue rug",
+                    "room": "living room",
+                },
+            },
             {
                 "name": "move",
                 "args": {"distance_m": 0.8},
@@ -2216,14 +2272,19 @@ class TestStage2Gate:
 
 
 def at_counter_trial() -> dict:
-    """``declare_done`` 8 cm from counter_5's west face, inside the kitchen.
+    """LEGACY log: ``declare_done`` 8 cm from counter_5's west face, in-kitchen.
 
-    The live loop logged this ``declared_elsewhere`` (the as-run point-disc
-    predicate; the pose is ~0.72 m from the target point) and did NOT offer the
-    return leg — the shape of the real ``gpt56sol_seed103``. Criterion v2
-    publishes it a success.
+    Built with the PRE-REGISTERED criterion and no ``config.success_criterion``,
+    because that is the artifact this fixture models: a trial from the v4 /
+    ``raw_v5d_r2`` era, whose live gate measured the point disc only. The loop
+    logged ``declared_elsewhere`` (the pose is ~0.72 m from the target point)
+    and did NOT offer the return leg — the shape of the real ``gpt56sol_seed103``
+    and of ``opus5_seed101``. Criterion v2 publishes it a success post hoc;
+    the return leg it would have earned is not recoverable.
     """
-    builder = TrialBuilder()
+    builder = TrialBuilder(
+        criterion=CRITERION_PREREGISTERED, stamp_criterion=False
+    )
     builder.turn(
         [
             {

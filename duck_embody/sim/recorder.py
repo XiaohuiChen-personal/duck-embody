@@ -212,14 +212,41 @@ def record_and_strip(out_prefix: Path | str, fps: int = 25) -> Recorder:
 # Recording an LLM-driven episode (T3.4)
 # ---------------------------------------------------------------------------
 
-#: Recording chunk: 0.04 s = 2 control steps at 50 Hz, i.e. one grab per 25 fps
-#: frame. The same value ``SimSession._execute_recording`` has always used.
+#: Recording interval: 0.04 s = 2 control steps at 50 Hz, i.e. one grab per
+#: 25 fps frame. Historically the length of the execution CHUNK the recorder cut
+#: commands into; since TR.3 it is a *sampling stride* over control steps and
+#: nothing about execution depends on it. Kept under the old name because
+#: callers (runner, smokes, tests) pass it as a duration.
 RECORD_CHUNK_S = 0.04
+
+
+def steps_per_grab(chunk_s: float = RECORD_CHUNK_S) -> int:
+    """Sampling stride in control steps for a desired grab interval.
+
+    0.04 s -> 2 steps at 50 Hz, which is the 25 fps the mp4 is encoded at.
+    """
+    from duck_embody.sim.policy_wrapper import CONTROL_HZ
+
+    return max(1, round(chunk_s * CONTROL_HZ))
 
 
 def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
                     chunk_s: float = RECORD_CHUNK_S, **kwargs):
-    """Run one velocity command in short pieces, grabbing a frame between them.
+    """**NON-BENCHMARK / LEGACY.** Run a command in pieces, grabbing between them.
+
+    RETIRED FROM THE BENCHMARK PATH by TR.3 (forensics F-03). It survives for
+    exactly one purpose: replaying the frozen `results/raw_v5d*` batches, whose
+    trials really did execute this way (`scripts/replay_falls.py` — a historical
+    forensic tool, not a benchmark path). Do NOT reintroduce it into
+    `attach_recorder`, `SimSession`, `runner.py` or any new smoke.
+
+    Why it is wrong to record with: cutting one semantic command into 0.04 s
+    executes moves the command boundary, and the command boundary carries the
+    bump debounce window, the pose-trace phase, the clamp-note list, the fall
+    diagnostics stamp and (worst) the odometry noise draw. Recorded and
+    unrecorded runs were therefore different experiments — and the paid batch
+    only ever ran the recorded one. Use :func:`attach_recorder`, which observes
+    fixed control steps and changes nothing.
 
     Frame grabbing has to interleave with stepping, so a long command cannot be
     recorded from the outside — it has to be cut up. ``execute`` is passed in
@@ -287,52 +314,64 @@ def chunked_execute(execute, env, recorder, vx, vy, wz, duration_s, *,
     return merged
 
 
-def attach_recorder(playback, env, recorder, chunk_s: float = RECORD_CHUNK_S):
-    """Make every command a model issues record video. Returns a detach callable.
+def step_grabber(env, recorder, chunk_s: float = RECORD_CHUNK_S):
+    """Build the ``StepObservation`` handler that grabs viewport frames.
 
-    **Why a patch and not a wrapper object.** ``agent/tools.py`` drives motion
-    through ``playback.move()`` / ``playback.turn_to_heading()`` /
-    ``playback.execute()``, and the two macros never pass the ``on_chunk=``
-    callback the wrapper offers — while internally they call ``self.execute(...)``
-    on their own instance. So a proxy passed in as ``ToolContext.playback`` could
-    only intercept the macros' *outermost* call (5 Hz, one grab per 0.2 s servo
-    chunk), not the steps inside them, and re-implementing the macros to fix that
-    would fork a doc 02 §6.2 code path T2.4's physics pass validated. Replacing
-    the bound ``execute`` on the instance puts the seam exactly where every
-    physics step already funnels through, at 25 fps, with no macro duplicated.
+    Pure of any playback state, so ``tests/test_execute_ordering.py`` can feed
+    it synthetic observations and assert the sampling rule without a kit
+    process. Two rules, both learned expensively:
 
-    Without it there is **no per-trial video at all**: ``SimSession``'s only
-    per-step grabber is reachable through ``scripted_drive``, which the LLM path
-    never uses. AGENTS.md rule 11 makes a video the acceptance evidence for any
-    run that steps simulation, and "the video wins" when it disagrees with the
-    metrics.
-
-    A ``stop_predicate`` call falls through unrecorded rather than raising: the
-    predicate is given the step index *within one* ``execute``, and chunking
-    restarts that index, so a chunked predicate would silently never fire. No
-    tool passes one today; the fallback means that if one ever does, it behaves
-    correctly and merely loses frames.
+    * **Sample on a fixed control-step grid**, ``chunk_s`` wide (2 steps =
+      25 fps). The grid is indexed by the trial-scoped step counter, so it does
+      not move when a command starts or ends — which is what makes recorded and
+      unrecorded runs the same experiment (forensics F-03).
+    * **Never grab on a terminating step.** Isaac Lab auto-resets a terminated
+      env inside ``step()``, so the live viewport already shows a healthy duck
+      at spawn; grabbing it made every fall video END on a post-teleport frame,
+      structurally deleting rule 11's "video wins" evidence for the single most
+      consequential event a trial has. The previous frame (<= 40 ms before the
+      topple) stays the last one.
     """
-    original = playback.execute
+    stride = steps_per_grab(chunk_s)
 
-    def recording_execute(vx, vy, wz, duration_s, stop_on_bump=False, stop_predicate=None):
-        if stop_predicate is not None:
-            return original(
-                vx, vy, wz, duration_s,
-                stop_on_bump=stop_on_bump, stop_predicate=stop_predicate,
-            )
-        return chunked_execute(
-            original, env, recorder, vx, vy, wz, duration_s,
-            chunk_s=chunk_s, stop_on_bump=stop_on_bump,
-        )
+    def observe(obs) -> None:
+        if obs.terminated:
+            return
+        if obs.step_index % stride:
+            return
+        recorder.grab(env)
 
-    playback.execute = recording_execute
+    return observe
 
-    def detach() -> None:
-        # Delete the instance attribute so the class method is visible again.
-        try:
-            del playback.execute
-        except AttributeError:
-            pass
 
-    return detach
+def attach_recorder(playback, env, recorder, chunk_s: float = RECORD_CHUNK_S):
+    """Record video by OBSERVING control steps. Returns a detach callable.
+
+    Drop-in replacement for the pre-TR.3 signature, with one load-bearing
+    difference: it **does not replace** ``playback.execute``. It registers a
+    passive per-control-step observer (``PolicyPlayback.register_step_observer``)
+    that grabs a frame every ``chunk_s`` of simulated time and returns nothing.
+    Attaching therefore cannot change command boundaries, bump timing, pose
+    sampling, clamp notes, fall diagnostics or the odometry noise process —
+    which the patch it replaces changed, all of them, and each was fixed as a
+    separate bug before the seam itself was recognised as the defect
+    (forensics F-03; `tests/test_execute_ordering.py::TestAttachIsObservational`
+    pins that ``execute`` is untouched).
+
+    Frame rate is unchanged: the old patch grabbed once per 0.04 s execution
+    chunk, this grabs once per 0.04 s of stepping. ``Recorder.every_n`` still
+    decimates on top, so ``Recorder(..., every_n=1)`` remains 25 fps.
+
+    Without a recorder attached somewhere there is **no per-trial video at
+    all**: ``agent/tools.py`` drives motion through ``playback.move()`` /
+    ``turn_to_heading()`` / ``execute()`` and never passes an ``on_chunk``
+    callback, and ``SimSession``'s scripted-drive grabber is not on the LLM
+    path. AGENTS.md rule 11 makes a video the acceptance evidence for any run
+    that steps simulation.
+
+    ``stop_predicate`` needs no special case any more (the pre-TR.3 patch had to
+    fall through unrecorded, because chunking restarted the per-call step index
+    a predicate is defined over). Observation is orthogonal to it, so a
+    predicate-driven servo now records normally.
+    """
+    return playback.register_step_observer(step_grabber(env, recorder, chunk_s))

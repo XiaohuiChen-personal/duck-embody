@@ -206,6 +206,22 @@ scoring:
   pose_trace_hz: 5
   find_kitchen_success_radius_m: 0.35
   return_home_success_radius_m: 0.5
+  # The stage-1 success region, named and versioned (TR.2). ONE predicate now
+  # serves the live stage machine and the published scorer:
+  # `duck_embody.tasks.find_kitchen.SUCCESS_CRITERION`, mirrored here so the
+  # criterion sits inside the hashed fairness contract, with an agreement test
+  # in tests/test_loop.py. Definition: docs/METRICS.md §2.1 — inside the 0.35 m
+  # point disc OR within 0.35 m of any of the five kitchen counter footprints
+  # while standing in the kitchen. `return_home` keeps the 0.5 m spawn disc.
+  #
+  # Before TR.2 this value existed in NO config and in only ONE consumer: v2
+  # was implemented post-hoc in scoring.py while the live gate stayed on the
+  # point disc, so the published benchmark and the running task were different
+  # tasks (forensics F-02). `opus5_seed101` was published a success and never
+  # offered its return leg. Every new trial JSON stamps this string into
+  # `config.success_criterion`; logs without the field are legacy point-disc
+  # runs and are still scored as such.
+  success_criterion: v2_any_counter
   bootstrap_resamples: 10000
   bootstrap_seed: 20260726
 

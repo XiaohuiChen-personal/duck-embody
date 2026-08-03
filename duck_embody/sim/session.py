@@ -138,41 +138,32 @@ class SimSession:
         return results
 
     def _execute_recording(self, vx, vy, wz, duration_s, recorder, **kwargs):
-        """Execute one command, grabbing a viewport frame per control step.
+        """Execute one command while a recorder OBSERVES its control steps.
 
-        Frame grabbing has to interleave with stepping, so the command is cut
-        into short executes with a grab between them. The chunk-and-merge itself
-        lives in ``recorder.chunked_execute`` because T3.4's LLM path needs the
-        identical merge (``recorder.attach_recorder``) and a second copy of it
-        would drift — silently, since a mis-merged ``sampled_xy`` only shows up
-        as a depressed SPL months later (doc 06 §5.3).
+        TR.3: this used to cut the command into 0.04 s executes so a frame could
+        be grabbed between the pieces, which changed the command boundary and
+        with it bump timing, pose sampling and the odometry noise process
+        (forensics F-03). The command is now executed exactly once and the
+        recorder is registered as a passive per-step observer, so a scripted
+        drive with a recorder and one without are the same experiment.
+
+        A ``stop_predicate`` is no longer refused: it is defined over the step
+        index within one ``execute()``, which nothing now restarts.
         """
-        from duck_embody.sim.recorder import chunked_execute
+        from duck_embody.sim.recorder import attach_recorder
 
         if recorder is None:
             return self.playback.execute(vx, vy, wz, duration_s, **kwargs)
 
-        if kwargs.get("stop_predicate") is not None:
-            # A stop_predicate is called with the step index *within one
-            # execute()*. Chunking restarts that index every 2 steps, so a
-            # predicate like "stop after 40 steps" would never fire. Closed-loop
-            # macros (tools.move) run their own loop and record per iteration.
-            raise ValueError(
-                "stop_predicate cannot be combined with a recorder: chunked "
-                "recording restarts the per-call step index. Drive the loop from "
-                "the caller instead."
-            )
-
-        return chunked_execute(
-            self.playback.execute,
-            self.env.unwrapped,
-            recorder,
-            vx,
-            vy,
-            wz,
-            duration_s,
-            **kwargs,
-        )
+        detach = attach_recorder(self.playback, self.env.unwrapped, recorder)
+        try:
+            return self.playback.execute(vx, vy, wz, duration_s, **kwargs)
+        finally:
+            # Per-call attach/detach so an outer attach (runner.py holds one for
+            # the whole trial) is not silently shadowed — register_step_observer
+            # raises instead, which is the loud failure we want over a video
+            # that is quietly empty.
+            detach()
 
     # -- teardown -----------------------------------------------------------
 

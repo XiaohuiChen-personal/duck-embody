@@ -1899,11 +1899,71 @@ therefore exact, but the model's estimate at that instant is only as precise as
 the log. `pose_trace` could refine this in a later task if a sub-call instant
 ever matters.
 
-### TR.1–TR.9 `[ ]` Remaining remediation tasks
+### TR.1 `[x]` Explicit point anchors replace automatic room/exit correction
+
+Defined in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` T1, reproducing
+`docs/research/V5D_R2_HARNESS_FORENSICS.md` F-01 (automatic room/exit anchors
+made loop closure systematically wrong — e.g. `sonnet5_seed101` t21 corrected
+0.024 m → 1.504 m of true error). `Memory` now owns an explicit `Anchor`
+record (`record_anchor` / `correct_to_anchor`, plus the existing explicit
+`correct_position(x, y, reason)`); `update_room`, `mark_exit`, and
+`set_current_room` no longer create a point the model can correct to. Prompts
+state plainly that a room or a doorway seen from afar is not an anchor, and
+that only an explicitly recorded point may be corrected to. No true pose enters
+any anchor payload (`duck_embody/agent/memory.py`, `duck_embody/agent/tools.py`,
+`duck_embody/agent/prompts.py`, `duck_embody/agent/loop.py`).
+**Evidence:** `bash scripts/run_tests.sh tests/ -q` → 1814 passed, 3 skipped
+(2026-08-02), covering `tests/test_memory.py`, `tests/test_tools.py`,
+`tests/test_loop.py`. The scripted `smoke_loop_closure.py` real-revisit gate is
+an Isaac Sim job and has not been run this session — see TR.3's deferred-smoke
+note; the same GPU-availability constraint applies here.
+
+### TR.2 `[x]` Unified v2 success criterion, live and published
+
+Defined in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` T2, reproducing
+F-02 (live success and published success were different tasks — the stage
+machine gated `return_home` on the pre-registered point disc while the
+published score used the wider v2 "any counter face" region, so a trial could
+be a published success and never receive stage 2). `position_success` /
+`score_stage` in `duck_embody/tasks/find_kitchen.py` are now the one
+`SUCCESS_CRITERION = "v2_any_counter"` implementation consumed by both the live
+stage-transition check (`duck_embody/agent/loop.py`) and the post-hoc scorer
+(`duck_embody/scoring.py`); `configs/benchmark.yaml` and `TrialLog` stamp
+`success_criterion` so legacy v4/v5d_r2 logs (no field) still reproduce their
+original dual verdicts instead of being reinterpreted under v2.
+**Evidence:** `bash scripts/run_tests.sh tests/ -q` → 1814 passed, 3 skipped
+(2026-08-02), covering `tests/test_loop.py` and `tests/test_scoring.py`
+(boundary, counter-region, and legacy-compatibility cases from T2's unit list).
+
+### TR.3 `[x]` Observational recorder + chunk-invariant odometry
+
+Defined in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` T3, reproducing
+F-03 (recording changed execution and odometry statistics — `attach_recorder`
+re-entered `playback.execute` in 0.04 s pieces to grab viewport frames, moving
+the command boundary that carries bump debounce, pose-trace phase, and the
+odometry noise draw, so the recorded run and the unrecorded run were different
+experiments and the paid batch only ever ran the recorded one). `PolicyPlayback`
+now exposes a recorder-independent `step_observer` hook; `attach_recorder`
+registers/unregisters it without wrapping `execute`, and `chunked_execute` is
+retired from the benchmark path. A single per-trial odometer applies one
+systematic scale draw plus additive-variance process noise per control step,
+so summed noise is invariant to how a caller partitions the same step sequence
+into calls (`duck_embody/sim/policy_wrapper.py`, `duck_embody/sim/recorder.py`,
+`duck_embody/sim/session.py`).
+**Evidence:** `bash scripts/run_tests.sh tests/ -q` → 1814 passed, 3 skipped
+(2026-08-02), covering `tests/test_execute_ordering.py` (1-call/5-call/75-call
+odometry-identity fixture) and `tests/test_wrapper_math.py`. The real-sim A/A2/B
+gate (`scripts/smoke_record_invariance.py`, new this task — recording off
+twice as its own repeatability control, then once on, across straight-walk,
+curved-`send_velocity`, wall-bump, and turn-beside-obstacle sequences) is an
+Isaac Sim GPU job (AGENTS.md rule 1) and is **deferred**: not run this session.
+Run before this task's result is treated as sim-verified rather than
+unit-verified; record the mp4/filmstrip and pass/fail here when it lands.
+
+### TR.4–TR.9 `[ ]` Remaining remediation tasks
 
 Not started. Definitions live in
-`docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T1 explicit point anchors,
-T2 canonical success criterion, T3 recorder-independent execution, T4 motion and
+`docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T4 motion and
 contact semantics, T5 request reconstruction, T6 immutable provenance,
 T7 provider usage and cost, T8 audit and reporting, T9 canary/mini-batch/full
 batch). Each still runs under AGENTS.md rules 10 and 11 and gets its own PLAN

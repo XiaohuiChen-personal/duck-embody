@@ -9,6 +9,7 @@ keeps them at module scope (all Isaac imports are deferred into
 from __future__ import annotations
 
 import math
+import random
 
 import pytest
 
@@ -190,3 +191,210 @@ class TestFallDiagnosticsAreScoringOnly:
             commanded=(0.0, 0.0, 0.0), duration_s=0.0, steps=0,
             policy_seconds=0.0, bumped=False, fell=False,
         ).fall_diagnostics is None
+
+
+# ===========================================================================
+# TR.3 — the odometry process is a property of the STEPS, not of the CALLS
+# ===========================================================================
+
+
+class _NoGradCtx:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _FakeTorch:
+    @staticmethod
+    def no_grad():
+        return _NoGradCtx()
+
+
+def _scripted_playback(trajectory, seed: int = 101, scale: float = 1.0):
+    """A ``PolicyPlayback`` whose physics is a fixed list of true XY poses.
+
+    Deliberately NOT a mock of ``execute()``: this drives the REAL step loop
+    (clamping, termination check, bump debounce, pose sampling, the odometer)
+    against a scripted trajectory, so the invariance being asserted is the
+    shipped one. ``env.step`` advances an index into ``trajectory``; every call
+    on the same instance continues from where the previous one stopped, which is
+    exactly what makes "one call vs 75 calls over the same steps" a fair test.
+    """
+    from types import SimpleNamespace
+
+    from duck_embody.sim.policy_wrapper import PolicyPlayback
+
+    pb = PolicyPlayback.__new__(PolicyPlayback)
+    state = {"i": 0}
+
+    pb._torch = _FakeTorch
+    pb._obs = object()
+    pb.policy = lambda obs: "actions"
+    def _step(actions):
+        state["i"] += 1
+        return (object(), None, None, None)
+
+    pb.env = SimpleNamespace(step=_step)
+    pb.base_env = SimpleNamespace(
+        termination_manager=SimpleNamespace(
+            terminated=[False], active_terms=(), get_term=lambda name: [False]
+        )
+    )
+    pb.set_command = lambda vx, vy, wz: None
+    pb.true_xy = lambda: trajectory[min(state["i"], len(trajectory) - 1)]
+    pb.compass_deg = lambda: 0.0
+    pb.true_height = lambda: 0.17
+    pb.tilt_deg = lambda: 0.0
+    pb.bump_contact_force = lambda: 0.0
+    pb.contact_groups = lambda: []
+    pb._bump_run = 0
+    pb._step_counter = 0
+    pb._fell = False
+    pb._fall_diagnostics = None
+    pb._odom_rng = random.Random(seed)
+    pb._odom_scale = scale
+    return pb
+
+
+def _curve(n_steps: int) -> list[tuple[float, float]]:
+    """A deterministic curved trajectory, ~4 mm per step (0.2 m/s at 50 Hz)."""
+    out = []
+    for i in range(n_steps + 1):
+        t = i * 0.004
+        out.append((t, 0.15 * math.sin(t * 2.0)))
+    return out
+
+
+class TestOdometryIsChunkInvariant:
+    """Forensics F-03's falsifier, as a unit test.
+
+    The pre-TR.3 odometer drew ONE Gaussian per ``execute()`` call with an
+    ADDITIVE sigma (``FRAC*distance + RATE*seconds``). Sigma does not add —
+    variance does — so slicing a command into N pieces and vector-summing gave
+    ``sigma/sqrt(N)``: with the recorder's 75 pieces per 3 s command, the paid
+    batch ran an 8.7x quieter odometry sensor than every unit test and the first
+    odometry smoke did. Recording changed the measurement.
+
+    Noise is now drawn per CONTROL STEP with additive variance, so the total is
+    fixed by the step sequence alone.
+    """
+
+    @staticmethod
+    def _run_split(n_calls: int, total_steps: int = 150, seed: int = 101):
+        from duck_embody.sim.policy_wrapper import CONTROL_DT
+
+        traj = _curve(total_steps)
+        pb = _scripted_playback(traj, seed=seed)
+        per_call = total_steps // n_calls
+        assert per_call * n_calls == total_steps, "choose a divisible split"
+        dx = dy = 0.0
+        dist = 0.0
+        for _ in range(n_calls):
+            r = pb.execute(0.2, 0.0, 0.0, per_call * CONTROL_DT)
+            dx += r.odom_dxy[0]
+            dy += r.odom_dxy[1]
+            dist += r.odom_distance_m
+        return dx, dy, dist
+
+    def test_one_five_and_seventyfive_calls_give_identical_odometry(self):
+        one = self._run_split(1)
+        five = self._run_split(5)
+        seventyfive = self._run_split(75)
+        assert five[0] == pytest.approx(one[0], abs=1e-12)
+        assert five[1] == pytest.approx(one[1], abs=1e-12)
+        assert seventyfive[0] == pytest.approx(one[0], abs=1e-12)
+        assert seventyfive[1] == pytest.approx(one[1], abs=1e-12)
+
+    def test_the_odometry_actually_moved_so_the_test_is_not_vacuous(self):
+        """A split-invariance assertion passes trivially on zeros."""
+        dx, dy, _ = self._run_split(1)
+        assert math.hypot(dx, dy) > 0.4, (dx, dy)
+
+    def test_noise_is_present_at_every_splitting(self):
+        """Invariance must not have been bought by deleting the noise.
+
+        The estimate has to keep drifting or the research question (can an LLM
+        close loops against real drift?) disappears — AGENTS.md rule 5.
+        """
+        from duck_embody.sim.policy_wrapper import CONTROL_DT
+
+        traj = _curve(150)
+        truth = (traj[150][0] - traj[0][0], traj[150][1] - traj[0][1])
+        for n_calls in (1, 5, 75):
+            dx, dy, _ = self._run_split(n_calls)
+            assert (dx, dy) != truth
+            assert math.hypot(dx - truth[0], dy - truth[1]) > 1e-6
+
+    def test_a_different_seed_gives_different_noise(self):
+        assert self._run_split(5, seed=101)[:2] != self._run_split(5, seed=104)[:2]
+
+    def test_the_per_trial_scale_is_systematic_not_per_call(self):
+        """One scale draw per trial, applied at every step: a 5% short sensor
+        stays 5% short whether the motion arrived in one call or seventy-five."""
+        from duck_embody.sim.policy_wrapper import CONTROL_DT
+
+        traj = _curve(100)
+        results = []
+        for n_calls in (1, 4):
+            pb = _scripted_playback(traj, seed=7, scale=0.95)
+            dx = 0.0
+            for _ in range(n_calls):
+                dx += pb.execute(0.2, 0.0, 0.0, (100 // n_calls) * CONTROL_DT).odom_dxy[0]
+            results.append(dx)
+        assert results[1] == pytest.approx(results[0], abs=1e-12)
+        # 0.95 scale on a 0.6 m x-run, plus a few cm of noise.
+        assert results[0] == pytest.approx(0.95 * traj[100][0], abs=0.05)
+
+
+class TestOdometryVarianceRates:
+    def test_the_rates_are_the_squares_of_the_legacy_sigmas(self):
+        """Calibration pin: at 1 m travelled the per-axis sigma is unchanged at
+        ODOM_NOISE_FRAC, so TR.3 changed the SHAPE of the process (sqrt-of-
+        distance random walk instead of linear-in-distance) without silently
+        changing its magnitude."""
+        from duck_embody.sim.policy_wrapper import (
+            ODOM_NOISE_FLOOR_RATE_MPS,
+            ODOM_NOISE_FRAC,
+            ODOM_VAR_PER_M,
+            ODOM_VAR_PER_S,
+        )
+
+        assert ODOM_VAR_PER_M == pytest.approx(ODOM_NOISE_FRAC ** 2)
+        assert ODOM_VAR_PER_S == pytest.approx(ODOM_NOISE_FLOOR_RATE_MPS ** 2)
+        assert math.sqrt(ODOM_VAR_PER_M * 1.0) == pytest.approx(ODOM_NOISE_FRAC)
+
+    def test_variance_adds_over_steps_so_sigma_grows_as_sqrt_distance(self):
+        """Measured over 400 seeded trials rather than asserted from the
+        formula: this is the property that failed before (aggregate sigma
+        depending on the partitioning), so it is checked on outputs."""
+        from duck_embody.sim.policy_wrapper import CONTROL_DT, ODOM_VAR_PER_M
+
+        def spread(total_steps: int) -> float:
+            errs = []
+            traj = _curve(total_steps)
+            truth = traj[total_steps][0] - traj[0][0]
+            for seed in range(400):
+                pb = _scripted_playback(traj, seed=seed)
+                r = pb.execute(0.2, 0.0, 0.0, total_steps * CONTROL_DT)
+                errs.append(r.odom_dxy[0] - truth)
+            mean = sum(errs) / len(errs)
+            return math.sqrt(sum((e - mean) ** 2 for e in errs) / (len(errs) - 1))
+
+        near, far = spread(100), spread(400)
+        # Path lengths are ~0.4 m and ~1.6 m (4 mm/step): 4x the distance is
+        # 4x the variance, i.e. 2x the sigma.
+        assert far / near == pytest.approx(2.0, rel=0.25), (near, far)
+        # And the absolute scale matches the declared rate (0.4 m -> ~1.9 cm).
+        assert near == pytest.approx(math.sqrt(ODOM_VAR_PER_M * 0.4), rel=0.25)
+
+    def test_a_standing_robot_still_accrues_a_small_time_floor(self):
+        """Standing/slipping error is a RATE. Zero here would mean a duck that
+        stands for a minute is certain it stands exactly where it started."""
+        from duck_embody.sim.policy_wrapper import CONTROL_DT
+
+        still = [(0.0, 0.0)] * 200
+        pb = _scripted_playback(still, seed=3)
+        r = pb.execute(0.0, 0.0, 0.0, 150 * CONTROL_DT)
+        assert 0.0 < r.odom_distance_m < 0.02, r.odom_distance_m

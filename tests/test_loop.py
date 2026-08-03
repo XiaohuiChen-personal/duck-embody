@@ -105,7 +105,13 @@ from duck_embody.agent.tools import (
     ToolContext,
     observed_compass_deg,
 )
-from duck_embody.env.apartment_layout import LAYOUT, spawn_pose, target_point
+from duck_embody.env.apartment_layout import (
+    LAYOUT,
+    nearest_counter_face,
+    room_at,
+    spawn_pose,
+    target_point,
+)
 from duck_embody.env.camera import encode_b64
 from duck_embody.sim.policy_wrapper import (
     CONTROL_DT,
@@ -116,6 +122,8 @@ from duck_embody.sim.policy_wrapper import (
     duration_to_steps,
 )
 from duck_embody.tasks.find_kitchen import (
+    CRITERION_PREREGISTERED,
+    CRITERION_V2_ANY_COUNTER,
     OUTCOME_DECLARED_ELSEWHERE,
     OUTCOME_FALL,
     OUTCOME_NOT_RUN,
@@ -128,9 +136,11 @@ from duck_embody.tasks.find_kitchen import (
     REASON_NOT_RUN,
     REASON_TURN_CAP,
     STAGE2_REQUIRES_STAGE1_SUCCESS,
+    SUCCESS_CRITERION,
     StageSpec,
     find_kitchen_spec,
     outcome_for,
+    position_success,
     return_home_spec,
     score_stage,
     stage_specs,
@@ -1035,6 +1045,94 @@ class TestStageTwoGate:
         assert round(worst, 3) == 1.574
 
 
+class TestStageTwoGateUnderCriterionV2:
+    """TR.2's mock-loop smoke: the LIVE gate now runs the published criterion.
+
+    Three declare poses, one per branch of the union, driven through the whole
+    ``EpisodeRunner`` with a scripted provider and the fake sim. The point is
+    not the arithmetic (``TestSuccessPredicate`` pins that) but the WIRING: the
+    objective handed back inside ``declare_done``'s tool_result and the stage
+    the runner actually runs must come from one predicate. Before TR.2 the
+    counter-branch case ended the trial, which is how ``opus5_seed101`` became
+    a published success with no return leg.
+    """
+
+    #: (label, declare pose, does stage 2 run?)
+    CASES = (
+        ("old point disc", target_point(), True),
+        ("east-wall counter, in kitchen", (2.90, 1.30), True),
+        ("near a counter, in the bedroom", (3.34, 1.30), False),
+    )
+
+    def run_case(self, tmp_path, pose, trial_id):
+        runner, provider, log = make_runner(
+            tmp_path,
+            [
+                turn(call(DECLARE_DONE, "declare_1")),
+                # Stage 2's own declare, at the spawn point. Never reached when
+                # the gate refuses the return leg — the script simply goes
+                # unused, which is what "the stage did not run" looks like.
+                turn(call(DECLARE_DONE, "declare_2")),
+            ],
+            qa_text="1. a",
+            trial_id=trial_id,
+        )
+        runner.context.playback.set_true_xy(pose)
+        stage1_declare = runner.transcript
+        final = runner.run()
+        return runner, provider, log, final, stage1_declare
+
+    @pytest.mark.parametrize("label,pose,expect_stage2", CASES)
+    def test_the_gate_and_the_offered_objective_use_one_predicate(
+        self, tmp_path, label, pose, expect_stage2
+    ):
+        runner, provider, log, final, _ = self.run_case(
+            tmp_path, pose, f"v2_case_{abs(hash(label)) % 9973}"
+        )
+        stage1 = final["stages"][STAGE_FIND_KITCHEN]
+        assert stage1["success"] is expect_stage2, label
+        assert stage1["score"]["criterion_version"] == SUCCESS_CRITERION
+
+        # What the model was TOLD at the transition …
+        declare_result = json.loads(
+            next(
+                entry.results[0].text
+                for entry in runner.transcript
+                if entry.results and entry.results[0].tool_name == DECLARE_DONE
+            )
+        )
+        offered = STAGE2_OBJECTIVE_TOOL_RESULT in json.dumps(declare_result)
+        # … and what actually ran. One predicate, so these cannot disagree.
+        ran = final["stages"][STAGE_RETURN_HOME]["end_reason"] != REASON_NOT_RUN
+        assert offered is ran is expect_stage2, label
+
+    def test_the_counter_branch_case_would_have_ended_the_trial_before_tr2(
+        self, tmp_path
+    ):
+        """The regression this task exists to prevent, stated as a test: the
+        east-wall pose is a FAILURE under the pre-registered predicate and a
+        SUCCESS live, so a future 'simplification' back to the point disc
+        cannot pass silently."""
+        pose = (2.90, 1.30)
+        spec = find_kitchen_spec()
+        assert (
+            position_success(
+                "find_kitchen", pose, spec, criterion=CRITERION_PREREGISTERED
+            )
+            is False
+        )
+        _, _, _, final, _ = self.run_case(tmp_path, pose, "v2_counter_case")
+        assert final["outcome"][STAGE_FIND_KITCHEN] == OUTCOME_SUCCESS
+        assert final["outcome"][STAGE_RETURN_HOME] != OUTCOME_NOT_RUN
+
+    def test_a_new_trial_stamps_the_criterion_it_ran_under(self, tmp_path):
+        """Without the stamp the scorer cannot tell a unified trial from a
+        legacy one, and would have to guess which predicate wrote
+        ``stages.*.success``."""
+        _, _, log, _, _ = self.run_case(tmp_path, target_point(), "v2_stamp_case")
+        assert log.document["config"]["success_criterion"] == SUCCESS_CRITERION
+
+
 class TestSuccessPredicate:
     def test_the_boundary_is_inclusive(self):
         """doc 06 §3.1 says "within 0.35 m", so exactly 0.35 m succeeds. Tested
@@ -1050,14 +1148,98 @@ class TestSuccessPredicate:
         assert not score_stage(spec, (1.0000001, 0.0)).success
 
     def test_one_predicate_two_consumers(self):
+        """The decision inputs travel with the verdict, so the scorer recomputes.
+
+        The failure probe is a HALLWAY pose, not "0.40 m east of the target":
+        under criterion v2 that eastward pose is 0.27 m from counter_4 inside
+        the kitchen, i.e. a success on the counter branch. Probing it as a
+        failure would have quietly asserted that the live gate still ran the
+        point disc — the very split TR.2 closed.
+        """
         spec = find_kitchen_spec()
         assert score_stage(spec, target_true_xy(0.30)).success
-        assert not score_stage(spec, target_true_xy(0.40)).success
-        # The decision inputs travel with the verdict, so T4.1 recomputes it.
+        outside = (0.90, 3.10)
+        assert room_at(*outside) == "hallway"
+        assert not score_stage(spec, outside).success
         score = score_stage(spec, target_true_xy(0.40))
         assert score.radius_m == spec.success_radius_m
         assert score.goal_xy == spec.goal_xy
-        assert round(score.distance_m, 6) == 0.4
+        assert round(score.distance_to_point_m, 6) == 0.4
+        # The legacy name still means the point distance, byte for byte, so
+        # every committed batch's `score.distance_m` keeps its meaning.
+        assert score.distance_m == score.distance_to_point_m
+        assert score.as_dict()["distance_m"] == round(score.distance_to_point_m, 4)
+
+    def test_the_criterion_is_versioned_and_the_config_mirrors_it(self):
+        """Same treatment the caps and the radii get: the constant the live
+        gate obeys and the frozen YAML that documents it must agree, because
+        before TR.2 the criterion lived in exactly one consumer and drifted."""
+        assert SUCCESS_CRITERION == CRITERION_V2_ANY_COUNTER == "v2_any_counter"
+        assert f"success_criterion: {SUCCESS_CRITERION}" in BENCHMARK_YAML.read_text()
+
+    def test_the_v2_counter_branch_is_the_live_gates_predicate_now(self):
+        """F-02's fixture: ``opus5_seed101`` declared 0.3607 m from the pinned
+        point (a live failure under the pre-registered disc) and 0.0577 m from
+        a counter face inside the kitchen (a published v2 success), and was
+        never offered its return leg. The LIVE predicate now agrees with the
+        published one on that exact pose."""
+        spec = find_kitchen_spec()
+        pose = (2.4277, 0.4107)
+        assert room_at(*pose) == "kitchen"
+        assert round(math.dist(pose, spec.goal_xy), 4) == 0.3607
+        assert round(nearest_counter_face(pose)[1], 4) == 0.0577
+        assert position_success("find_kitchen", pose, spec) is True
+        assert (
+            position_success(
+                "find_kitchen", pose, spec, criterion=CRITERION_PREREGISTERED
+            )
+            is False
+        )
+        score = score_stage(spec, pose)
+        assert score.criterion_version == SUCCESS_CRITERION
+        assert score.success is True
+        assert score.distance_to_success_region_m == 0.0
+        assert score.nearest_counter_name in ("counter_1", "counter_2")
+        assert score.in_goal_room is True
+
+    def test_counter_proximity_through_a_wall_is_not_a_success_live_either(self):
+        """counter_4/5 back onto the bedroom partition. The in-kitchen half of
+        the criterion is load-bearing in the LIVE gate, not just the scorer."""
+        spec = find_kitchen_spec()
+        probe = (3.34, 1.30)
+        assert room_at(*probe) == "bedroom"
+        assert nearest_counter_face(probe)[1] < spec.success_radius_m
+        assert position_success("find_kitchen", probe, spec) is False
+        score = score_stage(spec, probe)
+        assert score.success is False
+        assert score.in_goal_room is False
+        # The slack is the POINT slack: the counter branch is unavailable
+        # outside the kitchen, so it cannot shorten the reported distance.
+        assert score.distance_to_success_region_m == pytest.approx(
+            math.dist(probe, spec.goal_xy) - spec.success_radius_m
+        )
+
+    def test_return_home_keeps_the_preregistered_disc_under_both_criteria(self):
+        spec = return_home_spec(SPAWN_XY)
+        for criterion in (CRITERION_PREREGISTERED, CRITERION_V2_ANY_COUNTER):
+            assert (
+                position_success("return_home", (2.90, 1.30), spec, criterion=criterion)
+                is False
+            )
+            assert (
+                position_success("return_home", SPAWN_XY, spec, criterion=criterion)
+                is True
+            )
+        # …and a return_home score carries no counter fields to misread.
+        score = score_stage(spec, (2.90, 1.30))
+        assert score.nearest_counter_name is None
+        assert score.distance_to_counter_m is None
+        assert score.in_goal_room is None
+
+    def test_an_unknown_criterion_raises_instead_of_defaulting(self):
+        spec = find_kitchen_spec()
+        with pytest.raises(ValueError, match="unknown success criterion"):
+            position_success("find_kitchen", target_point(), spec, criterion="v3_wider")
 
     def test_radii_agree_between_the_layout_and_the_frozen_config(self):
         """The layout dict is the ground truth (AGENTS.md §2); benchmark.yaml
@@ -2045,7 +2227,26 @@ class TestTrialLogSchema:
                     call("add_landmark", "b", room="start", description="a red rug"),
                     call("mark_exit", "c", room="start", direction_deg=90,
                          status="unexplored"),
+                    # BOTH correction arms, in one turn: TR.1 split loop
+                    # closure into an anchor path and a coordinate path, and
+                    # `memory_snapshot.anchors` / `corrections[].anchor` only
+                    # appear in a log that exercises them. A fixture with the
+                    # coordinate arm alone would let the anchor half of the
+                    # schema rot without a single test going red.
+                    # A round trip, so BOTH corrections have a nonzero
+                    # magnitude for §5.8 to carry: record the point, displace
+                    # the estimate by coordinates, then snap back to the point.
+                    # (`move` cannot supply the displacement — `FakePlayback`
+                    # reports `dead_reckoned_distance_m` but no `odom_dxy`,
+                    # which is the integrator's only input since rule 5's
+                    # 2026-07-30 amendment, so the estimate never leaves spawn
+                    # anywhere in this file. Recorded as a fixture limit in
+                    # PLAN.md TR.1 rather than papered over here.)
+                    call("record_anchor", "d1", name="rug_edge",
+                         description="north edge of the red rug", room="start"),
                     call("correct_position", "d", x=1.0, y=2.0, reason="the rug"),
+                    call("correct_to_anchor", "d2", name="rug_edge",
+                         reason="standing on the rug edge again"),
                     call("move", "e", distance_m=1.0),
                 ),
                 turn(call(DECLARE_DONE)),
@@ -2251,11 +2452,30 @@ class TestTrialLogSchema:
         ]
         assert corrections, "the fixture calls correct_position"
         first = corrections[0]
-        assert set(first) == {"turn", "old_xy", "new_xy", "reason", "stage"}
-        assert first["new_xy"] == [1.0, 2.0]
-        assert first["old_xy"] != first["new_xy"]
-        assert first["stage"] == STAGE_FIND_KITCHEN
-        assert first["turn"] == 2  # stage-local, joins turns[].turn_idx
+        assert set(first) == {"turn", "old_xy", "new_xy", "reason", "stage", "anchor"}
+        # TR.1: the two arms must be distinguishable after the batch. The
+        # fixture makes an anchored correction and then a coordinate one, so a
+        # regression that stopped recording WHICH anchor closed the loop — or
+        # started attributing a coordinate correction to one — goes red here.
+        arms = {c["anchor"]: c for c in corrections}
+        assert set(arms) == {"rug_edge", None}, (
+            "one anchor-driven and one explicit-coordinate correction expected"
+        )
+        # The anchored arm lands exactly on the recorded point, which is where
+        # the integrator stood when `record_anchor` ran.
+        # The coordinate arm lands on the coordinates the model gave; the
+        # anchored arm snaps back to the recorded point, which is where the
+        # integrator stood when `record_anchor` ran.
+        explicit = arms[None]
+        assert first["anchor"] is None, "the coordinate correction is made first"
+        assert explicit["new_xy"] == [1.0, 2.0]
+        anchored = arms["rug_edge"]
+        assert anchored["old_xy"] == [1.0, 2.0]
+        assert anchored["new_xy"] == list(SPAWN_XY)
+        for record in corrections:
+            assert record["old_xy"] != record["new_xy"]
+            assert record["stage"] == STAGE_FIND_KITCHEN
+            assert record["turn"] == 2  # stage-local, joins turns[].turn_idx
 
     def test_final_shape(self, document):
         final = document["final"]
@@ -2269,9 +2489,36 @@ class TestTrialLogSchema:
             "cache_write_tokens", "cost_usd_estimate",
         }
         # The decision inputs, so the scorer recomputes rather than trusts.
+        # TR.2 widened this set: criterion v2's goal is a REGION, so one
+        # `distance_m` could not say how a pose passed or how far outside it
+        # was. The legacy key keeps its legacy meaning (distance to the pinned
+        # point) and every addition is named, because a reader of a committed
+        # batch must not have to re-derive the geometry to know which predicate
+        # decided the verdict (forensics F-02).
         score = final["stages"][STAGE_FIND_KITCHEN]["score"]
-        assert set(score) == {"success", "distance_m", "radius_m", "goal_xy", "true_xy"}
+        assert set(score) == {
+            "criterion_version", "success", "distance_m", "distance_to_point_m",
+            "distance_to_success_region_m", "radius_m", "goal_xy", "true_xy",
+            "nearest_counter_name", "distance_to_counter_m", "in_goal_room",
+        }
         assert score["radius_m"] == LAYOUT["target"]["radius"]
+        assert score["criterion_version"] == SUCCESS_CRITERION
+        # The legacy name is the point distance, unchanged — the audit scripts
+        # and every committed batch read it.
+        assert score["distance_m"] == score["distance_to_point_m"]
+
+    def test_the_return_home_score_has_no_counter_fields(self, document):
+        """Stage 2's goal is the spawn disc under BOTH criteria (TR.2).
+
+        A nearest-counter reading on `return_home` would be a number with no
+        meaning attached to a verdict — precisely the kind of field a later
+        reader treats as load-bearing.
+        """
+        score = document["final"]["stages"][STAGE_RETURN_HOME]["score"]
+        assert score["nearest_counter_name"] is None
+        assert score["distance_to_counter_m"] is None
+        assert score["in_goal_room"] is None
+        assert score["criterion_version"] == SUCCESS_CRITERION
 
     def test_the_document_on_disk_matches_the_one_returned(self, document, tmp_path):
         assert json.loads((tmp_path / "fake_seed101.json").read_text()) == document
@@ -2797,64 +3044,78 @@ class TestAttachRecorder:
     wins".
     """
 
-    def test_a_macro_records_at_the_sub_chunk_rate_not_the_servo_rate(self):
-        from duck_embody.sim.recorder import RECORD_CHUNK_S, attach_recorder
+    REWRITTEN_BY = "TR.3, 2026-08-02"
+    #: The four tests that used to live here asserted properties of the *patch*:
+    #: that ``attach_recorder`` replaced ``playback.execute`` with a 0.04 s
+    #: chunker, that the chunked result merged back to look unchunked, that the
+    #: merge kept the pose trace at 5 Hz, and that a ``stop_predicate`` fell
+    #: through unrecorded. Forensics F-03 is that the patch itself was the
+    #: defect: replacing ``execute`` moved the command boundary and with it bump
+    #: timing, pose sampling and the odometry noise process, so a recorded run
+    #: and an unrecorded run were different experiments — and only the recorded
+    #: one was ever paid for. Recording is observational now, so there is no
+    #: chunking, no re-merge and no predicate special case left to pin. The full
+    #: observational contract lives in
+    #: ``tests/test_execute_ordering.py::TestAttachIsObservational`` and
+    #: ``::TestStepGrabberSampling``; what stays here is the trial-level
+    #: property the batch depends on — attaching yields frames at 25 fps
+    #: without touching execution.
 
-        playback, recorder = FakePlayback(), RecorderSpy()
+    @staticmethod
+    def _playback():
+        import random
+
+        from duck_embody.sim.policy_wrapper import PolicyPlayback
+
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        pb._odom_rng = random.Random(0)
+        pb._odom_scale = 1.0
+        return pb
+
+    @staticmethod
+    def _observation(step_index: int, terminated: bool = False):
+        from duck_embody.sim.policy_wrapper import StepObservation
+
+        return StepObservation(
+            step_index=step_index,
+            terminated=terminated,
+            true_pose=(0.0, 0.0, 0.0),
+            contact_force_n=0.0,
+            contact_groups=(),
+            in_contact=False,
+        )
+
+    def test_attaching_yields_25_fps_of_frames_without_touching_execute(self):
+        from duck_embody.sim.recorder import attach_recorder
+
+        playback, recorder = self._playback(), RecorderSpy()
+        before = playback.execute
         attach_recorder(playback, object(), recorder)
-        # `move` is a real doc 02 §6.2 macro in production; the fake stands in
-        # for its INTERNAL `self.execute(...)` calls, which is the level the
-        # patch has to reach. One 0.2 s servo chunk = 5 recording chunks.
-        playback.execute(0.0, 0.0, 0.0, MACRO_CHUNK_S)
-        assert recorder.grabs == MACRO_CHUNK_S / RECORD_CHUNK_S == 5
 
-    def test_the_merged_result_is_indistinguishable_from_an_unchunked_one(self):
+        assert playback.execute.__func__ is before.__func__, "execute was replaced"
+        assert "execute" not in vars(playback)
+        # One 0.2 s servo chunk is 10 control steps = 5 frames at 25 fps, the
+        # same rate the retired chunker produced.
+        for i in range(1, duration_to_steps(MACRO_CHUNK_S) + 1):
+            playback.step_observer(self._observation(i))
+        assert recorder.grabs == 5
+
+    def test_a_fall_step_is_not_filmed_after_the_auto_reset(self):
         from duck_embody.sim.recorder import attach_recorder
 
-        plain = FakePlayback().execute(0.1, 0.0, 0.0, 1.0)
-        playback = FakePlayback()
-        attach_recorder(playback, object(), RecorderSpy())
-        chunked = playback.execute(0.1, 0.0, 0.0, 1.0)
-        assert chunked.steps == plain.steps
-        assert round(chunked.policy_seconds, 9) == round(plain.policy_seconds, 9)
-        assert chunked.commanded == plain.commanded
-        assert chunked.duration_s == plain.duration_s
-
-    def test_the_pose_trace_keeps_its_five_hertz_sampling(self):
-        """Concatenating each chunk's FULL ``pose_trace`` would add its
-        start/end bookends — two extra points per 2-step chunk, i.e. a ~50 Hz
-        trace of per-step gait sway, which inflates doc 06 §5.3's SPL path
-        integral. Only the 5 Hz samples merge; the bookends are added once."""
-        from duck_embody.sim.recorder import attach_recorder
-
-        playback = FakePlayback()
-        attach_recorder(playback, object(), RecorderSpy())
-        result = playback.execute(0.1, 0.0, 0.0, 0.2)
-        # 5 chunks x 1 sampled point each, bracketed by start and end.
-        assert len(result.sampled_xy) == 5
-        assert result.pose_trace[0] == POSE_TRACE_SENTINEL[0]
-        assert result.pose_trace[-1] == (TRUE_POSE[0], TRUE_POSE[1])
-        assert len(result.pose_trace) == 7
-
-    def test_a_stop_predicate_falls_through_unrecorded_rather_than_breaking(self):
-        """The predicate is given the step index WITHIN one ``execute``, and
-        chunking restarts it — so a chunked predicate would silently never fire.
-        No tool passes one today; the fallback keeps it correct if one ever
-        does, at the cost of frames."""
-        from duck_embody.sim.recorder import attach_recorder
-
-        playback, recorder = FakePlayback(), RecorderSpy()
+        playback, recorder = self._playback(), RecorderSpy()
         attach_recorder(playback, object(), recorder)
-        playback.execute(0.1, 0.0, 0.0, 1.0, stop_predicate=lambda i: False)
-        assert recorder.grabs == 0
+        playback.step_observer(self._observation(2))
+        playback.step_observer(self._observation(4, terminated=True))
+        assert recorder.grabs == 1
 
-    def test_detach_restores_the_unpatched_method(self):
+    def test_detach_stops_the_frames(self):
         from duck_embody.sim.recorder import attach_recorder
 
-        playback, recorder = FakePlayback(), RecorderSpy()
+        playback, recorder = self._playback(), RecorderSpy()
         detach = attach_recorder(playback, object(), recorder)
         detach()
-        playback.execute(0.1, 0.0, 0.0, 1.0)
+        assert playback.step_observer is None
         assert recorder.grabs == 0
 
 

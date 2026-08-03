@@ -117,9 +117,13 @@ is frozen by inclusion: re-run the scene survey before the freeze, never after.<
 <tr><td>Tool schema</td><td>The full tool set and signatures: <code>get_observation</code>,
 <code>look_around</code>, <code>turn_to_heading</code>, <code>move</code>,
 <code>send_velocity</code>, <code>update_room</code>, <code>add_landmark</code>,
-<code>mark_exit</code>, <code>set_current_room</code>, <code>correct_position</code>,
+<code>mark_exit</code>, <code>set_current_room</code>, <code>record_anchor</code>,
+<code>correct_to_anchor</code>, <code>correct_position</code>,
 <code>update_plan</code>, <code>declare_done</code>. Names, argument shapes, and
-clamps identical for all models.</td></tr>
+clamps identical for all models. <span class="src">TR.1 (2026-08-02)</span> took the
+set from 12 to 14 by splitting the overloaded <code>correct_position(place|x,y)</code>
+into three tools that share no field — see doc 05 §4.3. The count is not the frozen
+item; <em>one</em> set, identical for every model, is.</td></tr>
 <tr><td>Camera config</td><td>Head-mounted egocentric camera, ~0.36&nbsp;m height,
 512&times;512 RGB, 90° horizontal field of view, 1 frame per
 <code>get_observation</code>. May be adjusted during smoke tests, but only
@@ -292,6 +296,14 @@ scorer never touches the simulator. Annotated schema:</p>
     "config_hash": "&lt;sha256&gt;",           // hash over frozen files; runner guard (§7)
     "model": "claude-fable-5",            // exact provider model ID
     "seed": 101,
+    "success_criterion": "v2_any_counter", // TR.2: the predicate the LIVE stage
+                                          //   machine ran under. Absent ⇒ a legacy
+                                          //   log whose live gate was the
+                                          //   pre-registered point disc; the scorer
+                                          //   must validate each against the
+                                          //   predicate that actually decided it and
+                                          //   NEVER reinterpret an old
+                                          //   stages.*.success as though v2 had run
     "spawn": {"xy": [x, y], "heading_deg": h}   // from layout spawn_points
   },
   "turns": [                              // one entry per model turn, both stages
@@ -338,9 +350,21 @@ scorer never touches the simulator. Annotated schema:</p>
       "usage": { ... },                   // this turn's Usage.as_dict()
       "end_reason": null,                 // §3.2's stop reason, on the turn that ends the stage
       "memory_snapshot": { "rooms": {...}, "exits": [...], "trajectory": [...],
+                           "anchors": [ {"name": "rug_edge", "description": "...",
+                                         "xy": [0.5, 0.5], "room": "living_room",
+                                         "created_turn": 2, "stage": "find_kitchen"} ],
+                                          // TR.1: point anchors the model recorded.
+                                          //   Logged even when never corrected to —
+                                          //   otherwise an anchor leaves NO trace and
+                                          //   §5.8 cannot tell a model that mapped
+                                          //   good points from one that mapped none
                            "current_room": "...", "plan": "...",
                            "corrections": [ {"turn": 12, "old_xy": [..], "new_xy": [..],
-                                             "reason": "...", "stage": "find_kitchen"} ],
+                                             "reason": "...", "stage": "find_kitchen",
+                                             "anchor": "rug_edge"} ],
+                                          // anchor: null for an explicit-coordinate
+                                          //   correct_position (TR.1) — the two arms
+                                          //   of the loop-closure experiment
                            "stage": "find_kitchen",
                            "block": "== YOUR MAP ==\\n..." }  // the block as re-injected
     }
@@ -350,9 +374,25 @@ scorer never touches the simulator. Annotated schema:</p>
     "end_reason": {"find_kitchen": "declare_done", "return_home": "turn_cap"},
     "stages": { "find_kitchen": {"success": true, "turns_used": 21,
                                  "policy_seconds_used": 133.8,
-                                 "score": {"success": true, "distance_m": 0.21,
+                                 "score": {"criterion_version": "v2_any_counter",
+                                           "success": true, "distance_m": 0.21,
+                                           "distance_to_point_m": 0.21,
+                                           "distance_to_success_region_m": 0.0,
                                            "radius_m": 0.35, "goal_xy": [2.55, 0.75],
-                                           "true_xy": [2.61, 0.55]},
+                                           "true_xy": [2.61, 0.55],
+                                           "nearest_counter_name": "counter_5",
+                                           "distance_to_counter_m": 0.06,
+                                           "in_goal_room": true},
+                                 // ^ TR.2. distance_m keeps its pre-TR.2 meaning
+                                 //   (distance to the PINNED point) so every
+                                 //   committed batch and audit script still reads
+                                 //   correctly; criterion v2's goal is a REGION, so
+                                 //   the region slack, the counter reading and the
+                                 //   in-room condition are named separately rather
+                                 //   than overloading one distance.
+                                 //   nearest_counter_name / distance_to_counter_m /
+                                 //   in_goal_room are null on return_home.
+                                 //   ALL of it is ground truth: scoring/audit only.
                                  "true_pose": {...}}, ... },
     "bumps": 3,                           // TRIAL-scoped (§5.6)
     "metrics": { ... },                   // §5 values, computed post-hoc by scorer
@@ -449,9 +489,14 @@ bytes re-injected into this turn's request — while <code>memory_snapshot</code
 read post-dispatch and therefore include this turn's writes. Both are the right vintage for their consumer
 (§5.8's correction series needs the writes the turn made; an audit of what the model read needs the block it
 read), so the two halves disagree by exactly one turn's writes, by construction.</li>
-<li><strong>The recorded path honours the same <code>ExecResult</code> contract as the unrecorded one</strong>
-(pre-freeze forensic pass). Every recorded command — the default, and the rule-11-mandatory batch path —
-is stitched from 0.04&nbsp;s pieces by <code>recorder.chunked_execute</code>, whose merge used to be a
+<li><strong>Recording is OBSERVATIONAL — the recorded and unrecorded paths are the same execution</strong>
+<span class="src">TR.3, 2026-08-02</span>. <code>attach_recorder</code> registers a passive
+per-control-step observer (<code>PolicyPlayback.register_step_observer</code>) that grabs a viewport frame
+every 0.04&nbsp;s of <em>stepping</em> and returns nothing; it no longer replaces <code>playback.execute</code>.
+The paragraph below is the history that made the seam itself the defect, and is retained because it names
+the failure class: <em>every</em> field the command boundary carried had to be repaired one at a time.
+Previously every recorded command — the default, and the rule-11-mandatory batch path —
+was stitched from 0.04&nbsp;s pieces by <code>recorder.chunked_execute</code>, whose merge used to be a
 hand-mirrored copy of the macro merge that had drifted: it dropped <code>contact_groups</code> and
 <code>fall_diagnostics</code> whenever the confirming piece was not the first, which is the <em>common</em>
 case (the 3-step bump debounce exceeds a 2-step piece). Consequences before the fix: the model read
@@ -590,12 +635,24 @@ north" is not an adjacency assertion).</div>
 <div class="decision"><strong>5.8 Dead-reckoning drift.</strong>
 <code>drift = ‖position_estimate − true_pose‖</code> at the moment of
 <code>declare_done</code> (per stage), plus the count of
-<code>correct_position</code> calls and the magnitude of each correction
+<strong>accepted corrections</strong> and the magnitude of each
 (‖old estimate − new estimate‖). WHY both: final drift measures how honest the
 estimate ended up; the corrections series shows whether the model actively did
 cognitive loop closure (recognizing a place and snapping its estimate) or just rode
-the drift. Dead reckoning = integrating commanded velocity over time to estimate
-position; it drifts because the real robot slips, bumps, and turns imperfectly.</div>
+the drift. Dead reckoning = integrating <em>measured leg odometry</em> over time to
+estimate position (AGENTS.md rule 5, amended 2026-07-30 — it was commanded velocity
+before that); it drifts because the odometer is noisy and scale-biased, and because
+the robot slips, bumps, and turns imperfectly.
+<br><span class="src">TR.1, 2026-08-02:</span> a correction now arrives from either
+<code>correct_to_anchor</code> (snapping to a point the model recorded with
+<code>record_anchor</code>) or coordinate-only <code>correct_position</code>. Both
+append the same <code>Correction</code> record, so the count and magnitudes are
+unchanged in definition — but the record carries <code>anchor</code> (the name, or
+null), so the series now separates the two arms. That separation is the measurement
+TR.1 exists for: on the v5d_r2 batch, where the only reachable "anchors" were
+automatic room/exit sighting positions, 14 of 15 accepted corrections made the true
+error worse, for a net <strong>+3.72&nbsp;m</strong>
+(<code>results/forensics_v5d_r2/batch_summary.json</code>).</div>
 
 <div class="decision"><strong>5.9 Layout QA.</strong> After the episode ends, the
 model is asked <strong>5 fixed questions</strong> in a fresh exchange where it sees
@@ -920,10 +977,22 @@ visited (§5.7 edge convention).</td></tr>
 <tr><td>QA rubric fixtures</td><td>For each of the 5 questions: one fixture answer
 scoring 1, one scoring 0.5, one scoring 0, checked against a fixture layout —
 including Q4's adjacent-compass-bucket 0.5 case.</td></tr>
-<tr><td>Drift with/without corrections</td><td>Trace with zero
-<code>correct_position</code> calls ⇒ drift = raw integrator error at declare_done;
+<tr><td>Drift with/without corrections</td><td>Trace with zero corrections ⇒
+drift = raw integrator error at declare_done;
 trace with a correction ⇒ drift measured against the corrected estimate, correction
-count and magnitudes recorded; correction after declare_done ⇒ ignored.</td></tr>
+count and magnitudes recorded; correction after declare_done ⇒ ignored. Both
+correction tools (<code>correct_to_anchor</code>, <code>correct_position</code>)
+covered, and the <code>anchor</code> field asserted on each — TR.1.</td></tr>
+<tr><td>Success criterion, live vs published <span class="src">added by TR.2</span></td>
+<td>The live stage machine and the post-hoc scorer must agree over every free-grid
+cell and every boundary fixture for a <code>v2_any_counter</code>-stamped trial; a
+legacy log with no <code>config.success_criterion</code> must still reproduce the
+as-run point-disc verdict plus the disclosed v2 sensitivity result, and must never be
+re-read as though v2 had decided it.</td></tr>
+<tr><td>Recording is observational <span class="src">added by TR.3</span></td>
+<td><code>attach_recorder</code> does not rebind <code>playback.execute</code>;
+odometry over one fixed step sequence is identical whether that sequence is issued as
+1, 5 or 75 calls; a terminating step grabs no frame.</td></tr>
 <tr><td>Schema/leak guard</td><td>Rendered prompt fixture contains no
 <code>true_pose</code> values; incomplete trial JSON (no <code>final</code>) is
 rejected by the resume check.</td></tr>

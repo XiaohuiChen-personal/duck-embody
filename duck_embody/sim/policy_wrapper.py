@@ -125,20 +125,62 @@ TURN_TIMEOUT_S = 8.0
 #: Heading remains the absolute compass (BNO055), unchanged.
 ODOM_SCALE_STD = 0.04          #: per-trial systematic scale error (std dev)
 ODOM_SCALE_CLIP = (0.90, 1.10)
-ODOM_NOISE_FRAC = 0.03         #: per-call white noise, fraction of call distance
+ODOM_NOISE_FRAC = 0.03         #: white noise at 1 m travelled (per-axis std dev)
 #: Standing/slipping odometry error per SECOND, not per call. It MUST be a rate:
-#: `attach_recorder` patches execute() so every command is sliced into 0.04 s
-#: pieces whenever video is on — which is every batch trial — and
-#: merge_exec_results SUMS per-piece path lengths. A per-CALL floor therefore
-#: accrued ~25x/s: a wedged 3 s command reported 0.094 m recorded vs 0.0013 m
-#: unrecorded, i.e. 4.6 m of phantom distance over the 49-call wedge episode
-#: this redesign exists to fix, and it made the model-facing distance depend on
-#: whether video was being captured. As a rate the expectation is
-#: chunking-invariant (sigma is linear in dt, and E|noise| is linear in sigma,
-#: so N pieces sum to the same expectation as one call). Caught by adversarial
-#: review, not by the first physics smoke — which ran WITHOUT the recorder and
-#: so validated a code path the batch never takes.
+#: recording used to slice every command into 0.04 s pieces whenever video was
+#: on — which was every batch trial — and merge_exec_results SUMS per-piece
+#: contributions. A per-CALL floor therefore accrued ~25x/s: a wedged 3 s
+#: command reported 0.094 m recorded vs 0.0013 m unrecorded, i.e. 4.6 m of
+#: phantom distance over the 49-call wedge episode this redesign exists to fix,
+#: and it made the model-facing distance depend on whether video was being
+#: captured. TR.3 removed the slicing itself (recording is now observational),
+#: but the rate form is kept and is now the honest one: the noise is generated
+#: per CONTROL STEP, so a rate is the only dimensionally correct spelling.
 ODOM_NOISE_FLOOR_RATE_MPS = 0.001
+
+#: TR.3 (2026-08-02): the odometry noise process is defined by its VARIANCE
+#: rates, not by a per-call sigma. This is the whole fix for forensics F-03.
+#:
+#: The old model drew ONE Gaussian per `execute()` call with
+#: `sigma = ODOM_NOISE_FRAC * call_distance + ODOM_NOISE_FLOOR_RATE_MPS * call_seconds`.
+#: Sigma is additive there, and sigma does not add — variance does. Splitting a
+#: command into N pieces gave each piece ~sigma/N, and vector-summing N
+#: independent draws yields `sqrt(N) * sigma/N = sigma/sqrt(N)`: the noise
+#: process shrank by ~sqrt(N) purely because video was attached (N ~ 75 for a
+#: 3 s command → an 8.7x quieter sensor on the paid path than on the path the
+#: unit tests and the first odometry smoke exercised).
+#:
+#: Now noise is drawn once per CONTROL STEP with additive variance
+#:
+#:     variance_per_axis = ODOM_VAR_PER_M * step_distance
+#:                       + ODOM_VAR_PER_S * CONTROL_DT
+#:
+#: Independent per-step draws sum to a total variance of
+#: `ODOM_VAR_PER_M * total_distance + ODOM_VAR_PER_S * total_time`, which
+#: depends only on what the robot DID — never on how many external calls the
+#: steps were partitioned into. That is the invariance
+#: `tests/test_wrapper_math.py::TestOdometryIsChunkInvariant` pins at
+#: 1 / 5 / 75 calls over one fixed step sequence.
+#:
+#: Calibration: the rates are the squares of the legacy constants, so at 1 m
+#: travelled the per-axis sigma is unchanged at ODOM_NOISE_FRAC (3 cm). Beyond
+#: 1 m the error now grows as sqrt(distance) rather than linearly — which is
+#: what an accumulation of independent per-step measurement errors actually
+#: does (a random walk), and is the published shape for legged odometry.
+ODOM_VAR_PER_M = ODOM_NOISE_FRAC ** 2              #: m^2 of variance per metre
+ODOM_VAR_PER_S = ODOM_NOISE_FLOOR_RATE_MPS ** 2    #: m^2 of variance per second
+
+#: RECORDED DEVIATION, carried forward unchanged (AGENTS.md rule 5). There is
+#: **no slip term**: a robot wedged against furniture measures ~0 m of motion
+#: and therefore *knows* it did not move. Real leg odometry with slipping feet
+#: would integrate some phantom forward motion, so the simulated duck's
+#: certainty while blocked is optimistic. Left deliberately — the owner's
+#: acceptance criterion for the 2026-07-30 redesign was that serious drift
+#: during collision no longer exist, and a slip term reintroduces exactly that
+#: error class. TR.3 does not revisit it: this task changes only WHERE the
+#: noise is generated (per control step, additive variance), not the physical
+#: content of the model. Revisit only if the benchmark ever claims to
+#: characterise odometry quality itself.
 
 #: MEASURED velocity realisation factor (T1.3): net displacement / commanded.
 #: Used ONLY here — for the `move` servo target and its timeout margin — and by
@@ -233,6 +275,56 @@ def shortest_angle_diff_deg(target_deg: float, current_deg: float) -> float:
     dither there forever).
     """
     return (target_deg - current_deg + 180.0) % 360.0 - 180.0
+
+
+@dataclass(frozen=True)
+class StepObservation:
+    """One control step, as seen by a passive observer (TR.3, forensics F-03).
+
+    The point of this type is that **observing must not change execution**.
+    Before TR.3 the only way to interleave anything with stepping — a viewport
+    grab, for video — was ``attach_recorder`` replacing ``playback.execute``
+    with a wrapper that re-entered it in 0.04 s pieces. That moved the command
+    boundary, and the command boundary is load-bearing: it carried the bump
+    debounce window, the pose-trace phase, the clamp-note list, the fall
+    diagnostics stamp and the odometry noise draw. Every one of those has
+    already been the subject of a separate bug fix (see this module's history
+    and ``merge_exec_results``), which is the tell that the seam was in the
+    wrong place. A recorded run and an unrecorded run were different
+    experiments, and the paid batch only ever ran the recorded one.
+
+    So consumers now get told what happened and cannot influence it: an
+    observer is called once per non-teleported control step and its return
+    value is ignored.
+
+    ``true_pose`` is **AUDIT ONLY** — the same side of doc 05 §1's boundary as
+    ``ExecResult.true_pose``. It exists so a recorder/auditor can annotate a
+    frame with ground truth; anything on a model-facing path that reads it is a
+    benchmark-invalidating leak.
+    """
+
+    #: Trial-scoped control-step index (``PolicyPlayback._step_counter``), so
+    #: an observer's sampling grid is independent of call boundaries — which is
+    #: the whole point.
+    step_index: int
+    #: True on the step whose ``env.step()`` terminated the episode. Isaac Lab
+    #: auto-resets a terminated env INSIDE ``step()``, so live scene state is
+    #: already the teleported spawn pose: a recorder MUST NOT grab a frame for
+    #: this step (it would end every fall video on a healthy duck at spawn) and
+    #: ``true_pose`` below is the PRE-step snapshot.
+    terminated: bool
+    #: (x, y, heading_deg). AUDIT ONLY.
+    true_pose: tuple[float, float, float]
+    #: Peak contact force over the non-foot bodies at this step, newtons.
+    contact_force_n: float
+    #: Body regions above threshold at this step, first-seen order. Empty
+    #: unless the debounce had already confirmed contact — this mirrors what
+    #: ``execute()`` itself sampled, so an observer sees no extra GPU reads.
+    contact_groups: tuple[str, ...]
+    #: Latched contact state (post-debounce, pre-release-hysteresis) — the same
+    #: flag that charges ``ExecResult.contact_steps``. T4's contact state
+    #: machine extends this without touching ``execute()``'s loop.
+    in_contact: bool
 
 
 @dataclass
@@ -377,6 +469,14 @@ def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecR
 class PolicyPlayback:
     """Loads ``model_2999.pt`` and drives the env under injected commands."""
 
+    #: Passive per-control-step hook, ``Callable[[StepObservation], None] | None``
+    #: (TR.3). Declared at CLASS level, not only in ``__init__``, so the many
+    #: ``PolicyPlayback.__new__(PolicyPlayback)`` test doubles in the suite
+    #: inherit a working default instead of raising ``AttributeError`` from
+    #: inside the step loop. Register through :meth:`register_step_observer`,
+    #: which refuses to silently displace an existing one.
+    step_observer = None
+
     def __init__(self, gym_env, task_id: str, checkpoint_path: str, device: str | None = None):
         # Imported here, not at module scope: these require a running kit app,
         # while the pure functions above must stay importable for unit tests.
@@ -409,12 +509,18 @@ class PolicyPlayback:
 
         self._obs = None
         self._fell = False
+        self.step_observer = None
         # Bump debounce state lives on the INSTANCE, not inside execute().
-        # session._execute_recording() chunks a long command into 0.04 s (2
-        # control step) pieces so it can grab a video frame between them; a
-        # per-call counter could never reach BUMP_DEBOUNCE_STEPS=3 inside a
-        # 2-step chunk, so bumps would have been undetectable in exactly the
-        # runs that record video — including T2.4's physics gate.
+        # Recording used to chunk a long command into 0.04 s (2 control step)
+        # pieces so it could grab a video frame between them; a per-call
+        # counter could never reach BUMP_DEBOUNCE_STEPS=3 inside a 2-step
+        # chunk, so bumps would have been undetectable in exactly the runs that
+        # record video — including T2.4's physics gate. TR.3 removed the
+        # chunking (recording observes steps now), so this state is no longer
+        # load-bearing for correctness across a recorded/unrecorded split — but
+        # it stays instance-scoped: debounce and release hysteresis are
+        # properties of the CONTACT, not of the tool call that noticed it, and
+        # the macros still stitch 0.2 s servo chunks.
         # Leg-odometry error model: seeded per trial in reset(seed=...), so a
         # trial's odometry is reproducible from its seed alone.
         self._odom_rng = random.Random(0)
@@ -495,6 +601,77 @@ class PolicyPlayback:
             )
 
         self._robot = self.base_env.scene["robot"]
+
+    # -- passive step observation (TR.3) -------------------------------------
+
+    def register_step_observer(self, observer) -> "callable":
+        """Register the per-control-step hook. Returns an unregister callable.
+
+        Refuses to displace an existing observer rather than overwriting it. A
+        second registration means two consumers (say, a nested recorder from a
+        missing ``detach()``) each believe they are receiving every step, and
+        the loser silently receives none — which is how ``runner.py`` describes
+        the nested-recorder hazard for the patch this replaces. Loud beats a
+        video that is quietly empty (rule 11).
+        """
+        if self.step_observer is not None:
+            raise RuntimeError(
+                "a step observer is already registered; unregister it first "
+                "(a second registration would silently starve one consumer)"
+            )
+        self.step_observer = observer
+
+        def unregister() -> None:
+            if self.step_observer is observer:
+                self.step_observer = None
+
+        return unregister
+
+    def _emit_step(
+        self,
+        terminated: bool,
+        true_pose: tuple[float, float, float],
+        contact_force_n: float,
+        contact_groups,
+        in_contact: bool,
+    ) -> None:
+        observer = self.step_observer
+        if observer is None:
+            return
+        # Deliberately NOT wrapped in try/except: a recorder that cannot grab a
+        # frame must fail the run loudly, not leave a green trial with no
+        # rule-11 evidence.
+        observer(
+            StepObservation(
+                step_index=self._step_counter,
+                terminated=terminated,
+                true_pose=true_pose,
+                contact_force_n=contact_force_n,
+                contact_groups=tuple(contact_groups),
+                in_contact=in_contact,
+            )
+        )
+
+    # -- simulated leg odometry (per control step, TR.3) ---------------------
+
+    def _odometer_step(self, dx: float, dy: float) -> tuple[float, float]:
+        """One control step of simulated leg odometry from a true XY delta.
+
+        THE odometer. It is driven from the fixed 50 Hz control step, not from
+        the command boundary, so the noise a trial accumulates is a function of
+        the steps it took and nothing else — see ODOM_VAR_PER_M/PER_S for why
+        the per-call spelling made the sensor depend on the recorder.
+
+        Consumes the per-trial RNG stream seeded in :meth:`reset`, so a trial
+        replays identically from its seed, at any external call partitioning.
+        """
+        sigma = math.sqrt(
+            ODOM_VAR_PER_M * math.hypot(dx, dy) + ODOM_VAR_PER_S * CONTROL_DT
+        )
+        return (
+            dx * self._odom_scale + self._odom_rng.gauss(0.0, sigma),
+            dy * self._odom_scale + self._odom_rng.gauss(0.0, sigma),
+        )
 
     # -- command channel ----------------------------------------------------
 
@@ -655,6 +832,12 @@ class PolicyPlayback:
         stopped_early = False
         stop_reason = ""
         steps_done = 0
+        # Odometry accumulates per CONTROL STEP (TR.3). The call-scoped sum is
+        # just bookkeeping; the process itself is the fixed-step odometer, which
+        # is why splitting a motion across 1, 5 or 75 calls gives the identical
+        # total from the same seed and step sequence.
+        odom_dx = 0.0
+        odom_dy = 0.0
 
         # Last pose observed while the episode was still live. On a fall this is
         # the only trustworthy final pose — see the termination branch below.
@@ -733,12 +916,36 @@ class PolicyPlayback:
                     # reader who was not told the sampling instant.
                     "values_pre_step": True,
                 }
+                # Observers still hear the terminating step — that is how a
+                # recorder knows NOT to grab (the scene is already teleported)
+                # and how an auditor learns when the trial ended. No odometry
+                # for this step: the post-step pose is the spawn point, so any
+                # delta measured across it is fiction, and drawing noise for it
+                # would make the RNG stream depend on the fall.
+                self._emit_step(
+                    terminated=True,
+                    true_pose=(pre_step_xy[0], pre_step_xy[1], pre_step_heading),
+                    contact_force_n=0.0,
+                    contact_groups=(),
+                    in_contact=in_contact,
+                )
                 break
 
             last_live_xy = self.true_xy()
             last_live_heading = self.compass_deg()
 
-            if self.bump_contact_force() > BUMP_FORCE_N:
+            # Leg odometry for THIS step, from the true pre/post delta. Measured
+            # step by step rather than once per call so the noise process is
+            # invariant to how the caller sliced the motion up (forensics F-03).
+            _sdx = last_live_xy[0] - pre_step_xy[0]
+            _sdy = last_live_xy[1] - pre_step_xy[1]
+            _odx, _ody = self._odometer_step(_sdx, _sdy)
+            odom_dx += _odx
+            odom_dy += _ody
+
+            step_force = self.bump_contact_force()
+            step_groups: tuple[str, ...] = ()
+            if step_force > BUMP_FORCE_N:
                 self._bump_run += 1
                 release_run = 0
                 if self._bump_run >= BUMP_DEBOUNCE_STEPS:
@@ -755,12 +962,29 @@ class PolicyPlayback:
                     # the head and then scrapes the torso felt both, and the
                     # merge layers (`merge_exec_results`) apply the identical
                     # union rule across chunks.
-                    for group in self.contact_groups():
+                    step_groups = tuple(self.contact_groups())
+                    for group in step_groups:
                         if group not in contact_groups:
                             contact_groups.append(group)
                     if stop_on_bump:
                         stopped_early = True
                         stop_reason = "bump"
+                        # NOTE: `contact_steps` is deliberately NOT charged for
+                        # this step — the pre-TR.3 loop broke before the
+                        # accounting below and that is a semantic the audit
+                        # numbers are compared against. Observers, being
+                        # passive, do not get to change it.
+                        self._emit_step(
+                            terminated=False,
+                            true_pose=(
+                                last_live_xy[0],
+                                last_live_xy[1],
+                                last_live_heading,
+                            ),
+                            contact_force_n=step_force,
+                            contact_groups=step_groups,
+                            in_contact=in_contact,
+                        )
                         break
             else:
                 self._bump_run = 0
@@ -786,6 +1010,14 @@ class PolicyPlayback:
             if self._step_counter % POSE_TRACE_EVERY == 0:
                 sampled_xy.append(last_live_xy)
 
+            self._emit_step(
+                terminated=False,
+                true_pose=(last_live_xy[0], last_live_xy[1], last_live_heading),
+                contact_force_n=step_force,
+                contact_groups=step_groups,
+                in_contact=in_contact,
+            )
+
             if stop_predicate is not None and stop_predicate(step):
                 stopped_early = True
                 stop_reason = "target_reached"
@@ -803,20 +1035,18 @@ class PolicyPlayback:
             end_heading = self.compass_deg()
         pose_trace = [start_xy, *sampled_xy, end_xy]
 
-        # Simulated leg odometry for this call: the true displacement (from the
-        # same live-pose guard the scoring fields use) through the per-trial
-        # error model. A wedged call has ~zero true displacement, so odometry
-        # reports ~zero — motion is measured, not assumed from the command.
-        _tdx = end_xy[0] - start_xy[0]
-        _tdy = end_xy[1] - start_xy[1]
-        _tdist = math.hypot(_tdx, _tdy)
-        # Both terms scale with the SLICE (distance and duration), so summing
-        # across recorder chunks matches a single unrecorded call.
-        _sigma = ODOM_NOISE_FRAC * _tdist + ODOM_NOISE_FLOOR_RATE_MPS * (
-            steps_done * CONTROL_DT
-        )
-        _ox = _tdx * self._odom_scale + self._odom_rng.gauss(0.0, _sigma)
-        _oy = _tdy * self._odom_scale + self._odom_rng.gauss(0.0, _sigma)
+        # Simulated leg odometry for this call is the SUM of the per-step
+        # odometer above — no call-level draw. A wedged call's steps each
+        # measure ~zero true motion, so odometry reports ~zero: motion is
+        # measured, not assumed from the command.
+        #
+        # The retired call-level version drew one Gaussian with
+        # `sigma = FRAC*call_distance + RATE*call_seconds`. Sigma is not
+        # additive, so slicing a command into N pieces (which recording used to
+        # do, N ~ 75) shrank the aggregate noise by ~sqrt(N): the sensor's
+        # accuracy depended on whether video was attached. See ODOM_VAR_PER_M.
+        _ox = odom_dx
+        _oy = odom_dy
 
         return ExecResult(
             commanded=(cvx, cvy, cwz),

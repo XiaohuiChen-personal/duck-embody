@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import heapq
 import math
+from functools import lru_cache
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -400,6 +401,82 @@ def _dist_point_rect(px: float, py: float, rect: tuple[float, float, float, floa
     dx = max(x0 - px, 0.0, px - x1)
     dy = max(y0 - py, 0.0, py - y1)
     return math.hypot(dx, dy)
+
+
+# ---------------------------------------------------------------------------
+# The kitchen counter run — success-criterion ground truth (criterion v2)
+# ---------------------------------------------------------------------------
+#
+# These live HERE, not in `scoring.py`, because criterion v2 has two consumers:
+# the live stage gate in `tasks/find_kitchen.py` and the post-hoc scorer. That
+# is exactly the split F-02 recorded — the published criterion widened while the
+# live gate stayed on the point disc, so `opus5_seed101` was a published success
+# that was never offered its return leg. One geometry source, imported by both,
+# is the structural fix; two copies of "which rectangles are the counters" is
+# the same defect waiting to recur.
+#
+# NOTE this reads `LAYOUT["furniture"]`, whose header says "SCENE SPEC ONLY —
+# scoring never reads this". That header is AMENDED by criterion v2 (adopted
+# 2026-07-27, results/rerun_log.md; unified live-and-published by TR.2): the
+# counter footprints ARE scoring ground truth now. Amended in the open rather
+# than quietly ignored.
+
+#: The asset every kitchen counter is an instance of. Counters are selected
+#: structurally (kitchen + this asset), never by name, so a renamed counter
+#: cannot silently fall out of the success region.
+KITCHEN_COUNTER_ASSET = "sektion_cabinet"
+
+#: How many counters the frozen layout is known to contain. A different count
+#: means the criterion no longer matches the scene — raise, never guess.
+KITCHEN_COUNTER_COUNT = 5
+
+
+class LayoutError(ValueError):
+    """The layout no longer supports something that reads it. Never swallowed."""
+
+
+@lru_cache(maxsize=1)
+def kitchen_counter_rects() -> tuple[tuple[str, tuple[float, float, float, float]], ...]:
+    """The five kitchen counters' footprint AABBs, in layout order.
+
+    Footprints are world-axis full extents (the same reading
+    :func:`furniture_rects` uses), so the rectangles are axis-aligned by
+    construction.
+    """
+    rects: list[tuple[str, tuple[float, float, float, float]]] = []
+    for item in LAYOUT["furniture"]:
+        if item["room"] == "kitchen" and item["asset"] == KITCHEN_COUNTER_ASSET:
+            cx, cy = item["pos"]
+            w, d = item["footprint"]
+            rects.append(
+                (item["name"], (cx - w / 2.0, cy - d / 2.0, cx + w / 2.0, cy + d / 2.0))
+            )
+    if len(rects) != KITCHEN_COUNTER_COUNT:
+        raise LayoutError(
+            f"expected {KITCHEN_COUNTER_COUNT} kitchen {KITCHEN_COUNTER_ASSET} "
+            f"counters in the frozen layout, found {len(rects)} — the success "
+            "criterion no longer matches the scene"
+        )
+    return tuple(rects)
+
+
+def nearest_counter_face(xy: tuple[float, float]) -> tuple[str, float]:
+    """``(counter name, Euclidean distance to its footprint rectangle)``.
+
+    Distance is to the rectangle (0 inside), through :func:`_dist_point_rect`
+    so the criterion and the free-space grid share one geometry. A corner
+    approach is credited up to the radius off a footprint corner — the natural
+    rectangle generalisation of the primary disc's semantics, same inclusive
+    boundary, same radius.
+    """
+    name, dist = min(
+        (
+            (name, _dist_point_rect(xy[0], xy[1], rect))
+            for name, rect in kitchen_counter_rects()
+        ),
+        key=lambda pair: pair[1],
+    )
+    return name, dist
 
 
 def clearance(px: float, py: float, include_furniture: bool = True) -> float:

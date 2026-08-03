@@ -343,15 +343,32 @@ is the enforcer.</p>
    "input_schema": {"type": "object",
      "properties": {"name": {"type": "string"}}, "required": ["name"]}},
 
-  {"name": "correct_position",
-   "description": "Loop closure: snap your position estimate back to a place you recognize. EITHER pass `place` \u2014 a mapped room name, or a doorway written room@bearing as YOUR MAP prints it \u2014 OR pass explicit x and y. A doorway anchor pins you tightest. Costs no motion; every correction is logged.",
+  {"name": "record_anchor",
+   "description": "Record where you are standing RIGHT NOW as a named point you could recognize again, with a short visual signature. Use it on first arrival at a distinctive spot. Re-recording a name updates its description only; pass replace=true to move it to your current estimate.",
    "input_schema": {"type": "object",
      "properties": {
-       "place": {"type": "string",
-         "description": "a mapped room name, or a doorway as room@bearing exactly as YOUR MAP prints it: name, @, bearing"},
+       "name": {"type": "string"},
+       "description": {"type": "string",
+         "description": "what you would see from this exact spot, e.g. 'tiled floor starts, white counter on my left'"},
+       "room": {"type": "string",
+         "description": "optional: one of YOUR rooms containing this point"},
+       "replace": {"type": "boolean",
+         "description": "true to move an existing anchor of this name to your current estimate"}},
+     "required": ["name", "description"]}},
+
+  {"name": "correct_to_anchor",
+   "description": "Loop closure: snap your position estimate to a point you recorded with record_anchor, because you recognize that you are standing on it again. Costs no motion; every correction is logged.",
+   "input_schema": {"type": "object",
+     "properties": {"name": {"type": "string"}, "reason": {"type": "string"}},
+     "required": ["name", "reason"]}},
+
+  {"name": "correct_position",
+   "description": "Loop closure by explicit coordinates: overwrite your position estimate with an x and y you worked out yourself. Costs no motion; every correction is logged.",
+   "input_schema": {"type": "object",
+     "properties": {
        "x": {"type": "number"}, "y": {"type": "number"},
        "reason": {"type": "string"}},
-     "required": ["reason"]}},
+     "required": ["x", "y", "reason"]}},
 
   {"name": "update_plan",
    "description": "Replace your standing plan. It is carried forward and re-injected every turn until you change it.",
@@ -572,7 +589,9 @@ identical to <code>integrate()</code> step for step when wz = 0. Doc 02 §6.3 re
 <tr><td><code>add_landmark(room, description)</code></td><td>Append a landmark string to a room</td><td>ack</td><td>Unknown <code>room</code> → structured error naming the known rooms (counts as a normal tool result, not a wasted turn)</td></tr>
 <tr><td><code>mark_exit(room, direction_deg, status)</code></td><td>Record/update an exit; keyed on (room, direction_deg rounded to nearest 15°)</td><td>ack</td><td>Unknown room → structured error; malformed <code>status</code> (not <code>unexplored</code> / <code>leads_to:&lt;room&gt;</code>) → structured error with the two legal forms</td></tr>
 <tr><td><code>set_current_room(name)</code></td><td>Assert current room</td><td>ack</td><td>Unknown room → structured error suggesting <code>update_room</code> first</td></tr>
-<tr><td><code>correct_position(x, y, reason)</code></td><td>Resets the integrator's (x, y); heading is never reset (compass is absolute). Appends to the correction log.</td><td>ack with old→new delta</td><td>No <em>anchor</em> rejected — a bad anchor is the model's error to make; the log makes it measurable (§10). Only §5.1's type check applies (a non-number is not an anchor), and it runs on both coordinates before either is written</td></tr>
+<tr><td><code>record_anchor(name, description, room?, replace?)</code></td><td>Stores the integrator's <em>current</em> estimate as a named point the model says it could recognize again (TR.1)</td><td>ack + anchor count; on a duplicate name, whether the point moved</td><td>Blank name → structured error; unknown <code>room</code> → structured error naming the known rooms; a non-boolean <code>replace</code> → structured error. <strong>A duplicate name updates the description and does NOT move the point</strong> unless <code>replace=true</code> — otherwise a re-record on a drifted revisit silently overwrites a good map point with a worse one, and the next correction snaps to the drift it was meant to remove</td></tr>
+<tr><td><code>correct_to_anchor(name, reason)</code></td><td>Snaps the integrator to a recorded <strong>point anchor</strong>; heading is never reset. Appends to the correction log with the anchor's name</td><td>ack with old→new delta and the anchor name</td><td>Unknown anchor → structured error listing the recorded anchors and stating that rooms and doorways are not anchors. No geometric validation: the harness never checks the claim against truth</td></tr>
+<tr><td><code>correct_position(x, y, reason)</code></td><td>Resets the integrator's (x, y) from coordinates the model reasoned out itself; heading is never reset (compass is absolute). Appends to the correction log.</td><td>ack with old→new delta</td><td>No <em>anchor</em> rejected — a bad anchor is the model's error to make; the log makes it measurable (§10). Only §5.1's type check applies (a non-number is not an anchor), and it runs on both coordinates before either is written. <strong>TR.1 removed the <code>place</code> mode</strong>: <code>x</code>, <code>y</code> and <code>reason</code> are all required again, so no call can select a mode by accident</td></tr>
 <tr><td><code>update_plan(text)</code></td><td>Replaces the standing plan verbatim</td><td>ack</td><td>Over 2000 characters → structured error naming the limit; the previous plan survives (T3.1 review — see §5.1/§5.2)</td></tr>
 </table>
 
@@ -591,6 +610,10 @@ class Room:                 # created only by update_room (model-asserted)
     name: str
     description: str
     landmarks: list[str]
+    observed_from_xy: tuple | None   # AUDIT ONLY (TR.1): the estimate when the
+                            # room was first asserted.  Never rendered, never
+                            # resolvable by a correction tool -- a room is an
+                            # area, not a point
 
 @dataclass
 class Exit:                 # created only by mark_exit
@@ -598,20 +621,34 @@ class Exit:                 # created only by mark_exit
     direction_deg: float    # absolute compass direction, STORED SNAPPED to the
                             # 15 deg key grid of 4.3 (T3.1)
     status: str             # "unexplored" | "leads_to:&lt;room&gt;"
+    observed_from_xy: tuple | None   # AUDIT ONLY (TR.1): a SIGHTING position,
+                            # usually metres from the doorway itself
+
+@dataclass
+class Anchor:               # created only by record_anchor (TR.1)
+    name: str               # the model's own handle for the point
+    description: str        # what it says it sees from that exact spot
+    xy: tuple               # the integrator estimate AT RECORDING TIME
+    room: str | None        # optional: one of the model's own rooms
+    created_turn: int       # stage-local turn index
+    stage: str              # "find_kitchen" | "return_home"
 
 @dataclass
 class Crumb:                # appended by the HARNESS after every motion command
     x: float; y: float; heading_deg: float      # from the integrator + compass
 
 @dataclass
-class Correction:           # appended on every correct_position call
+class Correction:           # appended on every accepted correction
     turn: int; old_xy: tuple; new_xy: tuple; reason: str
     stage: str              # stamped from Memory.stage (T3.1 review)
+    anchor: str | None      # the Anchor snapped to, else None for an explicit
+                            # coordinate correction (TR.1)
 
 @dataclass
 class Memory:
     rooms: dict[str, Room]
     exits: list[Exit]
+    anchors: dict[str, Anchor]  # recording order; the ONLY correctable points
     breadcrumbs: list[Crumb]
     current_room: str | None
     plan: str
@@ -746,24 +783,25 @@ adjacency lines, a one-line trajectory, and a separate unexplored-exits list (th
 better over an explicit textual map than over raw history). Example, mid-trial:</p>
 
 <pre><code>== YOUR MAP (authored by you; rendered verbatim by the harness) ==
-Place 1: living_room -- sofa along the west wall, armchair opposite, blue rug in center [anchor x=0.50, y=0.50]
+Place 1: living_room -- sofa along the west wall, armchair opposite, blue rug in center
   landmarks: coffee table; armchair by the south wall
-Place 2: hallway -- narrow, wooden floor, doorways along the south side [anchor x=0.88, y=2.56]
+Place 2: hallway -- narrow, wooden floor, doorways along the south side
 Connections: living_room &lt;-&gt; hallway
 Trajectory: living_room -&gt; hallway
-Doorways you have used (anchors for correct_position):
-  - living_room@90 [anchor x=0.53, y=1.11]
+Anchors (points YOU recorded; correct_to_anchor snaps you back):
+  - rug_edge [x=0.50, y=0.50] in living_room -- north edge of the blue rug, sofa on my left
+  - hall_threshold [x=0.53, y=1.11] in living_room -- standing in the doorway, hallway runs north
 Unexplored exits:
-  - hallway: exit at 0 deg (unexplored) [anchor x=0.90, y=2.75]
-  - hallway: exit at 270 deg (unexplored) [anchor x=0.90, y=2.75]
-  - living_room: exit at 0 deg (unexplored) [anchor x=0.50, y=0.50]
+  - hallway: exit at 0 deg (unexplored)
+  - hallway: exit at 270 deg (unexplored)
+  - living_room: exit at 0 deg (unexplored)
 
 == STATE (sensor-derived; the declared exceptions) ==
 Position estimate: x=0.90, y=2.75  (leg-odometry dead reckoning; error grows with distance walked)
 Compass heading: 88 deg
 Current room (your assertion): hallway
 Breadcrumbs (last 5): (0.50,0.50,90) (0.53,1.11,88) (0.85,1.95,68) (0.88,2.56,87) (0.90,2.75,88)
-Re-anchored: never — if the view disagrees with the estimate, correct_position with a mapped anchor
+Re-anchored: never — record_anchor at points you could recognize, then correct_to_anchor when you stand on one again
 Budget: turns 12/40, policy-seconds 63.4/240
 
 == YOUR PLAN (update_plan to change; carried forward otherwise) ==
@@ -833,6 +871,12 @@ only rule that reproduces the example above, where <code>living_room</code> is P
 are excluded from the unexplored list (doc <a href="06-benchmark-evaluation.html">06</a> §5.7: an unexplored
 exit is not an adjacency assertion). An edge whose target room the model never created still renders — dropping
 it would be the harness repairing the model's graph (§1).</li>
+<li><strong>Anchors are the only coordinates in the MAP section</strong> (TR.1). One
+<code>Anchors (points YOU recorded; correct_to_anchor snaps you back):</code> block, in recording order, one
+line per anchor: name, <code>[x=…, y=…]</code>, optionally <code>in &lt;room&gt;</code>, then the model's own
+description after <code>--</code>. Place lines and exit lines carry no coordinate at all, so nothing in the
+block can be read as a correctable point that the model did not deliberately stand on and record. Omitted
+entirely when no anchor exists.</li>
 <li><strong>Empty collections.</strong> The example pins exactly one case: a room with no landmarks omits its
 <code>landmarks:</code> line. The rest is T3.1's: <code>Connections:</code>, <code>Trajectory:</code> and the
 whole <code>Unexplored exits:</code> block are omitted when empty; the three <code>== … ==</code> headers and
@@ -883,13 +927,36 @@ plan is stored and rendered verbatim, never re-wrapped (§4.3).</li>
 <h3>5.3 <code>correct_position</code> — cognitive loop closure</h3>
 
 <p><strong>Loop closure</strong> in SLAM: when the robot recognizes a previously-visited place, the system
-corrects the accumulated pose drift. Here the recognition and the correction are both the model's job: it sees
-(say) the blue rug it described on turn 2, reasons "this is living_room, which I mapped around my
-(0.5,&nbsp;0.5) start, so my estimate x=1.9 is drifted," and calls <code>correct_position(0.6, 0.6,
-"recognized blue rug in living_room")</code>. The harness obeys unconditionally and logs <code>(turn, old_xy, new_xy, reason)</code>.
+corrects the accumulated pose drift. Here the recognition and the correction are both the model's job: it
+stood at the north edge of the blue rug on turn 2 and called <code>record_anchor("rug_edge", …)</code>; forty
+metres of walking later it sees that same rug edge, reasons "I am standing on it again, so my estimate x=1.9 is
+drifted", and calls <code>correct_to_anchor("rug_edge", "back at the north edge of the blue rug")</code>. The
+harness obeys unconditionally and logs <code>(turn, old_xy, new_xy, reason, stage, anchor)</code>.
 The log serves two metrics: the dead-reckoning drift metric (|estimate − true| at goal, computed post-hoc
 against ground truth) and a qualitative audit of whether corrections helped or hurt — mis-anchored corrections
 are a predicted failure mode (§10).</p>
+
+<div class="decision"><strong>REPLACED BY TR.1 (2026-08-02): automatic room/exit anchors are gone.</strong>
+Between 2026-07-30 and the <code>raw_v5d_r2</code> batch, <code>update_room</code> and <code>mark_exit</code>
+stamped the integrator estimate onto the room/exit record and the prompt told the model to snap to those
+"anchors" by name, claiming that "a doorway anchor pins you tightest". Both halves were false. A room is an
+<em>area</em> and its stamp is wherever the robot happened to stand while describing it; an exit is routinely
+marked from across the room, so its stamp is a sighting position, not a threshold. Measured over the batch's
+16 <code>correct_position</code> calls (15 accepted): <strong>14 of 15 increased true localisation error</strong>,
+summed error over the correction instants rose 2.35&nbsp;m → 6.07&nbsp;m, and the worst single call moved a
+0.024&nbsp;m estimate to 1.504&nbsp;m. Three different models used the documented affordance and the harness
+gave all three a false point — an AGENTS.md rule 4 harness defect, not a contestant weakness.
+<span class="src">measured: <code>results/forensics_v5d_r2/batch_summary.json</code>, produced by
+<code>duck_embody/forensics.py</code> from <code>results/raw_v5d_r2/*.json</code>; analysis in
+<code>docs/research/V5D_R2_HARNESS_FORENSICS.md</code> F-01</span>
+<br><br>
+Loop closure now runs on <code>Anchor</code>: a point the model recorded <em>while standing on it</em>, by an
+explicit tool call, with its own visual signature. Room and exit records keep their first-sighting coordinate
+under the honest name <code>observed_from_xy</code> for audit, and nothing renders or resolves it.
+<strong>Tool count went 12 → 14</strong> rather than overloading one schema further: the alternative was a
+single correction tool with four optional fields, which is the shape that produced F-10 (a live call sent
+<code>place=""</code> <em>and</em> a valid x/y; the empty string won, the call was rejected, and the trial paid
+a turn). Three tools with disjoint required fields cannot express that mistake.</div>
 
 <h2 id="prompt">6. Prompt design</h2>
 

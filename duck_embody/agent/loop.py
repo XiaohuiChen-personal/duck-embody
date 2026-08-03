@@ -104,6 +104,7 @@ from duck_embody.tasks.find_kitchen import (
     REASON_MOTION_CAP,
     REASON_NOT_RUN,
     REASON_TURN_CAP,
+    SUCCESS_CRITERION,
     StageScore,
     StageSpec,
     outcome_for,
@@ -519,6 +520,13 @@ class TrialLog:
                 "model": model_id,
                 "model_config": model_name,
                 "seed": seed,
+                # TR.2 (forensics F-02): which success predicate the LIVE stage
+                # machine ran under. Stamped per trial rather than inferred
+                # from the freeze, because the scorer must be able to tell a
+                # unified trial from a legacy one WITHOUT consulting anything
+                # outside the log — and must never re-read a legacy
+                # `stages.*.success` as though v2 had decided it.
+                "success_criterion": SUCCESS_CRITERION,
                 "spawn": {
                     "xy": [spawn_xy[0], spawn_xy[1]],
                     "heading_deg": spawn_heading_deg,
@@ -714,6 +722,11 @@ def memory_snapshot(memory: Memory, memory_block: str) -> dict:
       local) and ``stage``; after the batch nothing else can recover which stage
       a correction belonged to.
 
+    TR.1 added ``anchors`` and ``corrections[].anchor`` for the same reason, one
+    defect later: a recorded anchor that is never corrected to leaves no other
+    trace anywhere in the log, and an anchor-driven correction was
+    indistinguishable from an explicit-coordinate one.
+
     Breadcrumbs are deliberately not logged: the series is exactly the per-turn
     ``obs.position_estimate`` column, and re-emitting the whole growing list into
     every turn would make the file quadratic in the episode length for no
@@ -743,6 +756,23 @@ def memory_snapshot(memory: Memory, memory_block: str) -> dict:
             {"room": e.room, "direction_deg": e.direction_deg, "status": e.status}
             for e in memory.exits
         ],
+        # TR.1. Without this the task's own question — "does loop closure to a
+        # deliberately recorded point help, where snapping to an auto-anchor
+        # hurt by a net 3.72 m?" — is unanswerable after the batch: an anchor
+        # that is never corrected to leaves no other trace in the log, so a
+        # model that recorded ten good anchors and a model that recorded none
+        # would produce byte-identical evidence.
+        "anchors": [
+            {
+                "name": a.name,
+                "description": a.description,
+                "xy": [a.xy[0], a.xy[1]],
+                "room": a.room,
+                "created_turn": a.created_turn,
+                "stage": a.stage,
+            }
+            for a in memory.anchors.values()
+        ],
         "trajectory": list(memory.room_sequence),
         "current_room": memory.current_room,
         "plan": memory.plan,
@@ -753,6 +783,10 @@ def memory_snapshot(memory: Memory, memory_block: str) -> dict:
                 "new_xy": [c.new_xy[0], c.new_xy[1]],
                 "reason": c.reason,
                 "stage": c.stage,
+                # Which anchor, or null for an explicit-coordinate correction
+                # (TR.1). The two are otherwise indistinguishable in the log,
+                # and they are the two arms of the experiment.
+                "anchor": c.anchor,
             }
             for c in memory.corrections
         ],

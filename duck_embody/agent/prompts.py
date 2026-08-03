@@ -249,18 +249,27 @@ foot contacts measure how far it actually moved, and those measurements are
 integrated. The error is small per step but it compounds — over a long
 excursion expect the estimate to be off by a few tenths of a metre, worst after
 a long one-way leg without re-anchoring. The compass
-does not drift; it is absolute. Fight the drift with `correct_position`, and do
-not wait for certainty — a rough re-anchor now beats a precise one you never
-make:
-- Places and doorways in YOUR MAP show an [anchor x, y]: the estimate at the
-  moment you first recorded it. `correct_position(place=...)` snaps you back to
-  one by name — pass a room name, or a doorway written as the map prints it:
-  the place name, then `@`, then the bearing. No arithmetic needed.
-- The moment you pass through a doorway you marked, re-anchor. Doorways are
-  0.35 m wide, so standing in one pins you tighter than anywhere else.
-- If what you see contradicts your numbers — a landmark nearer or further than
-  the estimate implies, or your position claims to be outside the rooms you
-  know — re-anchor to the nearest recognized place THAT TURN.
+does not drift; it is absolute. Fight the drift with anchors — points you
+record while standing on them, and return to later:
+- `record_anchor(name, description)` stores your CURRENT estimate as a named
+  point, with a description of what you see from that exact spot. Record one
+  the first time you stand somewhere you could recognize again — a threshold
+  you just crossed, a corner, the foot of a distinctive object. Recording
+  costs nothing and changes nothing about your estimate.
+- `correct_to_anchor(name, reason)` snaps your estimate back to a recorded
+  point, and is worth calling only when you believe you are standing on that
+  same physical spot again. On a first arrival there is nothing to close the
+  loop against: record, do not correct.
+- A room is not a point. Recognizing which room you are in tells you nothing
+  precise about where you are standing in it, and seeing a doorway from across
+  a room is not standing in that doorway. Anchors are the only points you can
+  correct to, and only the ones you recorded yourself.
+- An anchor is only as good as the estimate you had when you recorded it: a
+  correction restores the position you believed at recording time, not
+  certainty. Anchors recorded early, before much drift, are worth more.
+- `correct_position(x, y, reason)` overwrites the estimate with coordinates
+  you worked out yourself — for when you can reason about where you are but
+  have no anchor to name.
 
 Headings everywhere — compass, breadcrumbs, exit directions, `turn_to_heading`
 — are degrees counter-clockwise from east: 0 = east, 90 = north, 180 = west,
@@ -301,10 +310,13 @@ request; these are the notes that are not in them.
    ran.
 
    *Memory.* `update_room`, `add_landmark`, `mark_exit`, `set_current_room`,
-   `correct_position` and `update_plan` write YOUR map. They spend no motion
-   budget and advance no physics. `mark_exit` snaps directions to the nearest
-   15 deg, and re-marking the same snapped direction updates that exit rather
-   than adding a near-duplicate.
+   `record_anchor`, `correct_to_anchor`, `correct_position` and `update_plan`
+   write YOUR map. They spend no motion budget and advance no physics.
+   `mark_exit` snaps directions to the nearest 15 deg, and re-marking the same
+   snapped direction updates that exit rather than adding a near-duplicate.
+   Re-recording an existing anchor name updates its description and leaves the
+   point where it was; `record_anchor(name, description, replace=true)` moves
+   it deliberately.
 
    *Control.* `declare_done` ends the stage.
 
@@ -340,9 +352,11 @@ you are about to do next.
 
 6. **Honesty rules.** Record only what you observed: never invent a room you
 haven't entered; mark uncertain exits `unexplored` rather than guessing
-`leads_to`; when lost, say so in the plan, navigate to a mapped place, and call
-`correct_position(place=...)` when you arrive — arriving is not re-anchoring
-until the tool is called. An entry you are unsure of is worth less to you than an absent one:
+`leads_to`; when lost, say so in the plan, navigate back to a point you
+anchored, and call `correct_to_anchor` once you recognize you are standing on
+it — arriving is not re-anchoring until the tool is called, and a correction
+you are not confident in is worse than none.
+An entry you are unsure of is worth less to you than an absent one:
 this map is the only thing you will still have in forty turns, and it is only
 useful if you can trust it.
 """
@@ -454,16 +468,13 @@ def render_memory_block(
 
     if memory.rooms:
         for number, room in enumerate(memory.rooms.values(), start=1):
-            # The anchor is rendered so `correct_position` finally has an
-            # argument the model can copy: zero uptake across 13 trials traced
-            # primarily to the tool demanding an (x, y) no payload supplied.
-            anchor = (
-                f" [anchor x={_fmt_m(room.anchor_xy[0])}, y={_fmt_m(room.anchor_xy[1])}]"
-                if room.anchor_xy is not None else ""
-            )
+            # No coordinate on a Place line (TR.1). A room is an area, and the
+            # position it was first described from is not a point the robot can
+            # return to — rendering one invited exactly the correction that
+            # added 3.72 m of net true error across the v5d_r2 batch.
             lines.append(
                 f"Place {number}: {_one_line(room.name)} -- "
-                f"{_one_line(room.description)}{anchor}"
+                f"{_one_line(room.description)}"
             )
             if room.landmarks:
                 # The one empty case doc 05 §5.2 pins: no landmarks, no line.
@@ -481,25 +492,18 @@ def render_memory_block(
             "Trajectory: " + " -> ".join(_one_line(r) for r in memory.room_sequence)
         )
 
-    # ALL exits with anchors are listed, not just unexplored ones (2026-07-30).
-    # Previously an exit's [anchor] disappeared the moment it was upgraded to
-    # leads_to:<room> — i.e. the moment the model walked through the doorway,
-    # which is precisely when the prompt tells it to re-anchor. The affordance
-    # was advertised and then withdrawn at the point of use.
-    explored_anchored = sorted(
-        (e for e in memory.exits
-         if e.anchor_xy is not None and not e.status.startswith("unexplored")),
-        key=lambda e: (e.room, e.direction_deg),
-    )
-    if explored_anchored:
-        lines.append("Doorways you have used (anchors for correct_position):")
-        for exit_ in explored_anchored:
-            # Status is deliberately NOT repeated here: adjacency belongs to the
-            # Connections line (doc 06 §5.7 keeps frontier and adjacency
-            # separate). This list exists only to expose the anchor handle.
+    # The ONE place a correctable coordinate appears (TR.1). Rooms and exits
+    # deliberately show none: the block must not offer as a "point" anything
+    # the model did not deliberately stand on and record. Recording order, so
+    # the list reads as the model's own history.
+    if memory.anchors:
+        lines.append("Anchors (points YOU recorded; correct_to_anchor snaps you back):")
+        for anchor in memory.anchors.values():
+            where = f" in {_one_line(anchor.room)}" if anchor.room else ""
             lines.append(
-                f"  - {_one_line(exit_.room)}@{_fmt_deg(exit_.direction_deg)} "
-                f"[anchor x={_fmt_m(exit_.anchor_xy[0])}, y={_fmt_m(exit_.anchor_xy[1])}]"
+                f"  - {_one_line(anchor.name)} "
+                f"[x={_fmt_m(anchor.xy[0])}, y={_fmt_m(anchor.xy[1])}]{where} -- "
+                f"{_one_line(anchor.description)}"
             )
 
     unexplored = sorted(
@@ -508,14 +512,10 @@ def render_memory_block(
     if unexplored:
         lines.append("Unexplored exits:")
         for exit_ in unexplored:
-            ex_anchor = (
-                f" [anchor x={_fmt_m(exit_.anchor_xy[0])}, y={_fmt_m(exit_.anchor_xy[1])}]"
-                if exit_.anchor_xy is not None else ""
-            )
             lines.append(
                 f"  - {_one_line(exit_.room)}: "
                 f"exit at {_fmt_deg(exit_.direction_deg)} deg "
-                f"({_one_line(exit_.status)}){ex_anchor}"
+                f"({_one_line(exit_.status)})"
             )
 
     x, y = position_estimate
@@ -547,8 +547,8 @@ def render_memory_block(
         # appeared only after a correction had already happened, so from a cold
         # start nothing ever surfaced it. Zero uptake across 13 trials.
         lines.append(
-            "Re-anchored: never — if the view disagrees with the estimate, "
-            "correct_position with a mapped anchor"
+            "Re-anchored: never — record_anchor at points you could recognize, "
+            "then correct_to_anchor when you stand on one again"
         )
     if memory.corrections:
         # Why this line exists: correct_position re-anchors the estimate without

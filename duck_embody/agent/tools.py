@@ -58,7 +58,12 @@ tools refuse to run at all once ``playback.fell`` is set (:func:`dispatch`), so
 no further physics can step against a respawned robot. Both recorded in doc 05
 §4.1/§4.2/§8.
 
-The 12 schemas are doc 05 §4's canonical block **verbatim**. Doc 05 §6 records
+The 14 schemas are doc 05 §4's canonical block **verbatim**. (12 until TR.1,
+which split the overloaded ``correct_position`` into three unambiguous tools —
+``record_anchor`` / ``correct_to_anchor`` / coordinate-only
+``correct_position``. Two extra schemas cost every request a few dozen tokens;
+a single tool with four optional fields cost one live trial a turn when a
+blank ``place`` beat a valid x/y, and cost the whole batch its loop closure.) Doc 05 §6 records
 why that is load-bearing rather than tidy: the prompt carries a paraphrase, so
 §4's numeric bounds — the ``send_velocity`` hull, ``turn_to_heading``'s
 ``[0,360)`` — reach the model through *no other* model-facing text.
@@ -73,12 +78,12 @@ import math
 from dataclasses import dataclass, field
 
 from duck_embody.agent.memory import (
-    quantise_direction,
     STAGE_FIND_KITCHEN,
     Counters,
     Memory,
     PositionIntegrator,
     correct_position,
+    correct_to_anchor,
     invalid_args,
     number_arg,
 )
@@ -270,29 +275,71 @@ TOOL_SCHEMAS: list[dict] = [
         },
     },
     {
-        "name": "correct_position",
+        "name": "record_anchor",
         "description": (
-            "Loop closure: snap your position estimate back to a place you "
-            "recognize. EITHER pass `place` — a mapped room name, or a doorway "
-            "written room@bearing as YOUR MAP prints it — OR pass explicit x "
-            "and y. A doorway anchor pins you tightest. Costs no motion; "
-            "every correction is logged."
+            "Record where you are standing RIGHT NOW as a named point you "
+            "could recognize again, with a short visual signature. Use it on "
+            "first arrival at a distinctive spot. Re-recording a name updates "
+            "its description only; pass replace=true to move it to your "
+            "current estimate."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "place": {
+                "name": {"type": "string"},
+                "description": {
                     "type": "string",
                     "description": (
-                        "a mapped room name, or a doorway as room@bearing "
-                        "exactly as YOUR MAP prints it: name, @, bearing"
+                        "what you would see from this exact spot, e.g. "
+                        "'tiled floor starts, white counter on my left'"
                     ),
                 },
+                "room": {
+                    "type": "string",
+                    "description": "optional: one of YOUR rooms containing this point",
+                },
+                "replace": {
+                    "type": "boolean",
+                    "description": (
+                        "true to move an existing anchor of this name to your "
+                        "current estimate"
+                    ),
+                },
+            },
+            "required": ["name", "description"],
+        },
+    },
+    {
+        "name": "correct_to_anchor",
+        "description": (
+            "Loop closure: snap your position estimate to a point you recorded "
+            "with record_anchor, because you recognize that you are standing "
+            "on it again. Costs no motion; every correction is logged."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "reason": {"type": "string"},
+            },
+            "required": ["name", "reason"],
+        },
+    },
+    {
+        "name": "correct_position",
+        "description": (
+            "Loop closure by explicit coordinates: overwrite your position "
+            "estimate with an x and y you worked out yourself. Costs no "
+            "motion; every correction is logged."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
                 "x": {"type": "number"},
                 "y": {"type": "number"},
                 "reason": {"type": "string"},
             },
-            "required": ["reason"],
+            "required": ["x", "y", "reason"],
         },
     },
     {
@@ -1112,10 +1159,13 @@ def _memory_outcome(ack: dict) -> ToolOutcome:
 
 
 def _update_room(context: ToolContext, args: dict) -> ToolOutcome:
-    # First-assertion position becomes the room's anchor (integrator estimate,
-    # never ground truth) — the coordinate source correct_position never had.
+    # The first-assertion position is stored as AUDIT metadata only (TR.1). It
+    # was an auto-anchor until 2026-08-02, and correcting to it added a net
+    # 3.72 m of true error across the v5d_r2 batch: a room is an area, and this
+    # is merely wherever the robot stood when it described the area. Nothing
+    # renders it and no correction tool can resolve it.
     return _memory_outcome(context.memory.update_room(
-        args["name"], args["description"], anchor_xy=context.integrator.xy
+        args["name"], args["description"], observed_from_xy=context.integrator.xy
     ))
 
 
@@ -1124,10 +1174,13 @@ def _add_landmark(context: ToolContext, args: dict) -> ToolOutcome:
 
 
 def _mark_exit(context: ToolContext, args: dict) -> ToolOutcome:
+    # Sighting position, audit only — see `_update_room`. A doorway is usually
+    # marked from across the room it is seen from, so this coordinate is not
+    # the threshold and must never be correctable to.
     return _memory_outcome(
         context.memory.mark_exit(
             args["room"], args["direction_deg"], args["status"],
-            anchor_xy=context.integrator.xy,
+            observed_from_xy=context.integrator.xy,
         )
     )
 
@@ -1136,81 +1189,52 @@ def _set_current_room(context: ToolContext, args: dict) -> ToolOutcome:
     return _memory_outcome(context.memory.set_current_room(args["name"]))
 
 
+def _record_anchor(context: ToolContext, args: dict) -> ToolOutcome:
+    """TR.1's replacement for the automatic room/exit anchors.
+
+    The coordinate is the integrator's CURRENT estimate, taken here rather than
+    supplied by the model, because "where I am now" is sensor state (declared
+    exception (b)) and the point of the tool is that the model is standing on
+    the place it is naming.
+    """
+    return _memory_outcome(context.memory.record_anchor(
+        args["name"],
+        args["description"],
+        context.integrator.xy,
+        turn=context.turn,
+        room=args.get("room"),
+        replace=args.get("replace", False),
+    ))
+
+
+def _correct_to_anchor(context: ToolContext, args: dict) -> ToolOutcome:
+    return _memory_outcome(
+        correct_to_anchor(
+            context.memory,
+            context.integrator,
+            context.turn,
+            args["name"],
+            args["reason"],
+        )
+    )
+
+
 def _correct_position(context: ToolContext, args: dict) -> ToolOutcome:
     # A module-level function, not a `Memory` method: it needs the integrator
     # and the stage-local turn index, both of which live in loop state. They are
     # threaded from the context rather than synthesised here.
     #
-    # `place` (2026-07-30): resolves a mapped room's anchor so the argument the
-    # model must supply is a NAME — the thing place recognition actually yields.
-    # Zero uptake across 13 trials traced primarily to this tool being the only
-    # one whose required arguments (absolute x, y) no payload ever provided.
-    x, y = args.get("x"), args.get("y")
-    place = args.get("place")
-    if place is not None:
-        place = str(place)
-        # `room@bearing` resolves a DOORWAY anchor. Rooms alone were not enough:
-        # the prompt tells the model to re-anchor on passing through a doorway
-        # (a 0.35 m gap pins position ~5x tighter than a room centroid), but
-        # only room anchors were resolvable, so that instruction silently
-        # snapped to a room anchor metres away — advertising the precise
-        # affordance and delivering the imprecise one.
-        exit_anchor = None
-        if "@" in place:
-            room_name, _, bearing_text = place.partition("@")
-            try:
-                bearing = quantise_direction(float(bearing_text))
-            except (TypeError, ValueError):
-                bearing = None
-            if bearing is not None:
-                for e in context.memory.exits:
-                    if e.room == room_name and e.direction_deg == bearing:
-                        exit_anchor = e.anchor_xy
-                        break
-        if exit_anchor is not None:
-            x, y = exit_anchor
-            return _memory_outcome(
-                correct_position(
-                    context.memory, context.integrator, context.turn, x, y,
-                    args["reason"],
-                )
-            )
-        room = context.memory.rooms.get(place)
-        anchored = [
-            (name, r.anchor_xy) for name, r in context.memory.rooms.items()
-            if r.anchor_xy is not None
-        ] + [
-            (f"{e.room}@{e.direction_deg:g}", e.anchor_xy)
-            for e in context.memory.exits if e.anchor_xy is not None
-        ]
-        if room is None or room.anchor_xy is None:
-            return ToolOutcome(payload={
-                "error": "invalid_args",
-                "detail": (
-                    f"place {place!r} is not a mapped room with an anchor"
-                    if room is None else
-                    f"room {place!r} was mapped before anchors existed and has none"
-                ),
-                "hint": "anchored places: " + (
-                    ", ".join(f"{n} (x={a[0]:g}, y={a[1]:g})" for n, a in anchored)
-                    or "none yet — update_room a place first, or pass x and y"
-                ),
-            }, is_error=True)
-        x, y = room.anchor_xy
-    if x is None or y is None:
-        return ToolOutcome(payload={
-            "error": "invalid_args",
-            "detail": "correct_position needs either `place` or both `x` and `y`",
-            "hint": "pass place=<mapped room name> to snap to its [anchor] "
-                    "from YOUR MAP, or copy explicit coordinates",
-        }, is_error=True)
+    # TR.1 removed the `place` mode. It resolved a room's or a doorway's
+    # first-sighting coordinate, which is not a point the robot can stand on;
+    # `correct_to_anchor` is the name-based path now, and the two schemas share
+    # no field, so neither can be selected by accident (forensics F-10).
     return _memory_outcome(
         correct_position(
             context.memory,
             context.integrator,
             context.turn,
-            x,
-            y,
+            args["x"],
+            args["y"],
             args["reason"],
         )
     )
@@ -1246,6 +1270,8 @@ _HANDLERS = {
     "add_landmark": _add_landmark,
     "mark_exit": _mark_exit,
     "set_current_room": _set_current_room,
+    "record_anchor": _record_anchor,
+    "correct_to_anchor": _correct_to_anchor,
     "correct_position": _correct_position,
     "update_plan": _update_plan,
     DECLARE_DONE: _declare_done,
