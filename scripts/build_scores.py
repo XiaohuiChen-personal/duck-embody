@@ -9,6 +9,10 @@ Inputs (all frozen, never modified):
   - duck_embody/scoring.py               (every metric + the seeded bootstrap)
   - configs/benchmark.yaml scoring:      (bootstrap_resamples / bootstrap_seed)
 
+Set ``DUCK_EMBODY_RAW_DIR`` and ``DUCK_EMBODY_MANIFEST`` together for any
+non-default batch. The report records the supplied manifest's actual relative
+path and provenance fields; it never guesses a manifest from a directory name.
+
 The optional CLI_SCORES.json argument is the captured stdout of
 ``python -m duck_embody.scoring results/raw/*.json``; when given, this script
 asserts its own ``score_trial`` output is byte-identical to it, so the shipped
@@ -27,6 +31,7 @@ import statistics
 import sys
 from pathlib import Path
 
+from duck_embody import forensics
 from duck_embody.scoring import (
     NA,
     STAGES,
@@ -56,6 +61,11 @@ RAW = pathlib.Path(os.environ.get("DUCK_EMBODY_RAW_DIR") or (REPO / "results" / 
 #: are matrix-driven; prose cannot be, so prose is gated.
 IS_DESCRIBED_BATCH = RAW.resolve() == (REPO / "results" / "raw").resolve()
 IS_V5D_R2_BATCH = RAW.resolve() == (REPO / "results" / "raw_v5d_r2").resolve()
+MANIFEST_PATH = (
+    Path(os.environ["DUCK_EMBODY_MANIFEST"]).expanduser()
+    if os.environ.get("DUCK_EMBODY_MANIFEST")
+    else None
+)
 
 # The matrix comes from the FROZEN benchmark config, not a hardcoded tuple
 # (2026-07-30, when the owner swapped fable5 -> sonnet5): a scorer pinned to
@@ -114,7 +124,41 @@ def median_or_na(values):
     return round(statistics.median(usable), 4) if usable else NA
 
 
-def build():
+def manifest_metadata() -> dict:
+    """Report provenance from an explicitly selected manifest, never a guess."""
+    if MANIFEST_PATH is None:
+        return {
+            "path": None,
+            "schema": None,
+            "manifest_sha256": None,
+            "checkpoint_sha256": None,
+            "parent_commit": None,
+            "status": "not_supplied",
+        }
+    path = MANIFEST_PATH.resolve()
+    document = json.loads(path.read_text(encoding="utf-8"))
+    relative = (
+        str(path.relative_to(REPO))
+        if path.is_relative_to(REPO)
+        else str(path)
+    )
+    return {
+        "path": relative,
+        "schema": document.get("schema"),
+        "manifest_sha256": document.get("manifest_sha256"),
+        "checkpoint_sha256": (document.get("policy") or {}).get(
+            "checkpoint_sha256"
+        ),
+        "parent_commit": (document.get("parent_repo") or {}).get("commit"),
+        "status": (
+            "complete"
+            if document.get("manifest_sha256")
+            else "legacy_no_write_once_sha"
+        ),
+    }
+
+
+def build(cli_scores_path: Path | None = None):
     documents = {}
     metrics = {}
     for model in MODELS:
@@ -127,8 +171,8 @@ def build():
     trial_dicts = [metrics[f"{m}_seed{s}"].as_dict() for m in MODELS for s in SEEDS]
 
     # Cross-check against the scoring CLI's captured stdout, if provided.
-    if len(sys.argv) > 1:
-        cli = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+    if cli_scores_path is not None:
+        cli = json.loads(cli_scores_path.read_text(encoding="utf-8"))
         if cli != trial_dicts:
             raise SystemExit("score_trial output != scoring CLI output — refusing to write")
         print("cross-check: score dicts identical to the scoring CLI output", file=sys.stderr)
@@ -157,6 +201,14 @@ def build():
         entry["total_turns"] = total_turns
         entry["last_turn_timestamp"] = turns[-1]["timestamp"]
         entry["video"] = document["video_path"]
+        correction = forensics.correction_summary([document])
+        entry["correction_calls"] = {
+            "calls": correction["calls"],
+            "accepted": correction["accepted"],
+            "rejected": correction["rejected"],
+            "worsened": correction["worsened"],
+            "improved": correction["improved"],
+        }
 
     config = scoring_config()
 
@@ -202,7 +254,9 @@ def build():
         # so the original reading stays reproducible from this same file.
         "scoring_criterion": {
             "name": SUCCESS_CRITERION,
-            "changed_post_batch": True,
+            # v4 completed before the 2026-07-27 adoption. v5d_r2 ran after it;
+            # calling that batch's criterion "changed post-batch" was false.
+            "changed_post_batch": IS_DESCRIBED_BATCH,
             "rerun_log": "results/rerun_log.md",
             "preregistered_find_kitchen_successes": sum(
                 1
@@ -215,6 +269,13 @@ def build():
         },
         "config_hash": first_doc["config"]["config_hash"],
         "freeze_commit": first_doc["config"]["freeze_commit"],
+        "source_raw_dir": (
+            str(RAW.resolve().relative_to(REPO))
+            if RAW.resolve().is_relative_to(REPO)
+            else str(RAW.resolve())
+        ),
+        "model_roster": list(MODELS),
+        "batch_manifest": manifest_metadata(),
         # Read from the trial files (max over the 12 last-turn timestamps),
         # deliberately NOT a wall clock (doc 06 reproducibility stance).
         "batch_last_turn_timestamp": batch_last,
@@ -292,20 +353,38 @@ def _sr(block):
     return text
 
 
-def write_table(scores: dict) -> None:
+def write_table(scores: dict, out_path: Path | None = None) -> str:
     per_model = scores["per_model"]
     trials = scores["trials"]
     boot = scores["bootstrap"]
+    default_raw = REPO / "results" / "raw"
+    out = out_path or (
+        REPO / "results" / "summary_table.md"
+        if RAW.resolve() == default_raw.resolve()
+        else RAW.parent / f"summary_table_{RAW.name}.md"
+    )
+
+    def artifact_link(value: str) -> str:
+        target = Path(value)
+        if not target.is_absolute():
+            target = REPO / target
+        return os.path.relpath(target, out.parent).replace(os.sep, "/")
 
     def row(label, cell):
         return "| " + label + " | " + " | ".join(cell(per_model[m]) for m in MODELS) + " |"
 
     lines = [
-        "# Duck Embody — 12-trial benchmark results",
+        "# Duck Embody — 12-trial benchmark results"
+        + (" (PROVISIONAL)" if IS_V5D_R2_BATCH else ""),
         "",
         f"Batch: {len(MODELS)} models x {len(SEEDS)} seeds ({SEEDS[0]}-{SEEDS[-1]}), config_hash `{scores['config_hash'][:12]}`, "
         f"freeze commit `{scores['freeze_commit'][:12]}`, last trial turn at "
         f"{scores['batch_last_turn_timestamp']} (read from the trial logs).",
+        f"Manifest: `{scores['batch_manifest']['path']}` "
+        f"({scores['batch_manifest']['status']}); manifest SHA "
+        f"`{scores['batch_manifest']['manifest_sha256'] or 'unavailable'}`, "
+        f"checkpoint SHA `{scores['batch_manifest']['checkpoint_sha256'] or 'unavailable'}`, "
+        f"parent commit `{scores['batch_manifest']['parent_commit'] or 'unavailable'}`.",
         "",
         # PROSE GATE (2026-07-30). These sentences describe the 2026-07-27
         # batch specifically — trial names, fall counts, the criterion-widening
@@ -340,6 +419,21 @@ def write_table(scores: dict) -> None:
             "report describes the 2026-07-27 batch only and is omitted here; "
             "read the tables below plus the per-trial audits.",
             "",
+            *(
+                [
+                    "**Publication status: PROVISIONAL.** This historical batch predates "
+                    "write-once batch manifests and request journals, and its visual "
+                    "publication gate is not complete. Missing evidence is classified "
+                    "`INCOMPLETE`, never PASS.",
+                    "",
+                    "`opus5_seed101` satisfies the later published v2 counter-face "
+                    "criterion but was not offered `return_home`: the live gate used "
+                    "the point-disc verdict recorded during the run.",
+                    "",
+                ]
+                if IS_V5D_R2_BATCH
+                else []
+            ),
         ]),
         "## Per-model aggregate (N=4 trials each)",
         "",
@@ -374,7 +468,7 @@ def write_table(scores: dict) -> None:
         row("bumps / trial", lambda s: _mean_ci(s["bumps"], 2)),
         row("falls / trial", lambda s: _mean_ci(s["falls"], 2)),
         row("dead-reckoning drift (m, stage 1)", lambda s: _mean_ci(s[STAGE1]["drift_m"])),
-        row("position corrections (stage 1)", lambda s: _mean_ci(s[STAGE1]["corrections"], 2)),
+        row("accepted position corrections (stage 1)", lambda s: _mean_ci(s[STAGE1]["corrections"], 2)),
         row("map precision", lambda s: _mean_ci(s["map_precision"])),
         row("map recall", lambda s: _mean_ci(s["map_recall"])),
         row("edge accuracy", lambda s: _mean_ci(s["edge_accuracy"])),
@@ -449,7 +543,7 @@ def write_table(scores: dict) -> None:
             f"### {model}",
             "",
             "| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls "
-            "| Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |",
+            "| Drift (m) | Corr. A/R | Map P | Map R | Edge acc | QA | Cost ($) | Video |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
         ]
         for entry in trials:
@@ -458,10 +552,12 @@ def write_table(scores: dict) -> None:
             s1 = entry["stages"][STAGE1]
             acc = entry["map_accuracy"]
             video = Path(entry["video"]).name
+            video_link = artifact_link(entry["video"])
+            correction = entry["correction_calls"]
             lines.append(
                 "| {id} | {end} | {prog} | {spl} | {path} | {turns} | {bumps} | {falls} "
                 "| {drift} | {corr} | {p} | {r} | {edge} | {qa} | {cost:.3f} | "
-                "[{video}](videos/{video}) |".format(
+                "[{video}]({video_link}) |".format(
                     id=entry["trial_id"],
                     end=s1["outcome"],
                     prog=_num(s1["progress"]),
@@ -471,21 +567,23 @@ def write_table(scores: dict) -> None:
                     bumps=entry["bumps"],
                     falls=entry["falls"],
                     drift=_num(s1["drift_m"]),
-                    corr=s1["corrections"],
+                    corr=f"{correction['accepted']}/{correction['rejected']}",
                     p=_num(acc["precision"], 2),
                     r=_num(acc["recall"], 2),
                     edge=_num(acc["edge_accuracy"], 2),
                     qa=_num(entry["qa"]["score"], 2),
                     cost=entry["cost_usd"],
                     video=video,
+                    video_link=video_link,
                 )
             )
         lines.append("")
 
     lines += [
         "Per-question QA scores, matched room names, visited rooms, token counts and "
-        "the return_home rows are in `results/scores.json`; raw evidence is "
-        "`results/raw/<trial>.json` and `results/videos/<trial>.mp4`.",
+        f"the return_home rows are in `{artifact_link(str((RAW.parent / ('scores_' + RAW.name + '.json')) if RAW.resolve() != default_raw.resolve() else (REPO / 'results' / 'scores.json')))}`; "
+        f"raw evidence is under `{artifact_link(str(RAW))}/` and each video link above "
+        "is derived from its trial JSON.",
         "",
         f"Generated by `scripts/build_scores.py` from "
         f"`{RAW.relative_to(REPO) if RAW.is_relative_to(REPO) else RAW}/*.json` via "
@@ -493,15 +591,11 @@ def write_table(scores: dict) -> None:
         "",
     ]
 
-    default_raw = REPO / "results" / "raw"
-    out = (
-        REPO / "results" / "summary_table.md"
-        if RAW.resolve() == default_raw.resolve()
-        else RAW.parent / f"summary_table_{RAW.name}.md"
-    )
-    out.write_text("\n".join(lines), encoding="utf-8")
+    text = "\n".join(lines)
+    out.write_text(text, encoding="utf-8")
     print(f"wrote {out}", file=sys.stderr)
+    return text
 
 
 if __name__ == "__main__":
-    write_table(build())
+    write_table(build(Path(sys.argv[1]) if len(sys.argv) > 1 else None))

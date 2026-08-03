@@ -895,3 +895,14 @@ $1.373387 → ≥$0.876917, $1.582117 → ≥$1.085647, and
 $1.450030 → ≥$0.940830. Source fields: each immutable
 `results/raw_v5d_r2/gpt56sol_seed*.json final.tokens`; formula:
 `duck_embody.scoring.historical_openai_cost_lower_bound`.
+
+**Audit/report amendment (TR.8, 2026-08-02).** The table is PROVISIONAL, not a
+publication-ready benchmark report. This batch predates write-once manifest
+SHAs, request reconstruction journals, per-request frame hashes, resolved-model
+metadata, and normalized usage fields. The strict auditor reports those checks
+as `INCOMPLETE`; it never treats “not recorded” as PASS. Correction columns are
+now accepted/rejected counts from `duck_embody.forensics` (16 calls = 15/1 for
+the batch), and drift is replayed through `scoring.stage_drift`, not read from
+nonexistent `final.stages.*.drift_m` fields. `opus5_seed101` is disclosed as a
+published-v2 success that the historical live point-disc gate did not offer a
+return leg.

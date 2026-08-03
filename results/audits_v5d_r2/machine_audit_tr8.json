@@ -1,0 +1,2614 @@
+{
+  "schema": "duck-embody-batch-audit-v1",
+  "status": "INCOMPLETE",
+  "batch_dir": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2",
+  "manifest_path": "/home/xiaohui_chen/Projects/duck-embody/results/freeze.json",
+  "publication_gate": {
+    "expected": 12,
+    "written": 0,
+    "pending": [
+      "gpt56sol_seed101",
+      "gpt56sol_seed102",
+      "gpt56sol_seed103",
+      "gpt56sol_seed104",
+      "opus5_seed101",
+      "opus5_seed102",
+      "opus5_seed103",
+      "opus5_seed104",
+      "sonnet5_seed101",
+      "sonnet5_seed102",
+      "sonnet5_seed103",
+      "sonnet5_seed104"
+    ]
+  },
+  "trials": [
+    {
+      "trial_id": "gpt56sol_seed101",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=1 accepted=1 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.765709429222339, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/gpt56sol_seed101.json",
+      "corrections": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0,
+        "error_before_sum_m": 0.027513711750993437,
+        "error_after_sum_m": 0.7643880231924097,
+        "net_added_error_m": 0.7368743114414162,
+        "ledger": [
+          {
+            "trial_id": "gpt56sol_seed101",
+            "stage": "find_kitchen",
+            "turn_idx": 16,
+            "global_turn_idx": 16,
+            "place": "Living room@0",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.7443,
+              1.2216
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.7200647786998022,
+              1.20857470219737
+            ],
+            "new_xy": [
+              0.98,
+              1.21
+            ],
+            "error_before_m": 0.027513711750993437,
+            "error_after_m": 0.7643880231924097,
+            "effect_m": 0.7368743114414162,
+            "reason": "Just passed through the centered east doorway from the living room."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.765709429222339,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "gpt56sol_seed101",
+        "model": "gpt-5.6-sol",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 0.8859,
+            "d_initial_m": 2.0652,
+            "d_final_m": 0.8066,
+            "progress": 0.6094,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 4.8995,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 24,
+            "drift_m": 0.7657,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              0.7401
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.4394,
+            "d_final_m": 1.4394,
+            "progress": 0.0,
+            "oracle_path_m": 1.5485,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 4,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.5,
+          "recall": 0.5,
+          "matches": [
+            [
+              "Living room",
+              "living_room"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            1.0,
+            0.5,
+            1.0
+          ],
+          "score": 0.5
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed102",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.056451217878802695, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/gpt56sol_seed102.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.056451217878802695,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "gpt56sol_seed102",
+        "model": "gpt-5.6-sol",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.9144,
+            "d_initial_m": 2.2727,
+            "d_final_m": 2.9954,
+            "progress": 0.0,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 16.0509,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0565,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.1407,
+            "d_final_m": 1.1407,
+            "progress": 0.0,
+            "oracle_path_m": 1.1828,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 16,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 0.5,
+          "matches": [
+            [
+              "Bedroom",
+              "bedroom"
+            ]
+          ],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.5,
+            0.0,
+            0.5
+          ],
+          "score": 0.2
+        },
+        "visited_rooms": [
+          "bedroom",
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed103",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=2 accepted=1 rejected=1"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.14809132317593732, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/gpt56sol_seed103.json",
+      "corrections": {
+        "calls": 2,
+        "accepted": 1,
+        "rejected": 1,
+        "worsened": 1,
+        "improved": 0,
+        "error_before_sum_m": 0.025583352090234837,
+        "error_after_sum_m": 0.028561687625209026,
+        "net_added_error_m": 0.0029783355349741886,
+        "ledger": [
+          {
+            "trial_id": "gpt56sol_seed103",
+            "stage": "find_kitchen",
+            "turn_idx": 10,
+            "global_turn_idx": 10,
+            "place": "",
+            "accepted": false,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.0936,
+              2.7709
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": null,
+            "new_xy": null,
+            "error_before_m": null,
+            "error_after_m": null,
+            "effect_m": null,
+            "reason": null
+          },
+          {
+            "trial_id": "gpt56sol_seed103",
+            "stage": "find_kitchen",
+            "turn_idx": 11,
+            "global_turn_idx": 11,
+            "place": "LivingRoom@90",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.0936,
+              2.7709
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.1159771463932473,
+              2.758499547449061
+            ],
+            "new_xy": [
+              1.12,
+              2.76
+            ],
+            "error_before_m": 0.025583352090234837,
+            "error_after_m": 0.028561687625209026,
+            "effect_m": 0.0029783355349741886,
+            "reason": "Recognize the narrow EntryHall/LivingRoom threshold immediately behind me; re-anchor at the LivingRoom side."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.14809132317593732,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "gpt56sol_seed103",
+        "model": "gpt-5.6-sol",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.2254,
+            "d_initial_m": 3.2022,
+            "d_final_m": 2.3257,
+            "progress": 0.2737,
+            "oracle_path_m": 3.142,
+            "true_path_m": 10.3953,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.1481,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              0.0043
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 3.5198,
+            "d_final_m": 3.5198,
+            "progress": 0.0,
+            "oracle_path_m": 3.9743,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 14,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 0,
+          "true_rooms_visited": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "score": 0.0
+        },
+        "visited_rooms": [
+          "hallway",
+          "bedroom"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed104",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/gpt56sol_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=2 accepted=2 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.3772842032208609, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/gpt56sol_seed104.json",
+      "corrections": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 2,
+        "improved": 0,
+        "error_before_sum_m": 0.3359885444096035,
+        "error_after_sum_m": 0.7308629374189266,
+        "net_added_error_m": 0.3948743930093231,
+        "ledger": [
+          {
+            "trial_id": "gpt56sol_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 29,
+            "global_turn_idx": 29,
+            "place": "Living room",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.0024,
+              2.2163
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              0.9705356376032152,
+              2.210557177552921
+            ],
+            "new_xy": [
+              1.37,
+              2.27
+            ],
+            "error_before_m": 0.032377733098725554,
+            "error_after_m": 0.37150161507051366,
+            "effect_m": 0.3391238819717881,
+            "reason": "Recognize living room sofa, chair and TV; re-anchor before traversing sole frontier."
+          },
+          {
+            "trial_id": "gpt56sol_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 37,
+            "global_turn_idx": 37,
+            "place": "Living room@45",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              0.109,
+              2.4034
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              0.40584152837725296,
+              2.467154464749585
+            ],
+            "new_xy": [
+              0.45,
+              2.29
+            ],
+            "error_before_m": 0.30361081131087797,
+            "error_after_m": 0.359361322348413,
+            "effect_m": 0.05575051103753503,
+            "reason": "Reached mapped northeast doorway anchor after returning west along room edge."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.3772842032208609,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "gpt56sol_seed104",
+        "model": "gpt-5.6-sol",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 2.4063,
+            "d_initial_m": 1.9243,
+            "d_final_m": 2.4563,
+            "progress": 0.0,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 13.6506,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.3773,
+            "corrections": 2,
+            "correction_magnitudes_m": [
+              0.4039,
+              0.1826
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.6749,
+            "d_final_m": 0.6749,
+            "progress": 0.0,
+            "oracle_path_m": 0.6914,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 9,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 1,
+          "true_rooms_visited": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "Living room",
+              "living_room"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.0
+          ],
+          "score": 0.4
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.04235304003256442, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/opus5_seed101.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.04235304003256442,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed101",
+        "model": "claude-opus-5",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 0.0577,
+            "d_initial_m": 2.0652,
+            "d_final_m": 0.3607,
+            "progress": 0.8254,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 8.0246,
+            "spl": 0.2557,
+            "time_s": 47.72,
+            "turns_used": 23,
+            "drift_m": 0.0424,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.9298,
+            "d_final_m": 1.9298,
+            "progress": 0.0,
+            "oracle_path_m": 2.5056,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 7,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "living_room",
+              "living_room"
+            ],
+            [
+              "kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 1,
+          "edges_unresolved": 0,
+          "edge_accuracy": 1.0
+        },
+        "qa": {
+          "per_question": [
+            0.5,
+            0.5,
+            1.0,
+            0.5,
+            1.0
+          ],
+          "score": 0.7
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=1 accepted=1 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.2637468483224016, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/opus5_seed102.json",
+      "corrections": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0,
+        "error_before_sum_m": 0.0421218295823874,
+        "error_after_sum_m": 0.25574326500340244,
+        "net_added_error_m": 0.21362143542101503,
+        "ledger": [
+          {
+            "trial_id": "opus5_seed102",
+            "stage": "find_kitchen",
+            "turn_idx": 25,
+            "global_turn_idx": 25,
+            "place": "corridor_west@180",
+            "accepted": true,
+            "motion_calls_before": 1,
+            "true_xy": [
+              4.175463676452637,
+              2.8042969703674316
+            ],
+            "true_xy_source": "motion_call[0]",
+            "old_xy": [
+              4.138834515617864,
+              2.82509488141417
+            ],
+            "new_xy": [
+              4.18,
+              3.06
+            ],
+            "error_before_m": 0.0421218295823874,
+            "error_after_m": 0.25574326500340244,
+            "effect_m": 0.21362143542101503,
+            "reason": "Standing in the passage between corridor west end area and bedroom_start; recognized plant + partition edge"
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.2637468483224016,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed102",
+        "model": "claude-opus-5",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 0.9475,
+            "d_initial_m": 2.2727,
+            "d_final_m": 1.9819,
+            "progress": 0.1279,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 32.0025,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.2637,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              0.2385
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.9081,
+            "d_final_m": 0.9081,
+            "progress": 0.0,
+            "oracle_path_m": 0.9743,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 26,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 0,
+          "true_rooms_visited": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            1.0,
+            0.5,
+            1.0
+          ],
+          "score": 0.7
+        },
+        "visited_rooms": [
+          "bedroom",
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.1304788871810304, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/opus5_seed103.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.1304788871810304,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed103",
+        "model": "claude-opus-5",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.3261,
+            "d_initial_m": 3.2022,
+            "d_final_m": 2.3364,
+            "progress": 0.2704,
+            "oracle_path_m": 3.142,
+            "true_path_m": 33.1894,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 37,
+            "drift_m": 0.1305,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 3.0551,
+            "d_final_m": 3.0551,
+            "progress": 0.0,
+            "oracle_path_m": 3.1536,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 16,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            0.5,
+            0.5,
+            1.0
+          ],
+          "score": 0.6
+        },
+        "visited_rooms": [
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/opus5_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=3 accepted=3 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.15041705355444226, \"return_home\": 0.19726198315945223}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/opus5_seed104.json",
+      "corrections": {
+        "calls": 3,
+        "accepted": 3,
+        "rejected": 0,
+        "worsened": 3,
+        "improved": 0,
+        "error_before_sum_m": 0.44128270089364335,
+        "error_after_sum_m": 0.6302848363045295,
+        "net_added_error_m": 0.18900213541088612,
+        "ledger": [
+          {
+            "trial_id": "opus5_seed104",
+            "stage": "return_home",
+            "turn_idx": 3,
+            "global_turn_idx": 25,
+            "place": "kitchen@195",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.9884,
+              1.3559
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              2.0355574294813774,
+              1.2901090960074093
+            ],
+            "new_xy": [
+              2.15,
+              1.21
+            ],
+            "error_before_m": 0.08094606972208959,
+            "error_after_m": 0.2177185568572418,
+            "effect_m": 0.13677248713515222,
+            "reason": "Walked back ~1.0 m from the counter toward the kitchen/living_dining gap; estimate (2.04,1.29) matches the doorway anchor within ~0.1 m, so snapping to it to kill drift before the return leg."
+          },
+          {
+            "trial_id": "opus5_seed104",
+            "stage": "return_home",
+            "turn_idx": 6,
+            "global_turn_idx": 28,
+            "place": "living_dining@15",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.1845,
+              1.1187
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.28233617539739,
+              0.9442767879533543
+            ],
+            "new_xy": [
+              1.33,
+              0.96
+            ],
+            "error_before_m": 0.19998843495826948,
+            "error_after_m": 0.2153042962878354,
+            "effect_m": 0.015315861329565916,
+            "reason": "Passed back through the kitchen gap onto brown wood floor; estimate (1.28,0.94) is within 0.06 m of the living_dining-side doorway anchor (1.33,0.96), so pinning there."
+          },
+          {
+            "trial_id": "opus5_seed104",
+            "stage": "return_home",
+            "turn_idx": 9,
+            "global_turn_idx": 31,
+            "place": "living_dining",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.1855,
+              2.3398
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.3307551458106976,
+              2.2718847097895702
+            ],
+            "new_xy": [
+              1.37,
+              2.27
+            ],
+            "error_before_m": 0.16034819621328428,
+            "error_after_m": 0.19726198315945223,
+            "effect_m": 0.036913786946167954,
+            "reason": "Back at the start: north grey wall close, dark TV east, red sofa west, dining table south — same four-view signature I recorded at the start anchor."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.15041705355444226,
+        "return_home": 0.19726198315945223
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed104",
+        "model": "claude-opus-5",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": 0.1575,
+            "d_initial_m": 1.9243,
+            "d_final_m": 0.3025,
+            "progress": 0.8428,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 7.9939,
+            "spl": 0.2302,
+            "time_s": 44.44,
+            "turns_used": 22,
+            "drift_m": 0.1504,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 2.0215,
+            "d_final_m": 0.1973,
+            "progress": 0.9024,
+            "oracle_path_m": 2.2228,
+            "true_path_m": 4.8962,
+            "spl": 0.454,
+            "time_s": 27.7,
+            "turns_used": 9,
+            "drift_m": 0.1973,
+            "corrections": 3,
+            "correction_magnitudes_m": [
+              0.1397,
+              0.0502,
+              0.0393
+            ]
+          }
+        },
+        "bumps": 6,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.5,
+          "recall": 0.5,
+          "matches": [
+            [
+              "kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            1.0,
+            0.5,
+            0.0,
+            0.5
+          ],
+          "score": 0.4
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed101",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=1 accepted=1 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 1.5041044677814106, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/sonnet5_seed101.json",
+      "corrections": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0,
+        "error_before_sum_m": 0.02418599534987987,
+        "error_after_sum_m": 1.5036962093454913,
+        "net_added_error_m": 1.4795102139956113,
+        "ledger": [
+          {
+            "trial_id": "sonnet5_seed101",
+            "stage": "find_kitchen",
+            "turn_idx": 21,
+            "global_turn_idx": 21,
+            "place": "RedRoom@0",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.8145,
+              1.2302
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.7914010501664603,
+              1.223030558762914
+            ],
+            "new_xy": [
+              0.5,
+              0.5
+            ],
+            "error_before_m": 0.02418599534987987,
+            "error_after_m": 1.5036962093454913,
+            "effect_m": 1.4795102139956113,
+            "reason": "Just passed through the doorway marked RedRoom exit at 0 deg into Kitchen"
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 1.5041044677814106,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed101",
+        "model": "claude-sonnet-5",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.0942,
+            "d_initial_m": 2.0652,
+            "d_final_m": 0.9476,
+            "progress": 0.5412,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 7.2872,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 39,
+            "drift_m": 1.5041,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              1.48
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.519,
+            "d_final_m": 1.519,
+            "progress": 0.0,
+            "oracle_path_m": 1.5607,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 8,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.5,
+          "recall": 0.5,
+          "matches": [
+            [
+              "Kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            1.0,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "score": 0.5
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed102",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.06110523709143105, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/sonnet5_seed102.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.06110523709143105,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed102",
+        "model": "claude-sonnet-5",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.0007,
+            "d_initial_m": 2.2727,
+            "d_final_m": 2.0649,
+            "progress": 0.0914,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 7.1914,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0611,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.7935,
+            "d_final_m": 0.7935,
+            "progress": 0.0,
+            "oracle_path_m": 0.8243,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 7,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            0.0,
+            0.5,
+            0.0
+          ],
+          "score": 0.3
+        },
+        "visited_rooms": [
+          "bedroom"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed103",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=2 accepted=2 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.06037549171642402, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/sonnet5_seed103.json",
+      "corrections": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 2,
+        "improved": 0,
+        "error_before_sum_m": 0.17157394661519806,
+        "error_after_sum_m": 0.22731810191749888,
+        "net_added_error_m": 0.05574415530230081,
+        "ledger": [
+          {
+            "trial_id": "sonnet5_seed103",
+            "stage": "find_kitchen",
+            "turn_idx": 12,
+            "global_turn_idx": 12,
+            "place": "Alcove1@270",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              4.1052,
+              2.8462
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              4.257357825550114,
+              2.83660770015762
+            ],
+            "new_xy": [
+              4.26,
+              2.84
+            ],
+            "error_before_m": 0.15245988355106782,
+            "error_after_m": 0.15492411045411864,
+            "effect_m": 0.0024642269030508146,
+            "reason": "Re-anchoring at known doorway before backtracking to Hallway1"
+          },
+          {
+            "trial_id": "sonnet5_seed103",
+            "stage": "find_kitchen",
+            "turn_idx": 30,
+            "global_turn_idx": 30,
+            "place": "Hallway1",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              0.406,
+              3.0817
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              0.3924143164164341,
+              3.0951453191998843
+            ],
+            "new_xy": [
+              0.43,
+              3.15
+            ],
+            "error_before_m": 0.019114063064130254,
+            "error_after_m": 0.07239399146338024,
+            "effect_m": 0.053279928399249984,
+            "reason": "Returned to Hallway1 anchor area after Alcove1 dead-end"
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.06037549171642402,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed103",
+        "model": "claude-sonnet-5",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 2.7577,
+            "d_initial_m": 3.2022,
+            "d_final_m": 2.9246,
+            "progress": 0.0867,
+            "oracle_path_m": 3.142,
+            "true_path_m": 19.1165,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0604,
+            "corrections": 2,
+            "correction_magnitudes_m": [
+              0.0043,
+              0.0665
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.2966,
+            "d_final_m": 0.2966,
+            "progress": 0.0,
+            "oracle_path_m": 0.2914,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 9,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 1,
+          "edges_correct": 0,
+          "edges_unresolved": 1,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.0,
+            0.5,
+            1.0
+          ],
+          "score": 0.3
+        },
+        "visited_rooms": [
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed104",
+      "status": "INCOMPLETE",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "INCOMPLETE",
+          "detail": "legacy/unknown schema 'duck-embody-freeze-v1'"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "INCOMPLETE",
+          "detail": "trial predates write-once batch manifests"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "INCOMPLETE",
+          "detail": "no request journal"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r2/sonnet5_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=4 accepted=4 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.6783719923463822, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "INCOMPLETE",
+          "detail": "missing on turns [0, 1, 2, 3, 4]"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "INCOMPLETE",
+          "detail": "legacy/missing fields at [0, 0, 1, 1, 2]"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r2/sonnet5_seed104.json",
+      "corrections": {
+        "calls": 4,
+        "accepted": 4,
+        "rejected": 0,
+        "worsened": 3,
+        "improved": 1,
+        "error_before_sum_m": 1.281622024295415,
+        "error_after_sum_m": 1.9288293383429822,
+        "net_added_error_m": 0.6472073140475672,
+        "ledger": [
+          {
+            "trial_id": "sonnet5_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 15,
+            "global_turn_idx": 15,
+            "place": "LivingRoomRed",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.4182,
+              2.2358
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.4160843001018477,
+              2.2366034913672364
+            ],
+            "new_xy": [
+              1.37,
+              2.27
+            ],
+            "error_before_m": 0.002263135973878916,
+            "error_after_m": 0.05910059221361488,
+            "effect_m": 0.05683745623973597,
+            "reason": "Returned near spawn anchor point after dead-end exploration at 135deg"
+          },
+          {
+            "trial_id": "sonnet5_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 20,
+            "global_turn_idx": 20,
+            "place": "LivingRoomRed@270",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.4538,
+              1.1758
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.4049638693731572,
+              1.1230071475768078
+            ],
+            "new_xy": [
+              1.37,
+              2.27
+            ],
+            "error_before_m": 0.0719169863215847,
+            "error_after_m": 1.0974042463923674,
+            "effect_m": 1.0254872600707827,
+            "reason": "Just passed through the doorway at 270 from LivingRoomRed into DiningArea"
+          },
+          {
+            "trial_id": "sonnet5_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 21,
+            "global_turn_idx": 21,
+            "place": "DiningArea",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.4538,
+              1.1758
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.37,
+              2.27
+            ],
+            "new_xy": [
+              1.4,
+              1.12
+            ],
+            "error_before_m": 1.0974042463923674,
+            "error_after_m": 0.07751180555244466,
+            "effect_m": -1.0198924408399228,
+            "reason": "Correcting mistaken anchor - I am physically in DiningArea, not LivingRoomRed. Snapping back to DiningArea anchor."
+          },
+          {
+            "trial_id": "sonnet5_seed104",
+            "stage": "find_kitchen",
+            "turn_idx": 29,
+            "global_turn_idx": 29,
+            "place": "DiningArea@270",
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              2.3342,
+              0.4052
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              2.3535014037894557,
+              0.2968683727465997
+            ],
+            "new_xy": [
+              2.33,
+              1.1
+            ],
+            "error_before_m": 0.11003765560758405,
+            "error_after_m": 0.6948126941845552,
+            "effect_m": 0.5847750385769711,
+            "reason": "Passed through doorway from DiningArea into Kitchen at heading 270"
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.6783719923463822,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed104",
+        "model": "claude-sonnet-5",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 0.0604,
+            "d_initial_m": 1.9243,
+            "d_final_m": 0.5871,
+            "progress": 0.6949,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 9.7954,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.6784,
+            "corrections": 4,
+            "correction_magnitudes_m": [
+              0.0569,
+              1.1475,
+              1.1504,
+              0.8035
+            ]
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 2.4912,
+            "d_final_m": 2.4912,
+            "progress": 0.0,
+            "oracle_path_m": 2.8056,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 4,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 3,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.3333,
+          "recall": 0.5,
+          "matches": [
+            [
+              "Kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 2,
+          "edges_correct": 0,
+          "edges_unresolved": 2,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.5,
+            0.5,
+            0.5,
+            0.0
+          ],
+          "score": 0.3
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    }
+  ]
+}

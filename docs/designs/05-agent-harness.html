@@ -1038,6 +1038,15 @@ billing. Raw provider usage objects are archived in response metadata so future
 fields remain recoverable without prompt or reasoning content.</li>
 </ul>
 
+<div class="note"><strong>TR.8 audit contract (2026-08-02).</strong> New-batch
+audits require every turn (and QA) to reconstruct from the request journal,
+every outgoing image file to match its recorded SHA, every response to identify
+the provider-resolved model, and every usage record to contain normalized
+total/uncached/read/write/output buckets plus pricing provenance. Missing legacy
+fields are INCOMPLETE, not PASS. The published v4 roster remains
+Fable/Opus/GPT; the separate v5d_r2 remediation roster is Sonnet/Opus/GPT and is
+not pooled with it.</div>
+
 <div class="warning"><strong>"temperature 0" cannot be sent to the Anthropic models.</strong> The locked models
 <code>claude-fable-5</code> and <code>claude-opus-5</code> reject <code>temperature</code> /
 <code>top_p</code> / <code>top_k</code> with HTTP 400 (sampling parameters were removed on Opus 4.7+ and

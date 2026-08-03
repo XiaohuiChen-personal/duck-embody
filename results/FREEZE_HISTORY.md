@@ -8,6 +8,7 @@ published and a batch whose manifest is gone cannot be verified.
 |---|---|---|---|
 | `freeze_v4_baseline.json` | `cf29ec164676…` | v4_robust (`policy/model_2999.pt`) | `results/raw/` — the 2026-07-27 batch, 10 falls in 12 trials |
 | `freeze.json` | `6a65f33582eb…` | v5d_contact_wrench (`--checkpoint`, sha `301e24e336b2eab0`) | `results/raw_v5d/` |
+| `freeze.json` (rewritten by the 2026-07-30 legacy freeze workflow; current bytes) | `0e9017a84c06…` | v5d_contact_wrench | `results/raw_v5d_r2/` — legacy, no write-once manifest SHA |
 
 The v5d hash differs because two frozen files changed: `configs/benchmark.yaml`
 (locomotion constants re-measured for v5d) and `duck_embody/sim/policy_wrapper.py`
@@ -48,3 +49,12 @@ verification, runtime/SDK versions, criterion, model configs, ordered slots,
 and invocation environment-variable names. Benchmark launch refuses all drift
 before Kit; explicit smoke output can downgrade provenance checks only outside
 the benchmark result directories and is marked `config.smoke=true`.
+
+## 2026-08-02 — audit disposition
+
+TR.8 does not silently promote legacy freeze files into write-once manifests.
+The current `freeze.json` can verify the v5d_r2 config hash and matrix, but it
+has no self-SHA and those trials have no `batch_manifest_sha256`; both mandatory
+checks are therefore `INCOMPLETE`. The first publication-eligible row under the
+new contract will be `results/manifests/<batch_id>.json` created by T9. Until
+then there is deliberately no fabricated “current manifest” row to cite.

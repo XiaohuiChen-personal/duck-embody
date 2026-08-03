@@ -59,15 +59,23 @@ bash scripts/run_tests.sh tests/ -q
 ~/IsaacLab/isaaclab.sh -p -m duck_embody.runner --freeze
 ```
 
-**2. Verify the freeze against what ran** — `audit_trial.py` FAILs any trial
-whose `config.config_hash` differs from `results/freeze.json` (this, over all
-12 files, was the batch acceptance check — 12/12 AUDIT PASS):
+**2. Verify the freeze against what ran (historical v4 command).** The 2026-07-27
+batch used the then-current config-hash audit and recorded 12/12 AUDIT PASS.
+TR.8 (2026-08-02) superseded that command with an evidence-complete three-state
+audit; this dated note preserves what “PASS” meant at the time rather than
+silently upgrading the historical claim:
 
 ```bash
-for f in results/raw/*.json; do
-  ~/IsaacLab/_isaac_sim/python.sh scripts/audit_trial.py "$f"
-done
+~/IsaacLab/_isaac_sim/python.sh scripts/audit_batch.py \
+  --batch-dir results/raw_NEW \
+  --manifest results/manifests/BATCH_ID.json \
+  --audit-dir results/audits_NEW \
+  --out results/audits_NEW/machine_audit.json --write-sheets
 ```
+
+The command exits successfully only when every machine check and every
+structured visual verdict passes. A missing manifest/request journal/frame hash,
+provider-usage field, resolved model, or visual field is `INCOMPLETE`, not PASS.
 
 **3. Run the batch** (dry-run first; the runner is resumable and skips trials
 already complete under the matching hash):
@@ -153,6 +161,18 @@ criterion* were independently recomputed from `results/raw/*.json`
 Rule-11 resolution (video overrides metric) was never needed. Verbatim audit
 outputs, including the one batch-headline wording correction they forced:
 [`results/audit_notes.md`](../results/audit_notes.md).
+
+### v5d_r2 audit disposition (added 2026-08-02)
+
+`results/raw_v5d_r2/` is immutable historical evidence and predates request
+journals and write-once batch manifests. It therefore cannot pass the TR.8
+machine gate retroactively. Its generated report is PROVISIONAL; the visual
+publication gate is 0/12 under the new structured verdict schema (two files have
+older free-form narrative reviews, ten still say pending). The canonical
+forensics parser finds 16 correction calls: 15 accepted and 1 rejected; 14/15
+accepted calls worsened localization. `opus5_seed101` is the sole published-v2
+success that was not offered `return_home`, because the live run used the older
+point-disc gate.
 
 Those 5 figures were **regenerated after criterion v2 was adopted** (the
 spot-checked pre-v2 versions live in git history), so the original spot-check

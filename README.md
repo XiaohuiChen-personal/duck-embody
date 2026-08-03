@@ -73,6 +73,18 @@ from the frozen trial logs by [`scripts/build_scores.py`](scripts/build_scores.p
 and lives in [`results/scores.json`](results/scores.json) /
 [`results/summary_table.md`](results/summary_table.md).
 
+### Later v5d_r2 remediation batch (provisional)
+
+The 2026-07-30 `sonnet5` / `opus5` / `gpt56sol` v5d_r2 run is a separate,
+non-comparable batch. Its generated table is explicitly
+[`PROVISIONAL`](results/summary_table_raw_v5d_r2.md): the run predates the
+write-once manifest and request-journal contracts added on 2026-08-02, and only
+2/12 legacy visual notes contain narrative review while none use the structured
+TR.8 verdict schema. Missing evidence is `INCOMPLETE`, never PASS. In
+particular, `opus5_seed101` meets the later published v2 counter-face criterion
+but was not offered `return_home` because its live gate used the older point
+disc. The immutable `results/raw_v5d_r2/*.json` files were not rewritten.
+
 **Headline: 1/12 `find_kitchen` successes (criterion v2); 0/12 pre-registered.**
 Ten trials ended in a fall; the two that did not ended with `declare_done`:
 GPT 5.6 sol (seed 103) five centimetres from a real counter face — the single

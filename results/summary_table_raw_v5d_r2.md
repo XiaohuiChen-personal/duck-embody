@@ -1,8 +1,13 @@
-# Duck Embody — 12-trial benchmark results
+# Duck Embody — 12-trial benchmark results (PROVISIONAL)
 
 Batch: 3 models x 4 seeds (101-104), config_hash `0e9017a84c06`, freeze commit `84af3f8089a8`, last trial turn at 2026-07-30T11:27:07Z (read from the trial logs).
+Manifest: `results/freeze.json` (legacy_no_write_once_sha); manifest SHA `unavailable`, checkpoint SHA `unavailable`, parent commit `unavailable`.
 
 **Headline:** generated from `raw_v5d_r2` — 3 models x 4 seeds. The interpretive narrative in the default report describes the 2026-07-27 batch only and is omitted here; read the tables below plus the per-trial audits.
+
+**Publication status: PROVISIONAL.** This historical batch predates write-once batch manifests and request journals, and its visual publication gate is not complete. Missing evidence is classified `INCOMPLETE`, never PASS.
+
+`opus5_seed101` satisfies the later published v2 counter-face criterion but was not offered `return_home`: the live gate used the point-disc verdict recorded during the run.
 
 ## Per-model aggregate (N=4 trials each)
 
@@ -20,7 +25,7 @@ Batch: 3 models x 4 seeds (101-104), config_hash `0e9017a84c06`, freeze commit `
 | bumps / trial | 7.00 [5.00, 8.50] | 13.75 [6.50, 21.25] | 10.75 [6.50, 15.00] |
 | falls / trial | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] | 0.00 [0.00, 0.00] |
 | dead-reckoning drift (m, stage 1) | 0.576 [0.061, 1.143] | 0.147 [0.069, 0.230] | 0.337 [0.102, 0.611] |
-| position corrections (stage 1) | 1.75 [0.50, 3.25] | 0.25 [0.00, 0.75] | 1.00 [0.25, 1.75] |
+| accepted position corrections (stage 1) | 1.75 [0.50, 3.25] | 0.25 [0.00, 0.75] | 1.00 [0.25, 1.75] |
 | map precision | 0.208 [0.000, 0.417] | 0.375 [0.000, 0.750] | 0.625 [0.250, 1.000] |
 | map recall | 0.250 [0.000, 0.500] | 0.375 [0.000, 0.750] | 0.500 [0.125, 0.875] |
 | edge accuracy | 0.000 [0.000, 0.000] (n=3/4) | 0.333 [0.000, 1.000] (n=3/4) | 0.000 [0.000, 0.000] (n=3/4) |
@@ -37,31 +42,31 @@ Notes: definitions per doc 06 §§5.3-5.4 (SPL is 0.0 on failure; time-to-kitche
 
 ### sonnet5
 
-| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |
+| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. A/R | Map P | Map R | Edge acc | QA | Cost ($) | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| sonnet5_seed101 | declared_elsewhere | 0.541 | 0.000 | 7.29 | 39 | 8 | 0 | 1.504 | 1 | 0.50 | 0.50 | 0.00 | 0.50 | 1.204 | [sonnet5_seed101.mp4](videos/sonnet5_seed101.mp4) |
-| sonnet5_seed102 | declared_elsewhere | 0.091 | 0.000 | 7.19 | 40 | 7 | 0 | 0.061 | 0 | 0.00 | 0.00 | — | 0.30 | 1.365 | [sonnet5_seed102.mp4](videos/sonnet5_seed102.mp4) |
-| sonnet5_seed103 | declared_elsewhere | 0.087 | 0.000 | 19.12 | 40 | 9 | 0 | 0.060 | 2 | 0.00 | 0.00 | 0.00 | 0.30 | 1.551 | [sonnet5_seed103.mp4](videos/sonnet5_seed103.mp4) |
-| sonnet5_seed104 | timeout_turns | 0.695 | 0.000 | 9.80 | 40 | 4 | 0 | 0.678 | 4 | 0.33 | 0.50 | 0.00 | 0.30 | 1.163 | [sonnet5_seed104.mp4](videos/sonnet5_seed104.mp4) |
+| sonnet5_seed101 | declared_elsewhere | 0.541 | 0.000 | 7.29 | 39 | 8 | 0 | 1.504 | 1/0 | 0.50 | 0.50 | 0.00 | 0.50 | 1.204 | [sonnet5_seed101.mp4](videos_v5d_r2/sonnet5_seed101.mp4) |
+| sonnet5_seed102 | declared_elsewhere | 0.091 | 0.000 | 7.19 | 40 | 7 | 0 | 0.061 | 0/0 | 0.00 | 0.00 | — | 0.30 | 1.365 | [sonnet5_seed102.mp4](videos_v5d_r2/sonnet5_seed102.mp4) |
+| sonnet5_seed103 | declared_elsewhere | 0.087 | 0.000 | 19.12 | 40 | 9 | 0 | 0.060 | 2/0 | 0.00 | 0.00 | 0.00 | 0.30 | 1.551 | [sonnet5_seed103.mp4](videos_v5d_r2/sonnet5_seed103.mp4) |
+| sonnet5_seed104 | timeout_turns | 0.695 | 0.000 | 9.80 | 40 | 4 | 0 | 0.678 | 4/0 | 0.33 | 0.50 | 0.00 | 0.30 | 1.163 | [sonnet5_seed104.mp4](videos_v5d_r2/sonnet5_seed104.mp4) |
 
 ### opus5
 
-| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |
+| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. A/R | Map P | Map R | Edge acc | QA | Cost ($) | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| opus5_seed101 | success | 0.825 | 0.256 | 8.02 | 23 | 7 | 0 | 0.042 | 0 | 1.00 | 1.00 | 1.00 | 0.70 | 1.245 | [opus5_seed101.mp4](videos/opus5_seed101.mp4) |
-| opus5_seed102 | declared_elsewhere | 0.128 | 0.000 | 32.00 | 40 | 26 | 0 | 0.264 | 1 | 0.00 | 0.00 | 0.00 | 0.70 | 4.357 | [opus5_seed102.mp4](videos/opus5_seed102.mp4) |
-| opus5_seed103 | declared_elsewhere | 0.270 | 0.000 | 33.19 | 37 | 16 | 0 | 0.131 | 0 | 0.00 | 0.00 | — | 0.60 | 3.718 | [opus5_seed103.mp4](videos/opus5_seed103.mp4) |
-| opus5_seed104 | success | 0.843 | 0.230 | 7.99 | 22 | 6 | 0 | 0.150 | 0 | 0.50 | 0.50 | 0.00 | 0.40 | 2.330 | [opus5_seed104.mp4](videos/opus5_seed104.mp4) |
+| opus5_seed101 | success | 0.825 | 0.256 | 8.02 | 23 | 7 | 0 | 0.042 | 0/0 | 1.00 | 1.00 | 1.00 | 0.70 | 1.245 | [opus5_seed101.mp4](videos_v5d_r2/opus5_seed101.mp4) |
+| opus5_seed102 | declared_elsewhere | 0.128 | 0.000 | 32.00 | 40 | 26 | 0 | 0.264 | 1/0 | 0.00 | 0.00 | 0.00 | 0.70 | 4.357 | [opus5_seed102.mp4](videos_v5d_r2/opus5_seed102.mp4) |
+| opus5_seed103 | declared_elsewhere | 0.270 | 0.000 | 33.19 | 37 | 16 | 0 | 0.131 | 0/0 | 0.00 | 0.00 | — | 0.60 | 3.718 | [opus5_seed103.mp4](videos_v5d_r2/opus5_seed103.mp4) |
+| opus5_seed104 | success | 0.843 | 0.230 | 7.99 | 22 | 6 | 0 | 0.150 | 3/0 | 0.50 | 0.50 | 0.00 | 0.40 | 2.330 | [opus5_seed104.mp4](videos_v5d_r2/opus5_seed104.mp4) |
 
 ### gpt56sol
 
-| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |
+| Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. A/R | Map P | Map R | Edge acc | QA | Cost ($) | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| gpt56sol_seed101 | declared_elsewhere | 0.609 | 0.000 | 4.90 | 24 | 4 | 0 | 0.766 | 1 | 0.50 | 0.50 | 0.00 | 0.50 | 0.576 | [gpt56sol_seed101.mp4](videos/gpt56sol_seed101.mp4) |
-| gpt56sol_seed102 | declared_elsewhere | 0.000 | 0.000 | 16.05 | 40 | 16 | 0 | 0.057 | 0 | 1.00 | 0.50 | — | 0.20 | 0.877 | [gpt56sol_seed102.mp4](videos/gpt56sol_seed102.mp4) |
-| gpt56sol_seed103 | declared_elsewhere | 0.274 | 0.000 | 10.40 | 40 | 14 | 0 | 0.148 | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 1.086 | [gpt56sol_seed103.mp4](videos/gpt56sol_seed103.mp4) |
-| gpt56sol_seed104 | timeout_turns | 0.000 | 0.000 | 13.65 | 40 | 9 | 0 | 0.377 | 2 | 1.00 | 1.00 | 0.00 | 0.40 | 0.941 | [gpt56sol_seed104.mp4](videos/gpt56sol_seed104.mp4) |
+| gpt56sol_seed101 | declared_elsewhere | 0.609 | 0.000 | 4.90 | 24 | 4 | 0 | 0.766 | 1/0 | 0.50 | 0.50 | 0.00 | 0.50 | 0.576 | [gpt56sol_seed101.mp4](videos_v5d_r2/gpt56sol_seed101.mp4) |
+| gpt56sol_seed102 | declared_elsewhere | 0.000 | 0.000 | 16.05 | 40 | 16 | 0 | 0.057 | 0/0 | 1.00 | 0.50 | — | 0.20 | 0.877 | [gpt56sol_seed102.mp4](videos_v5d_r2/gpt56sol_seed102.mp4) |
+| gpt56sol_seed103 | declared_elsewhere | 0.274 | 0.000 | 10.40 | 40 | 14 | 0 | 0.148 | 1/1 | 0.00 | 0.00 | 0.00 | 0.00 | 1.086 | [gpt56sol_seed103.mp4](videos_v5d_r2/gpt56sol_seed103.mp4) |
+| gpt56sol_seed104 | timeout_turns | 0.000 | 0.000 | 13.65 | 40 | 9 | 0 | 0.377 | 2/0 | 1.00 | 1.00 | 0.00 | 0.40 | 0.941 | [gpt56sol_seed104.mp4](videos_v5d_r2/gpt56sol_seed104.mp4) |
 
-Per-question QA scores, matched room names, visited rooms, token counts and the return_home rows are in `results/scores.json`; raw evidence is `results/raw/<trial>.json` and `results/videos/<trial>.mp4`.
+Per-question QA scores, matched room names, visited rooms, token counts and the return_home rows are in `scores_raw_v5d_r2.json`; raw evidence is under `raw_v5d_r2/` and each video link above is derived from its trial JSON.
 
 Generated by `scripts/build_scores.py` from `results/raw_v5d_r2/*.json` via `duck_embody.scoring` (no frozen file touched).

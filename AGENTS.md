@@ -351,6 +351,16 @@ Agent harness (found in T3.4's review pass, 2026-07-26):
   §9.1), so any post-episode step that can raise — ffmpeg above all — must run
   *after* `log.finish(final)` and inside its own guard. `session.close()` belongs
   in a `finally`: a surviving kit process holds the machine's only GPU.
+- **Audit PASS is evidence-complete, not best-effort** (TR.8, 2026-08-02).
+  `scripts/audit_batch.py` requires an explicit batch directory and manifest;
+  checks JSON/QA, manifest self-SHA and trial binding, every reconstructed
+  request and hashed frame, video/filmstrip, infra status, scorer replay,
+  finite values, accepted/rejected corrections through `forensics.py`, drift,
+  resolved model, and normalized provider usage. A check that cannot run is
+  `INCOMPLETE`, never PASS. Publication additionally requires a structured
+  visual verdict for every matrix cell with zero pending fields. Historical
+  `v5d_r2` predates request journals/write-once manifests and remains
+  PROVISIONAL; its raw JSON is unchanged.
 
 Kit process / tooling (verified 2026-07-26 during PLAN T0.0):
 - **`SimulationApp.close()` terminates the process.** Statements after it never
@@ -480,6 +490,11 @@ results/         raw JSON · figures · videos (committed)
       12 trials re-scored together, both verdicts published per trial,
       change log + rationale in `results/rerun_log.md`, criterion definition
       in `docs/METRICS.md` §2.1 — **project complete**.
+- [x] TR.8 audit/report hardening (2026-08-02): strict three-state machine
+      audits, event-indexed visual worksheets and publication gate, data-driven
+      report links, corrected correction counts, and an honest PROVISIONAL
+      disposition for legacy `v5d_r2`. This does not revise the completed v4
+      benchmark; it records remediation work for the next freeze.
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.

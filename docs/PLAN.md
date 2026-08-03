@@ -2077,10 +2077,46 @@ cache key, output, credential, or secret. Historical report regenerated with
 ~/IsaacLab/_isaac_sim/python.sh scripts/build_scores.py`; see
 `results/summary_table_raw_v5d_r2.md`.
 
-### TR.8–TR.9 `[ ]` Remaining remediation tasks
+### TR.8 `[x]` Audit/report generation + documentation (F-08)
 
-Definitions remain in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T8
-audit/reporting, T9 canary/mini-batch/full batch).
+**Adversarial plan review (2026-08-02, rule 10.1).** The T8 definition was
+checked against the landed T0–T7 code and immutable artifacts before changing
+the audit. Three assumptions needed explicit disposition: (1) `v5d_r2` cannot
+acquire a write-once manifest SHA or request journal after the fact, so the
+correct verdict is `INCOMPLETE`, not a synthetic PASS; (2) the requested 12/12
+visual gate is a gate on publication, not permission to invent ten missing
+reviews — legacy v5d_r2 remains PROVISIONAL; (3) scorer replay must preserve the
+dual historical/live criterion, so it validates the stored as-run point-disc
+flag through `stage_success_preregistered` while publishing v2 separately.
+
+Implemented `duck_embody/audit.py`, hardened `scripts/audit_trial.py`, added
+`scripts/audit_batch.py`, and retired the schema-guessing `auto_audit.sh`.
+Machine audits now have PASS/FAIL/INCOMPLETE states and require all F-08 checks;
+event-indexed worksheets cover spawn, doorway assertions, contacts,
+corrections, kitchen/declaration, and final frames, with a structured
+publication verdict. `build_scores.py` derives links from actual artifact paths,
+labels v5d_r2 PROVISIONAL, states the Opus101 return-home exclusion, and renders
+accepted/rejected correction counts from the shared forensic parser. Historical
+raw JSON was not modified.
+
+Documentation was reconciled with dated amendments in AGENTS §8, README,
+EXPERIMENTS, METRICS, FREEZE_HISTORY, and design docs 05/06; the published v4
+story remains separate from v5d_r2. Unit coverage:
+`tests/test_audit_reporting.py`.
+
+**Evidence:** `TERM=xterm bash scripts/run_tests.sh tests/ -q` → **1894 passed,
+3 skipped**. Historical replay:
+`python3 scripts/audit_batch.py --batch-dir results/raw_v5d_r2 --manifest
+results/freeze.json --audit-dir results/audits_v5d_r2 --out
+results/audits_v5d_r2/machine_audit_tr8.json` → **INCOMPLETE, 12 trials, 0/12
+structured visual verdicts, zero machine FAIL checks**, as required for missing
+legacy evidence. Regenerated artifacts:
+`results/{scores_raw_v5d_r2.json,summary_table_raw_v5d_r2.md}`.
+
+### TR.9 `[ ]` Validation ladder and new benchmark
+
+Definition remains in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T9
+canary/mini-batch/full batch).
 
 ---
 

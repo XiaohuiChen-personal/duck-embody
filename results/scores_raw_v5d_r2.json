@@ -2,13 +2,27 @@
   "schema": "duck-embody-scores-v2",
   "scoring_criterion": {
     "name": "v2_any_counter",
-    "changed_post_batch": true,
+    "changed_post_batch": false,
     "rerun_log": "results/rerun_log.md",
     "preregistered_find_kitchen_successes": 1,
     "v2_find_kitchen_successes": 2
   },
   "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
   "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+  "source_raw_dir": "results/raw_v5d_r2",
+  "model_roster": [
+    "sonnet5",
+    "opus5",
+    "gpt56sol"
+  ],
+  "batch_manifest": {
+    "path": null,
+    "schema": null,
+    "manifest_sha256": null,
+    "checkpoint_sha256": null,
+    "parent_commit": null,
+    "status": "not_supplied"
+  },
   "batch_last_turn_timestamp": "2026-07-30T11:27:07Z",
   "bootstrap": {
     "resamples": 10000,
@@ -118,7 +132,14 @@
       },
       "total_turns": 39,
       "last_turn_timestamp": "2026-07-30T08:55:22Z",
-      "video": "results/videos_v5d_r2/sonnet5_seed101.mp4"
+      "video": "results/videos_v5d_r2/sonnet5_seed101.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0
+      }
     },
     {
       "trial_id": "sonnet5_seed102",
@@ -205,7 +226,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T09:05:50Z",
-      "video": "results/videos_v5d_r2/sonnet5_seed102.mp4"
+      "video": "results/videos_v5d_r2/sonnet5_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
     },
     {
       "trial_id": "sonnet5_seed103",
@@ -295,7 +323,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T09:20:22Z",
-      "video": "results/videos_v5d_r2/sonnet5_seed103.mp4"
+      "video": "results/videos_v5d_r2/sonnet5_seed103.mp4",
+      "correction_calls": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 2,
+        "improved": 0
+      }
     },
     {
       "trial_id": "sonnet5_seed104",
@@ -393,7 +428,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T09:29:40Z",
-      "video": "results/videos_v5d_r2/sonnet5_seed104.mp4"
+      "video": "results/videos_v5d_r2/sonnet5_seed104.mp4",
+      "correction_calls": {
+        "calls": 4,
+        "accepted": 4,
+        "rejected": 0,
+        "worsened": 3,
+        "improved": 1
+      }
     },
     {
       "trial_id": "opus5_seed101",
@@ -490,7 +532,14 @@
       },
       "total_turns": 23,
       "last_turn_timestamp": "2026-07-30T09:39:09Z",
-      "video": "results/videos_v5d_r2/opus5_seed101.mp4"
+      "video": "results/videos_v5d_r2/opus5_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
     },
     {
       "trial_id": "opus5_seed102",
@@ -580,7 +629,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T10:07:51Z",
-      "video": "results/videos_v5d_r2/opus5_seed102.mp4"
+      "video": "results/videos_v5d_r2/opus5_seed102.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0
+      }
     },
     {
       "trial_id": "opus5_seed103",
@@ -667,7 +723,14 @@
       },
       "total_turns": 37,
       "last_turn_timestamp": "2026-07-30T10:35:55Z",
-      "video": "results/videos_v5d_r2/opus5_seed103.mp4"
+      "video": "results/videos_v5d_r2/opus5_seed103.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
     },
     {
       "trial_id": "opus5_seed104",
@@ -764,7 +827,14 @@
       },
       "total_turns": 31,
       "last_turn_timestamp": "2026-07-30T10:48:46Z",
-      "video": "results/videos_v5d_r2/opus5_seed104.mp4"
+      "video": "results/videos_v5d_r2/opus5_seed104.mp4",
+      "correction_calls": {
+        "calls": 3,
+        "accepted": 3,
+        "rejected": 0,
+        "worsened": 3,
+        "improved": 0
+      }
     },
     {
       "trial_id": "gpt56sol_seed101",
@@ -859,7 +929,14 @@
       },
       "total_turns": 24,
       "last_turn_timestamp": "2026-07-30T10:53:26Z",
-      "video": "results/videos_v5d_r2/gpt56sol_seed101.mp4"
+      "video": "results/videos_v5d_r2/gpt56sol_seed101.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0
+      }
     },
     {
       "trial_id": "gpt56sol_seed102",
@@ -952,7 +1029,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T11:06:38Z",
-      "video": "results/videos_v5d_r2/gpt56sol_seed102.mp4"
+      "video": "results/videos_v5d_r2/gpt56sol_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
     },
     {
       "trial_id": "gpt56sol_seed103",
@@ -1042,7 +1126,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T11:16:46Z",
-      "video": "results/videos_v5d_r2/gpt56sol_seed103.mp4"
+      "video": "results/videos_v5d_r2/gpt56sol_seed103.mp4",
+      "correction_calls": {
+        "calls": 2,
+        "accepted": 1,
+        "rejected": 1,
+        "worsened": 1,
+        "improved": 0
+      }
     },
     {
       "trial_id": "gpt56sol_seed104",
@@ -1137,7 +1228,14 @@
       },
       "total_turns": 40,
       "last_turn_timestamp": "2026-07-30T11:27:07Z",
-      "video": "results/videos_v5d_r2/gpt56sol_seed104.mp4"
+      "video": "results/videos_v5d_r2/gpt56sol_seed104.mp4",
+      "correction_calls": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 2,
+        "improved": 0
+      }
     }
   ],
   "per_model": {

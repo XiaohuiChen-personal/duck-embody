@@ -69,6 +69,12 @@ OpenAI model adds one cross-lab data point.
 <span class="src">source: AGENTS.md §2 "Models" (locked 2026-07-26);
 https://www.anthropic.com/research/claude-plays-robotics</span></p>
 
+<div class="note"><strong>Roster history (2026-07-30; recorded, not rewritten).</strong>
+The paragraph above describes the published v4 batch. The later, separate
+<code>v5d_r2</code> remediation batch replaced Fable&nbsp;5 with
+Sonnet&nbsp;5; it is not pooled with v4 and remains provisional under the TR.8
+audit gate.</div>
+
 <div class="decision"><strong>Locked:</strong> this is a <em>feasibility case study of
 one maximum-scaffold memory configuration</em> — the LLM-authored map, dead-reckoned
 position, and loop-closure tools are all ON for every model. It is <strong>not an
@@ -886,6 +892,15 @@ those provenance defects as warnings only when both output trees are outside all
 benchmark directories; its trial JSON is then marked <code>config.smoke=true</code>.
 The older <code>freeze.json</code> schemas remain readable historical artifacts and
 are never upgraded in place.</li>
+<li><strong>Evidence-complete post-batch audit (TR.8, 2026-08-02).</strong>
+<code>scripts/audit_batch.py</code> takes the batch directory and manifest
+explicitly and reports PASS, FAIL, or INCOMPLETE for complete JSON/QA, manifest
+binding, every reconstructed request and hashed frame, video/filmstrip, infra
+status, scorer replay, finite values, correction and drift parsing, resolved
+model, and normalized provider usage. “Check not run” is INCOMPLETE. Publication
+also requires one structured visual worksheet per ordered trial, covering spawn,
+doorways, sustained contacts, corrections, kitchen/declaration, and final
+frames, with every verdict field written and zero pending placeholders.</li>
 <li><strong><code>results/freeze.json</code> (written by <code>runner.py --freeze</code>
 at the freeze commit; schema pinned by T4.2):</strong>
 <pre><code>{
