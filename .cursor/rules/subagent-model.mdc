@@ -1,0 +1,31 @@
+---
+description: Prefer Grok for Task subagents; escalate only when too complex
+alwaysApply: true
+---
+
+# Subagent model preference (Cursor orchestration only)
+
+Owner standing preference: **Grok unless the task is too complex.**
+
+## Default
+
+When spawning Task subagents:
+
+- Pass `model: "cursor-grok-4.5-high"`, **or** omit `model` so a Grok parent is inherited.
+- Prefer the **explicit** slug when the parent might not be Grok.
+- Do **not** default to `composer-2.5-fast`, Composer, GPT, or Claude for status checks, explore, or routine subtasks.
+
+## Escalate off Grok only when
+
+Escalate only if **one** of these holds (do not escalate casually):
+
+1. Multi-wave orchestration with **4+ dependent workstreams** and heavy adversarial review, **or**
+2. Grok already **failed twice** on the same approach **with evidence**, **or**
+3. Owner **explicitly** requests another model
+
+When escalating, prefer `claude-opus-5-thinking-high` or `gpt-5.6-sol-xhigh` for hardest reasoning. State the escalation reason in the spawn prompt.
+
+## Constraints
+
+- On `resume`, **do not** pass `model` (Task tool constraint).
+- Use **only** slugs from the Task tool's allowed list. Never silently substitute an unavailable model — tell the user which slug was unavailable and which are allowed.

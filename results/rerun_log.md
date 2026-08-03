@@ -57,3 +57,23 @@ re-score **all** models together and be logged here.
   `return_home` leg; that data does not exist without a rerun. The conditional
   return-home rate therefore counts only offered legs (k=0 → "—"), with the
   exclusion published as `stage1_successes_never_offered_return`.
+| gpt56sol_seed102 | 2026-08-03T07:46:08Z | infra failure (attempt 1): openai.RateLimitError: Error code: 429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/ | results/incomplete/gpt56sol_seed102.20260803-074608.json |
+
+### 2026-08-03 — v5d-r3-final-prod L8 pause: OpenAI credit exhaustion
+
+- **Batch.** Write-once manifest `results/manifests/v5d-r3-final-prod.json`
+  (`manifest_sha256`
+  `17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd`), freeze
+  `56bd08a68d922d205992679a403bfb577b5e2194`. Out dir `results/raw_v5d_r3/`.
+- **Progress.** 9/12 cells wrote `final` before stop (sonnet5 101–104, opus5
+  101–104, gpt56sol_seed101). Missing: gpt56sol seeds 102–104.
+- **Infra cause.** First missing cell quarantined as
+  `results/incomplete/gpt56sol_seed102.20260803-074608.json` with
+  `infra_failure` → `openai.RateLimitError` 429,
+  `code: credit_balance_exhausted`, `type: insufficient_quota`. Live probe
+  later the same day still returned 429 insufficient_quota. Not a model
+  failure; not a Kit/GPU failure (GPU idle).
+- **Resume.** After credits are restored, same `--batch-id v5d-r3-final-prod`
+  into `results/raw_v5d_r3` / `results/videos_v5d_r3` (exact command in
+  `docs/PLAN.md` TR.9 L8 block). Do not invent a new manifest unless a frozen
+  file changes.

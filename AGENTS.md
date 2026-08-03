@@ -6,7 +6,7 @@ never duplicate rules there. **Update this file whenever a decision changes**; i
 the project's institutional memory and is deliberately context-rich so a fresh agent
 can pick up work with no other briefing.
 
-Last updated: 2026-08-02 (TR.6 write-once batch provenance; see §5).
+Last updated: 2026-08-03 (TR.9 L7 certified / L8 credit-blocked; see §8).
 
 ---
 
@@ -513,6 +513,15 @@ results/         raw JSON · figures · videos (committed)
       report links, corrected correction counts, and an honest PROVISIONAL
       disposition for legacy `v5d_r2`. This does not revise the completed v4
       benchmark; it records remediation work for the next freeze.
+- [~] Phase R / TR.9 (2026-08-03): L7 certifying mini PASS under write-once
+      manifest `results/manifests/v5d-r3-final-prod.json` (`manifest_sha256`
+      `17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd`);
+      cells `results/mini_v5d_r3/sonnet5_seed{101,102}.json` trial-level
+      machine+visual PASS. L8 hard-blocked on OpenAI credits: 9/12 finals in
+      `results/raw_v5d_r3/` (missing gpt56sol seeds 102–104); quarantine
+      `results/incomplete/gpt56sol_seed102.20260803-074608.json` =
+      `credit_balance_exhausted` / 429. Evidence + resume command in
+      `docs/PLAN.md` TR.9. Not complete until L8 12/12 + audits + report.
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.

@@ -2113,7 +2113,7 @@ structured visual verdicts, zero machine FAIL checks**, as required for missing
 legacy evidence. Regenerated artifacts:
 `results/{scores_raw_v5d_r2.json,summary_table_raw_v5d_r2.md}`.
 
-### TR.9 `[ ]` Validation ladder and new benchmark
+### TR.9 `[~]` Validation ladder and new benchmark
 
 Definition remains in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T9
 canary/mini-batch/full batch).
@@ -2229,6 +2229,51 @@ instant; the trial replay reports 2 accepted / 2 improved and PASS. Added a
 direct anchor-correction regression; full suite: **1900 passed, 3 skipped**.
 Because audit code and tests change the bound repository commit, preserve these
 cells and create a fresh manifest before the final L7/L8 run.
+
+**L7 fifth-attempt / certifying mini PASS (2026-08-03).** Fresh write-once
+manifest `results/manifests/v5d-r3-final-prod.json` with embedded
+`manifest_sha256`
+`17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd`, freeze
+commit `56bd08a68d922d205992679a403bfb577b5e2194`, parent
+`7dde4ba952fb40c5ffb29441a1895f6f8863fdcc`, checkpoint SHA
+`301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54`
+(`policy.checkpoint_sha256` / archived). Mini cells:
+`results/mini_v5d_r3/sonnet5_seed101.json` and
+`results/mini_v5d_r3/sonnet5_seed102.json` — both 40 turns + `final`, both
+`outcome.find_kitchen = timeout_turns` / `end_reason.find_kitchen = turn_cap`,
+both bind the same manifest SHA. Machine audits PASS:
+`results/mini_v5d_r3_audits/sonnet5_seed{101,102}.json` (`status: PASS`).
+Visual audits PASS on every checklist field:
+`results/mini_v5d_r3_visual_audits/sonnet5_seed{101,102}.md`. Costs
+(`final.tokens.cost_usd_estimate`): ~$1.60 (seed 101: `1.599258`) / ~$1.84
+(seed 102: `1.840686`). Batch-level
+`results/mini_v5d_r3_batch_audit.json` is `INCOMPLETE` with
+`publication_gate.expected=12` / `written=2` (matrix gate on the mini dir) —
+expected; **trial-level PASS certifies L7**. Prior refused attempts remain
+preserved under `results/incomplete/` and are not this gate.
+
+**L8 in progress / hard-blocked on OpenAI credits (2026-08-03).** Same
+manifest `v5d-r3-final-prod` /
+`17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd`:
+`results/raw_v5d_r3/` has **9/12** trials with `final` (sonnet5 101–104,
+opus5 101–104, gpt56sol_seed101). Missing: gpt56sol seeds 102–104.
+Quarantine `results/incomplete/gpt56sol_seed102.20260803-074608.json` =
+infra `openai.RateLimitError` 429 /
+`code: credit_balance_exhausted` /
+`type: insufficient_quota` (also logged in `results/rerun_log.md`). Live
+OpenAI probe 2026-08-03 still 429 insufficient_quota. GPU idle — resume is
+credits-blocked, not Kit-blocked. Resume (exact):
+
+```
+PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p duck_embody/runner.py \
+  --batch-id v5d-r3-final-prod \
+  --checkpoint /home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt \
+  --calibration /home/xiaohui_chen/Projects/duck-embody/results/calibrations/v5d_contact_wrench.json \
+  --out-dir results/raw_v5d_r3 \
+  --video-dir results/videos_v5d_r3
+```
+
+TR.9 stays `[~]` until L8 12/12 + audits + report.
 
 ---
 

@@ -1,0 +1,1721 @@
+{
+  "schema": "duck-embody-batch-audit-v1",
+  "status": "INCOMPLETE",
+  "batch_dir": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3",
+  "manifest_path": "/home/xiaohui_chen/Projects/duck-embody/results/manifests/v5d-r3-final-prod.json",
+  "publication_gate": {
+    "expected": 12,
+    "written": 0,
+    "pending": [
+      "gpt56sol_seed101",
+      "opus5_seed101",
+      "opus5_seed102",
+      "opus5_seed103",
+      "opus5_seed104",
+      "sonnet5_seed101",
+      "sonnet5_seed102",
+      "sonnet5_seed103",
+      "sonnet5_seed104"
+    ]
+  },
+  "trials": [
+    {
+      "trial_id": "gpt56sol_seed101",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "176 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/gpt56sol_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/gpt56sol_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.09820488786206114, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['gpt-5.6-sol'] config=gpt-5.6-sol"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/gpt56sol_seed101.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.09820488786206114,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "gpt56sol_seed101",
+        "model": "gpt-5.6-sol",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.9397,
+            "d_initial_m": 2.0652,
+            "d_final_m": 1.993,
+            "progress": 0.0349,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 6.3138,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0982,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.851,
+            "d_final_m": 0.851,
+            "progress": 0.0,
+            "oracle_path_m": 0.8414,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 25,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.0,
+            0.5,
+            0.0
+          ],
+          "score": 0.1
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "180 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.09965846677528213, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed101.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.09965846677528213,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed101",
+        "model": "claude-opus-5",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 1.9151,
+            "d_initial_m": 2.0652,
+            "d_final_m": 1.9656,
+            "progress": 0.0482,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 6.2206,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0997,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.8572,
+            "d_final_m": 0.8572,
+            "progress": 0.0,
+            "oracle_path_m": 0.8414,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 31,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 1,
+          "true_rooms_visited": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "living_room",
+              "living_room"
+            ]
+          ],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            1.0,
+            1.0,
+            0.5,
+            1.0
+          ],
+          "score": 0.7
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "308 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.2103665610309775, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed102.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.2103665610309775,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed102",
+        "model": "claude-opus-5",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 2.0477,
+            "d_initial_m": 2.2727,
+            "d_final_m": 2.4292,
+            "progress": 0.0,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 11.5059,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.2104,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 2.9809,
+            "d_final_m": 2.9809,
+            "progress": 0.0,
+            "oracle_path_m": 3.345,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 17,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 0,
+          "true_rooms_visited": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            1.0,
+            0.5,
+            0.5
+          ],
+          "score": 0.6
+        },
+        "visited_rooms": [
+          "bedroom",
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "49 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "520 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=1 accepted=1 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.11487684710158103, \"return_home\": 0.10029656026006085}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "48 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed103.json",
+      "corrections": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0,
+        "error_before_sum_m": 0.09013806964743416,
+        "error_after_sum_m": 0.10029656026006085,
+        "net_added_error_m": 0.010158490612626692,
+        "ledger": [
+          {
+            "trial_id": "opus5_seed103",
+            "stage": "return_home",
+            "turn_idx": 11,
+            "global_turn_idx": 47,
+            "place": null,
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              0.3896,
+              3.0582
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              0.4315799108776881,
+              3.137965648511543
+            ],
+            "new_xy": [
+              0.43,
+              3.15
+            ],
+            "error_before_m": 0.09013806964743416,
+            "error_after_m": 0.10029656026006085,
+            "effect_m": 0.010158490612626692,
+            "reason": "Standing again in the corridor's west-end pocket: west wall ~0.5m ahead, north wall ~0.5m, large dark bulky furniture immediately east with red bucket beside it and brown corridor floor running east — same scene as the start point, and odometry independently agrees at (0.43,3.14)."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.11487684710158103,
+        "return_home": 0.10029656026006085
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed103",
+        "model": "claude-opus-5",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": 0.2208,
+            "d_initial_m": 3.2022,
+            "d_final_m": 0.1836,
+            "progress": 0.9427,
+            "oracle_path_m": 3.142,
+            "true_path_m": 18.5866,
+            "spl": 0.169,
+            "time_s": 103.4,
+            "turns_used": 36,
+            "drift_m": 0.1149,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 3.3039,
+            "d_final_m": 0.1003,
+            "progress": 0.9696,
+            "oracle_path_m": 3.5163,
+            "true_path_m": 7.2814,
+            "spl": 0.4829,
+            "time_s": 39.4,
+            "turns_used": 12,
+            "drift_m": 0.1003,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              0.0121
+            ]
+          }
+        },
+        "bumps": 8,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 4,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.25,
+          "recall": 0.5,
+          "matches": [
+            [
+              "kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            1.0,
+            1.0,
+            0.5
+          ],
+          "score": 0.7
+        },
+        "visited_rooms": [
+          "hallway",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "26 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "349 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=2 accepted=2 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.19965693075873933, \"return_home\": 0.12089772537148898}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "25 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed104.json",
+      "corrections": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 2,
+        "error_before_sum_m": 0.3927728380404039,
+        "error_after_sum_m": 0.1773191751933431,
+        "net_added_error_m": -0.21545366284706083,
+        "ledger": [
+          {
+            "trial_id": "opus5_seed104",
+            "stage": "return_home",
+            "turn_idx": 3,
+            "global_turn_idx": 19,
+            "place": null,
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              2.1663,
+              1.1963
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              2.0800836365164286,
+              0.974635628655073
+            ],
+            "new_xy": [
+              2.17,
+              1.14
+            ],
+            "error_before_m": 0.23784102853812455,
+            "error_after_m": 0.056421449821854104,
+            "effect_m": -0.18141957871627046,
+            "reason": "Standing on the kitchen/dining threshold again: red bar stool just north of me, stove+dark table mass to the southwest, and the living-room wood floor with red sofa visible through the opening to the west"
+          },
+          {
+            "trial_id": "opus5_seed104",
+            "stage": "return_home",
+            "turn_idx": 9,
+            "global_turn_idx": 25,
+            "place": null,
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.4899,
+              2.2545
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.3380304842214785,
+              2.2238484784578647
+            ],
+            "new_xy": [
+              1.37,
+              2.27
+            ],
+            "error_before_m": 0.15493180950227936,
+            "error_after_m": 0.12089772537148898,
+            "effect_m": -0.034034084130790385,
+            "reason": "Dead reckoning puts me within 0.05 m of the recorded start point and the surroundings match: wood floor, north wall close ahead, red sofa/armchair to the west-southwest, dark table/overhang mass to the south-southeast"
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.19965693075873933,
+        "return_home": 0.12089772537148898
+      },
+      "score_replay": {
+        "trial_id": "opus5_seed104",
+        "model": "claude-opus-5",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": 0.2105,
+            "d_initial_m": 1.9243,
+            "d_final_m": 0.2033,
+            "progress": 0.8944,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 7.2562,
+            "spl": 0.2536,
+            "time_s": 45.6,
+            "turns_used": 16,
+            "drift_m": 0.1997,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 2.1217,
+            "d_final_m": 0.1209,
+            "progress": 0.943,
+            "oracle_path_m": 2.3642,
+            "true_path_m": 4.5706,
+            "spl": 0.5173,
+            "time_s": 26.8,
+            "turns_used": 9,
+            "drift_m": 0.1209,
+            "corrections": 2,
+            "correction_magnitudes_m": [
+              0.1882,
+              0.0561
+            ]
+          }
+        },
+        "bumps": 4,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "living_room",
+              "living_room"
+            ],
+            [
+              "kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 1,
+          "edges_unresolved": 0,
+          "edge_accuracy": 1.0
+        },
+        "qa": {
+          "per_question": [
+            0.5,
+            0.5,
+            0.5,
+            0.0,
+            1.0
+          ],
+          "score": 0.5
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed101",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "184 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.08114493206602615, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/sonnet5_seed101.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.08114493206602615,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed101",
+        "model": "claude-sonnet-5",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 1.9474,
+            "d_initial_m": 2.0652,
+            "d_final_m": 2.0861,
+            "progress": 0.0,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 4.8031,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.0811,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.497,
+            "d_final_m": 0.497,
+            "progress": 0.0,
+            "oracle_path_m": 0.4707,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 21,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "score": 0.0
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed102",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "363 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.19608133516477314, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/sonnet5_seed102.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.19608133516477314,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed102",
+        "model": "claude-sonnet-5",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 1.4425,
+            "d_initial_m": 2.2727,
+            "d_final_m": 2.2804,
+            "progress": 0.0,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 9.7414,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.1961,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.7014,
+            "d_final_m": 1.7014,
+            "progress": 0.0,
+            "oracle_path_m": 1.9571,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 11,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "bedroom",
+              "bedroom"
+            ],
+            [
+              "hallway",
+              "hallway"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 1,
+          "edges_unresolved": 0,
+          "edge_accuracy": 1.0
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            1.0,
+            0.5,
+            0.5
+          ],
+          "score": 0.6
+        },
+        "visited_rooms": [
+          "bedroom",
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed103",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "78 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "697 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.06343153789716878, \"return_home\": 0.10252121731622195}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "77 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/sonnet5_seed103.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.06343153789716878,
+        "return_home": 0.10252121731622195
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed103",
+        "model": "claude-sonnet-5",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 0.2004,
+            "d_initial_m": 3.2022,
+            "d_final_m": 0.3696,
+            "progress": 0.8846,
+            "oracle_path_m": 3.142,
+            "true_path_m": 10.2727,
+            "spl": 0.3059,
+            "time_s": 58.4,
+            "turns_used": 40,
+            "drift_m": 0.0634,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 3.1544,
+            "d_final_m": 2.3763,
+            "progress": 0.2467,
+            "oracle_path_m": 3.6299,
+            "true_path_m": 3.341,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 37,
+            "drift_m": 0.1025,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 21,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 1,
+          "true_rooms_visited": 2,
+          "precision": 0.5,
+          "recall": 0.5,
+          "matches": [
+            [
+              "Kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            0.5,
+            0.5,
+            0.5
+          ],
+          "score": 0.5
+        },
+        "visited_rooms": [
+          "hallway",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed104",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "346 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.23812282544938865, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/sonnet5_seed104.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.23812282544938865,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "sonnet5_seed104",
+        "model": "claude-sonnet-5",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 1.6614,
+            "d_initial_m": 1.9243,
+            "d_final_m": 1.601,
+            "progress": 0.168,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 5.9042,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.2381,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.4876,
+            "d_final_m": 0.4876,
+            "progress": 0.0,
+            "oracle_path_m": 0.5207,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 17,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 0,
+          "true_rooms_visited": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "matches": [],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ],
+          "score": 0.0
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "INCOMPLETE",
+        "missing": [
+          "locomotion",
+          "upright_trunk",
+          "alternating_feet_ground_clearance",
+          "no_drag_glide_crawl_dither",
+          "collision_no_teleport",
+          "rooms_recognizable",
+          "metric_video_consistent",
+          "reviewer",
+          "reviewed_at"
+        ]
+      }
+    }
+  ]
+}
