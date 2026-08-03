@@ -2042,12 +2042,45 @@ then correctly refused before Kit because this in-progress tree is dirty, its
 legacy freeze is stale, and the checked-out parent is ahead of the pyproject
 pin. No Isaac job is required: every T6 refusal runs pre-Kit.
 
-### TR.7–TR.9 `[ ]` Remaining remediation tasks
+### TR.7 `[x]` Normalize provider cache usage and cost
 
-Definitions live in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T7
-provider usage and cost, T8 audit and reporting, T9 canary/mini-batch/full
-batch). Each still runs under AGENTS.md rules 10 and 11 and gets its own PLAN
-entry with evidence when it lands.
+**Adversarial plan review.** The remediation plan correctly identified the
+ambiguous provider field but did not make pricing provenance part of usage
+aggregation or preserve raw provider usage for future schema additions. The
+shared cost formula also assumed both providers partitioned input like
+Anthropic. OpenAI's 2026-08-02 documentation resolves the contract:
+`usage.input_tokens` is total input and `cached_tokens` /
+`cache_write_tokens` are subsets; GPT-5.6 writes cost 1.25x ordinary input.
+Implementation therefore normalizes in each adapter, prices four disjoint
+buckets, rejects impossible partitions, carries pricing version/source, and
+archives provider usage in response metadata.
+
+**Implemented.** `Usage` stores total/uncached input, cache reads/writes, total
+output, nullable reasoning/provider totals, cost, and pricing provenance.
+Anthropic total is uncached + read + creation; OpenAI preserves provider total
+and subtracts read/write subsets to obtain uncached input. Every model YAML has
+explicit read/write prices and source. `build_scores.py` leaves
+`results/raw_v5d_r2/*.json` untouched while publishing both original GPT costs
+and corrected lower bounds; exact historical cost remains unrecoverable because
+legacy logs omitted cache writes.
+
+**Validation.** Fixtures cover Anthropic miss/write/read; OpenAI cached subset,
+GPT write, no-cache/missing details, impossible partitions; aggregation and
+serialization; and historical lower-bound arithmetic.
+`TERM=xterm bash scripts/run_tests.sh tests/ -q` → **1888 passed, 3 skipped**
+(2026-08-02). A controlled GPT-5.6 Sol explicit-cache probe measured 7,210
+input as 7 uncached + 7,203 writes on request 1, then 7 uncached + 7,203 reads
+on the repeat and changed-suffix requests. Raw usage objects and response IDs
+are archived at `results/probes/gpt56_cache_usage_20260802.json` with no prompt,
+cache key, output, credential, or secret. Historical report regenerated with
+`DUCK_EMBODY_RAW_DIR=$PWD/results/raw_v5d_r2
+~/IsaacLab/_isaac_sim/python.sh scripts/build_scores.py`; see
+`results/summary_table_raw_v5d_r2.md`.
+
+### TR.8–TR.9 `[ ]` Remaining remediation tasks
+
+Definitions remain in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T8
+audit/reporting, T9 canary/mini-batch/full batch).
 
 ---
 

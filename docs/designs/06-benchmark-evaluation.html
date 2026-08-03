@@ -396,8 +396,13 @@ scorer never touches the simulator. Annotated schema:</p>
                                  "true_pose": {...}}, ... },
     "bumps": 3,                           // TRIAL-scoped (§5.6)
     "metrics": { ... },                   // §5 values, computed post-hoc by scorer
-    "tokens": {"input_tokens": 0, "output_tokens": 0, "cache_read_tokens": 0,
-               "cache_write_tokens": 0, "cost_usd_estimate": 0.0},  // per provider
+    "tokens": {"input_tokens_total": 0, "input_tokens_uncached": 0,
+               "cache_read_tokens": 0, "cache_write_tokens": 0,
+               "output_tokens_total": 0, "reasoning_tokens": 0,
+               "provider_reported_total_tokens": 0,
+               "cost_usd_estimate": 0.0,
+               "pricing_version": "2026-08-02",
+               "pricing_source": "provider pricing URL"},  // normalized per provider
     "tokens_breakdown": {"episode": {...}, "qa": {...}},
     "qa": [ {"number": 1, "question": "...", "answer": "...", "score": null}, ... ], // §5.9
     "qa_raw": "1. ...\\n2. ..."           // the model's unsplit reply
@@ -450,12 +455,16 @@ had to re-derive it from the previous turn's <code>execution.calls[].contact_gro
 the same carried contact list the payload shows, in the payload's field order. Deliberately NOT added to the
 schema block above, following the additive-fields convention: the block is the <em>minimum</em> contract the
 conformance tests hold every trial JSON to — the committed golden trial predates the field.</li>
-<li><strong><code>final.tokens</code> key names.</strong> §4 said <code>{input, output,
-cost_usd_estimate}</code>; <code>providers.base.Usage.as_dict()</code> emits
-<code>{input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd_estimate}</code>.
-<strong>Widened to the code's names</strong> rather than remapped: §8 names prompt caching as the main lever on
-Anthropic input cost, and a batch that cannot see whether it hit the cache cannot report what it spent. Using
-the provider's own names also makes a transposed input/output column impossible.</li>
+<li><strong><code>final.tokens</code> key names.</strong> TR.7 replaces the ambiguous
+provider-native <code>input_tokens</code> with normalized
+<code>input_tokens_total</code> and <code>input_tokens_uncached</code>, alongside
+<code>cache_read_tokens</code>, <code>cache_write_tokens</code>,
+<code>output_tokens_total</code>, optional <code>reasoning_tokens</code>,
+<code>provider_reported_total_tokens</code>, cost, and pricing provenance.
+Anthropic total input is its three disjoint reported buckets added together;
+OpenAI total input is <em>already</em> the provider total and its read/write
+details are subtracted to obtain the uncached bucket. This distinction prevents
+GPT cache reads from being billed twice.</li>
 <li><strong><code>memory_snapshot</code>.</strong> §4's shape named a <code>trajectory</code> field
 <code>Memory</code> does not have (<code>room_sequence</code> is what renders as <code>Trajectory:</code>) and
 omitted <code>corrections</code> entirely — which §5.8 needs <em>per stage</em>, and which nothing else can
@@ -943,9 +952,9 @@ plus sim stepping.</p>
 <td>~$10.40 / trial</td><td>4 trials ≈ <strong>$10–42</strong></td></tr>
 <tr><td>Opus 5 ($5 in / $25 out per MTok)</td><td>~$1.30 / trial</td>
 <td>~$5.20 / trial</td><td>4 trials ≈ <strong>$5–21</strong></td></tr>
-<tr><td>GPT 5.6 sol (pricing TBD)</td><td colspan="2">verify current OpenAI pricing
-before batch</td><td>if priced in the typical frontier band, same order of
-magnitude</td></tr>
+<tr><td>GPT 5.6 sol ($5 input / $0.50 cache read / $6.25 cache write /
+$30 output per MTok)</td><td colspan="2">computed from normalized disjoint
+usage buckets</td><td>OpenAI standard short-context pricing, 2026-08-02</td></tr>
 <tr><td>Wall-clock / trial</td><td>~10 min</td><td>~87 min</td>
 <td>40–80 turns × (10–40&nbsp;s API + 5–25&nbsp;s sim) = 15–65&nbsp;s/turn</td></tr>
 <tr><td>Full batch (12 trials, sequential)</td><td>~2 h</td><td>~17.5 h</td>
@@ -953,15 +962,16 @@ magnitude</td></tr>
 sim-stepping term is unmeasured until the smoke test, §12)</td></tr>
 </table>
 
-<p>Expected total spend for the batch: <strong>$15–63</strong> for the two Anthropic
-models (sum of the per-model ranges above: $10–42 Fable&nbsp;5 + $5–21 Opus&nbsp;5)
-plus an OpenAI amount to be confirmed — comfortably a
-single-evening budget. Prompt caching on the stable prefix (frozen system prompt +
-tool schema) can cut Anthropic input cost substantially; it is an optimization, not
-assumed in the ranges.
+<p>Expected total spend for the original batch was <strong>$15–63</strong> for
+the two Anthropic models before OpenAI spend. Actual reports use per-response
+usage, not this forecast. TR.7 records the provider semantic difference:
+Anthropic cache buckets are additional to <code>input_tokens</code>, while
+OpenAI's reads and writes are subsets of total <code>input_tokens</code>.
+GPT-5.6 cache writes cost 1.25× ordinary input and reads cost 0.1×.
 <span class="src">source: Anthropic model pricing per claude-api skill reference
-(cached 2026-06-24): Fable 5 $10/$50, Opus 5 $5/$25 per MTok; arithmetic executed
-2026-07-26 (§11)</span></p>
+(cached 2026-06-24); OpenAI pricing and prompt-caching documentation,
+https://developers.openai.com/api/docs/pricing and /guides/prompt-caching,
+read 2026-08-02</span></p>
 
 <h2 id="tests">9. Test plan (the pre-batch gate)</h2>
 

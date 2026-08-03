@@ -33,6 +33,7 @@ from duck_embody.scoring import (
     SUCCESS_CRITERION,
     Estimate,
     estimate,
+    historical_openai_cost_lower_bound,
     load_trial,
     score_trial,
     scoring_config,
@@ -54,6 +55,7 @@ RAW = pathlib.Path(os.environ.get("DUCK_EMBODY_RAW_DIR") or (REPO / "results" / 
 #: tables and a false narrative, naming a model not even in the file. Numbers
 #: are matrix-driven; prose cannot be, so prose is gated.
 IS_DESCRIBED_BATCH = RAW.resolve() == (REPO / "results" / "raw").resolve()
+IS_V5D_R2_BATCH = RAW.resolve() == (REPO / "results" / "raw_v5d_r2").resolve()
 
 # The matrix comes from the FROZEN benchmark config, not a hardcoded tuple
 # (2026-07-30, when the owner swapped fable5 -> sonnet5): a scorer pinned to
@@ -78,6 +80,33 @@ _API_IDS = {
     "opus5": "claude-opus-5",
     "gpt56sol": "gpt-5.6-sol",
 }
+
+
+def cost_record(model: str, tokens: dict) -> dict:
+    """Published cost disposition without mutating historical raw JSON."""
+    original = float(tokens["cost_usd_estimate"])
+    if IS_V5D_R2_BATCH and model == "gpt56sol" and "input_tokens_total" not in tokens:
+        pricing = _yaml.safe_load(
+            (REPO / "configs" / "models" / "gpt56sol.yaml").read_text()
+        )
+        lower = historical_openai_cost_lower_bound(
+            tokens,
+            input_per_mtok=float(pricing["price_in_per_mtok"]),
+            cache_read_per_mtok=float(pricing["price_cache_read_per_mtok"]),
+            output_per_mtok=float(pricing["price_out_per_mtok"]),
+        )
+        return {
+            "cost_usd": lower,
+            "cost_usd_original_reported": original,
+            "cost_exact": False,
+            "cost_basis": "lower_bound_missing_gpt56_cache_write_tokens",
+        }
+    return {
+        "cost_usd": original,
+        "cost_usd_original_reported": original,
+        "cost_exact": True,
+        "cost_basis": "normalized_usage" if "input_tokens_total" in tokens else "legacy_provider_usage",
+    }
 
 
 def median_or_na(values):
@@ -118,10 +147,12 @@ def build():
             raise SystemExit(
                 f"{entry['trial_id']}: len(turns)={total_turns} != sum(turns_used)={declared}"
             )
-        entry["cost_usd"] = document["final"]["tokens"]["cost_usd_estimate"]
+        tokens = document["final"]["tokens"]
+        entry.update(cost_record(next(k for k, v in _API_IDS.items() if v == entry["model"]), tokens))
         entry["tokens"] = {
-            k: document["final"]["tokens"][k]
-            for k in ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens")
+            key: value
+            for key, value in tokens.items()
+            if key != "cost_usd_estimate"
         }
         entry["total_turns"] = total_turns
         entry["last_turn_timestamp"] = turns[-1]["timestamp"]
@@ -140,7 +171,14 @@ def build():
         summary[STAGE2]["progress"]["median"] = median_or_na(
             [t.stages[STAGE2].progress for t in rows]
         )
-        costs = [documents[f"{model}_seed{s}"]["final"]["tokens"]["cost_usd_estimate"] for s in SEEDS]
+        costs = [
+            next(
+                entry["cost_usd"]
+                for entry in trial_dicts
+                if entry["trial_id"] == f"{model}_seed{seed}"
+            )
+            for seed in SEEDS
+        ]
         summary["cost_usd"] = {**estimate(costs).as_dict(), "sum": round(sum(costs), 6)}
         totals = [float(len(documents[f"{model}_seed{s}"]["turns"])) for s in SEEDS]
         summary["total_turns"] = {**estimate(totals).as_dict(), "sum": int(sum(totals))}
@@ -184,6 +222,23 @@ def build():
             "resamples": int(config["bootstrap_resamples"]),
             "seed": int(config["bootstrap_seed"]),
             "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3",
+        },
+        "cost_accounting": {
+            "schema": "normalized-provider-usage-v1",
+            "historical_v5d_r2_gpt": (
+                {
+                    "exact": False,
+                    "disposition": (
+                        "Raw JSON is unchanged. Published GPT costs are corrected "
+                        "lower bounds using recoverable cache reads; exact costs are "
+                        "unrecoverable because legacy logs omitted cache-write usage."
+                    ),
+                    "pricing_version": "2026-08-02",
+                    "pricing_source": "https://developers.openai.com/api/docs/pricing",
+                }
+                if IS_V5D_R2_BATCH
+                else None
+            ),
         },
         "trials": trial_dicts,
         "per_model": per_model,
@@ -325,7 +380,8 @@ def write_table(scores: dict) -> None:
         row("edge accuracy", lambda s: _mean_ci(s["edge_accuracy"])),
         row("QA score (0-1)", lambda s: _mean_ci(s["qa"])),
         row(
-            "cost (USD / trial)",
+            "cost (USD / trial)"
+            + ("; GPT lower bound" if IS_V5D_R2_BATCH else ""),
             lambda s: _mean_ci(s["cost_usd"], 3) + f", sum ${s['cost_usd']['sum']:.2f}",
         ),
         row(
@@ -339,6 +395,27 @@ def write_table(scores: dict) -> None:
             ),
         ),
         "",
+        *(
+            [
+                "**v5d_r2 GPT cost correction.** Raw trial JSON is unchanged. "
+                "The GPT cost cells above are lower bounds computed from total "
+                "input, recoverable cache reads, and output at the 2026-08-02 "
+                "GPT-5.6 Sol rates. Legacy logs omitted `cache_write_tokens`, so "
+                "the exact charge cannot be recovered; each hidden write would "
+                "add the 25% write premium. Original reported → corrected lower "
+                "bound: "
+                + ", ".join(
+                    f"`{entry['trial_id']}` ${entry['cost_usd_original_reported']:.6f}"
+                    f" → ≥${entry['cost_usd']:.6f}"
+                    for entry in trials
+                    if entry["model"] == _API_IDS["gpt56sol"]
+                )
+                + ".",
+                "",
+            ]
+            if IS_V5D_R2_BATCH
+            else []
+        ),
         # Batch-specific Notes: same gate as the headline. These name
         # gpt56sol_seed103 and the v4 batch's criterion history.
         *([

@@ -226,14 +226,40 @@ class OpenAIProvider:
         return self._parse(response)
 
     def _parse(self, response) -> AssistantTurn:
-        usage = Usage(
-            input_tokens=getattr(response.usage, "input_tokens", 0) or 0,
-            output_tokens=getattr(response.usage, "output_tokens", 0) or 0,
-        )
+        # OpenAI's `input_tokens` is the TOTAL. Both cached reads and GPT-5.6
+        # cache writes are subsets in `input_tokens_details`; subtract them to
+        # obtain the disjoint uncached bucket before pricing. Treating the total
+        # like Anthropic's uncached field double-charges every cache read.
+        input_total = getattr(response.usage, "input_tokens", 0) or 0
+        output_total = getattr(response.usage, "output_tokens", 0) or 0
+        provider_total = getattr(response.usage, "total_tokens", None)
         in_details = getattr(response.usage, "input_tokens_details", None)
-        if in_details is not None:
-            usage.cache_read_tokens = getattr(in_details, "cached_tokens", 0) or 0
-        usage.cost_usd = self.cfg.cost(usage)
+        cache_read = (
+            getattr(in_details, "cached_tokens", 0) or 0
+            if in_details is not None
+            else 0
+        )
+        cache_write = (
+            getattr(in_details, "cache_write_tokens", 0) or 0
+            if in_details is not None
+            else 0
+        )
+        output_details = getattr(response.usage, "output_tokens_details", None)
+        reasoning_tokens = (
+            getattr(output_details, "reasoning_tokens", None)
+            if output_details is not None
+            else None
+        )
+        usage = Usage(
+            input_tokens_total=input_total,
+            input_tokens_uncached=input_total - cache_read - cache_write,
+            cache_read_tokens=cache_read,
+            cache_write_tokens=cache_write,
+            output_tokens_total=output_total,
+            reasoning_tokens=reasoning_tokens,
+            provider_reported_total_tokens=provider_total,
+        )
+        self.cfg.price_usage(usage)
 
         text_parts: list[str] = []
         tool_calls: list[ToolCall] = []

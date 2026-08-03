@@ -69,6 +69,10 @@ def _cfg(provider: str, model_id: str) -> ModelConfig:
         max_tokens=16000,
         price_in_per_mtok=10.0,
         price_out_per_mtok=50.0,
+        price_cache_read_per_mtok=1.0,
+        price_cache_write_per_mtok=12.5,
+        pricing_version="2026-08-02",
+        pricing_source="https://example.test/pricing",
     )
 
 
@@ -284,6 +288,12 @@ class TestAnthropicMessageShaping:
                 "provider_request_id": "req_anthropic_test",
                 "created": "2026-08-02T00:00:00Z",
                 "fingerprint": "anthropic-fp",
+                "provider_usage": {
+                    "input_tokens": 120,
+                    "output_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                    "cache_creation_input_tokens": 0,
+                },
                 "native_response_sha256": turn.metadata["native_response_sha256"],
             }
             assert len(turn.metadata["native_response_sha256"]) == 64
@@ -429,7 +439,7 @@ class TestOpenAIMessageShaping:
             system_fingerprint="fp_test",
             status="completed",
             output=[],
-            usage=SimpleNamespace(input_tokens=3, output_tokens=2),
+            usage=SimpleNamespace(input_tokens=3, output_tokens=2, total_tokens=5),
         )
         turn = openai_adapter._parse(response)
         assert turn.metadata["configured_alias"] == "gpt56sol"
@@ -438,6 +448,11 @@ class TestOpenAIMessageShaping:
         assert turn.metadata["provider_request_id"] == "req_openai_test"
         assert turn.metadata["created"] == 1785715200
         assert turn.metadata["fingerprint"] == "fp_test"
+        assert turn.metadata["provider_usage"] == {
+            "input_tokens": 3,
+            "output_tokens": 2,
+            "total_tokens": 5,
+        }
         assert len(turn.metadata["native_response_sha256"]) == 64
         assert "output" not in turn.metadata
 
@@ -538,23 +553,158 @@ class TestSemanticEquivalence:
         assert n_a == n_o == 4
 
 
+class TestUsageNormalization:
+    @staticmethod
+    def _anthropic_response(*, uncached, read=0, write=0, output=7):
+        from types import SimpleNamespace
+
+        return SimpleNamespace(
+            id="msg_usage",
+            model="claude-fable-5",
+            stop_reason="end_turn",
+            content=[],
+            usage=SimpleNamespace(
+                input_tokens=uncached,
+                output_tokens=output,
+                cache_read_input_tokens=read,
+                cache_creation_input_tokens=write,
+            ),
+        )
+
+    @staticmethod
+    def _openai_response(
+        *, total_input, read=0, write=0, output=7, reasoning=2,
+        include_details=True,
+    ):
+        from types import SimpleNamespace
+
+        usage = SimpleNamespace(
+            input_tokens=total_input,
+            output_tokens=output,
+            total_tokens=total_input + output,
+        )
+        if include_details:
+            usage.input_tokens_details = SimpleNamespace(
+                cached_tokens=read,
+                cache_write_tokens=write,
+            )
+            usage.output_tokens_details = SimpleNamespace(
+                reasoning_tokens=reasoning
+            )
+        return SimpleNamespace(
+            id="resp_usage",
+            model="gpt-5.6-sol",
+            status="completed",
+            output=[],
+            usage=usage,
+        )
+
+    @pytest.mark.parametrize(
+        "uncached,read,write",
+        [
+            (1200, 0, 0),      # miss / no cache operation
+            (80, 0, 1120),     # creation
+            (80, 1120, 0),     # read
+        ],
+    )
+    def test_anthropic_adds_disjoint_usage_buckets(
+        self, anthropic_adapter, uncached, read, write
+    ):
+        usage = anthropic_adapter._parse(
+            self._anthropic_response(
+                uncached=uncached, read=read, write=write
+            )
+        ).usage
+        assert usage.input_tokens_total == uncached + read + write
+        assert usage.input_tokens_uncached == uncached
+        assert usage.cache_read_tokens == read
+        assert usage.cache_write_tokens == write
+
+    def test_openai_cached_tokens_are_subsets_of_total(self, openai_adapter):
+        usage = openai_adapter._parse(
+            self._openai_response(total_input=1200, read=900, write=0)
+        ).usage
+        assert usage.input_tokens_total == 1200
+        assert usage.input_tokens_uncached == 300
+        assert usage.cache_read_tokens == 900
+        assert usage.provider_reported_total_tokens == 1207
+        assert usage.reasoning_tokens == 2
+
+    def test_openai_gpt56_cache_write_is_captured(self, openai_adapter):
+        usage = openai_adapter._parse(
+            self._openai_response(total_input=1200, write=900)
+        ).usage
+        assert usage.input_tokens_uncached == 300
+        assert usage.cache_write_tokens == 900
+        assert usage.cost_usd_estimate == pytest.approx(
+            (300 * 10.0 + 900 * 12.5 + 7 * 50.0) / 1_000_000
+        )
+
+    def test_openai_no_cache_and_missing_optional_details(
+        self, openai_adapter
+    ):
+        usage = openai_adapter._parse(
+            self._openai_response(
+                total_input=321, include_details=False
+            )
+        ).usage
+        assert usage.input_tokens_total == usage.input_tokens_uncached == 321
+        assert usage.cache_read_tokens == usage.cache_write_tokens == 0
+        assert usage.reasoning_tokens is None
+        assert usage.as_dict()["reasoning_tokens"] is None
+
+    def test_impossible_openai_partition_fails_loudly(self, openai_adapter):
+        with pytest.raises(ValueError, match="non-negative"):
+            openai_adapter._parse(
+                self._openai_response(
+                    total_input=100, read=80, write=30
+                )
+            )
+
+
 class TestCostAccounting:
     def test_cost_uses_the_configured_price_sheet(self):
         cfg = _cfg("anthropic", "claude-fable-5")  # $10 in / $50 out
-        usage = Usage(input_tokens=1_000_000, output_tokens=100_000)
+        usage = Usage(
+            input_tokens_total=1_000_000,
+            input_tokens_uncached=1_000_000,
+            output_tokens_total=100_000,
+        )
         assert cfg.cost(usage) == pytest.approx(10.0 + 5.0)
 
     def test_usage_accumulates_across_turns(self):
-        total = Usage(input_tokens=10, output_tokens=1, cost_usd=0.5) + Usage(
-            input_tokens=20, output_tokens=2, cost_usd=0.25
+        total = Usage(
+            input_tokens_total=10,
+            input_tokens_uncached=10,
+            output_tokens_total=1,
+            cost_usd_estimate=0.5,
+            pricing_version="v",
+            pricing_source="s",
+        ) + Usage(
+            input_tokens_total=20,
+            input_tokens_uncached=20,
+            output_tokens_total=2,
+            cost_usd_estimate=0.25,
+            pricing_version="v",
+            pricing_source="s",
         )
-        assert (total.input_tokens, total.output_tokens) == (30, 3)
-        assert total.cost_usd == pytest.approx(0.75)
+        assert (total.input_tokens_total, total.output_tokens_total) == (30, 3)
+        assert total.cost_usd_estimate == pytest.approx(0.75)
 
     def test_usage_serialises_for_the_trial_json(self):
-        d = Usage(input_tokens=5, output_tokens=6, cost_usd=0.123456789).as_dict()
-        assert d["input_tokens"] == 5
+        d = Usage(
+            input_tokens_total=5,
+            input_tokens_uncached=5,
+            output_tokens_total=6,
+            cost_usd_estimate=0.123456789,
+            pricing_version="2026-08-02",
+            pricing_source="https://example.test/pricing",
+        ).as_dict()
+        assert d["input_tokens_total"] == 5
+        assert d["input_tokens_uncached"] == 5
         assert d["cost_usd_estimate"] == 0.123457
+        assert d["pricing_version"] == "2026-08-02"
+        assert "input_tokens" not in d
 
 
 class TestModelConfigs:
@@ -783,23 +933,51 @@ class TestCostIncludesCacheTerms:
 
     def test_a_cache_write_costs_more_than_the_same_tokens_uncached(self):
         cfg = self._cfg()
-        write = cfg.cost(Usage(input_tokens=0, output_tokens=0, cache_write_tokens=1_000_000))
-        plain = cfg.cost(Usage(input_tokens=1_000_000, output_tokens=0))
+        write = cfg.cost(
+            Usage(input_tokens_total=1_000_000, cache_write_tokens=1_000_000)
+        )
+        plain = cfg.cost(
+            Usage(input_tokens_total=1_000_000, input_tokens_uncached=1_000_000)
+        )
         assert write == pytest.approx(plain * 1.25)
 
     def test_a_cache_read_costs_a_tenth_of_the_same_tokens_uncached(self):
         cfg = self._cfg()
-        read = cfg.cost(Usage(input_tokens=0, output_tokens=0, cache_read_tokens=1_000_000))
-        plain = cfg.cost(Usage(input_tokens=1_000_000, output_tokens=0))
+        read = cfg.cost(
+            Usage(input_tokens_total=1_000_000, cache_read_tokens=1_000_000)
+        )
+        plain = cfg.cost(
+            Usage(input_tokens_total=1_000_000, input_tokens_uncached=1_000_000)
+        )
         assert read == pytest.approx(plain * 0.1)
 
     def test_the_write_call_and_the_read_call_do_not_cost_the_same(self):
         """The exact symptom that exposed the bug on the live API."""
         cfg = self._cfg()
-        first = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_write_tokens=3856))
-        second = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_read_tokens=3856))
+        first = cfg.cost(
+            Usage(
+                input_tokens_total=3940,
+                input_tokens_uncached=84,
+                output_tokens_total=4,
+                cache_write_tokens=3856,
+            )
+        )
+        second = cfg.cost(
+            Usage(
+                input_tokens_total=3940,
+                input_tokens_uncached=84,
+                output_tokens_total=4,
+                cache_read_tokens=3856,
+            )
+        )
         assert first > second, "a cache write must cost more than a cache read"
-        assert second > cfg.cost(Usage(input_tokens=84, output_tokens=4)), (
+        assert second > cfg.cost(
+            Usage(
+                input_tokens_total=84,
+                input_tokens_uncached=84,
+                output_tokens_total=4,
+            )
+        ), (
             "a cache read is cheap but NOT free — ignoring it understates the bill"
         )
 
@@ -809,10 +987,31 @@ class TestCostIncludesCacheTerms:
         cfg = self._cfg()
         prefix, calls = 3919, 50
         uncached = sum(
-            cfg.cost(Usage(input_tokens=prefix + 84, output_tokens=4)) for _ in range(calls)
+            cfg.cost(
+                Usage(
+                    input_tokens_total=prefix + 84,
+                    input_tokens_uncached=prefix + 84,
+                    output_tokens_total=4,
+                )
+            )
+            for _ in range(calls)
         )
-        cached = cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_write_tokens=prefix)) + sum(
-            cfg.cost(Usage(input_tokens=84, output_tokens=4, cache_read_tokens=prefix))
+        cached = cfg.cost(
+            Usage(
+                input_tokens_total=prefix + 84,
+                input_tokens_uncached=84,
+                output_tokens_total=4,
+                cache_write_tokens=prefix,
+            )
+        ) + sum(
+            cfg.cost(
+                Usage(
+                    input_tokens_total=prefix + 84,
+                    input_tokens_uncached=84,
+                    output_tokens_total=4,
+                    cache_read_tokens=prefix,
+                )
+            )
             for _ in range(calls - 1)
         )
         assert cached < uncached
@@ -866,6 +1065,10 @@ class TestPreflightDoesNotNeedTheVendorSDK:
         cfg = ModelConfig(
             name="bogus", provider="acme", model_id="x",
             max_tokens=1, price_in_per_mtok=0.0, price_out_per_mtok=0.0,
+            price_cache_read_per_mtok=0.0,
+            price_cache_write_per_mtok=0.0,
+            pricing_version="test",
+            pricing_source="https://example.test/pricing",
         )
         monkeypatch.setattr(base, "load_model_config", lambda _n: cfg)
         with pytest.raises(ValueError, match="Unknown provider"):

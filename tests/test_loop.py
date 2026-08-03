@@ -402,7 +402,14 @@ def turn(*tool_calls: ToolCall, text: str = "", thinking: str = "",
     return AssistantTurn(
         text=text,
         tool_calls=list(tool_calls),
-        usage=Usage(input_tokens=100, output_tokens=20, cost_usd=0.001),
+        usage=Usage(
+            input_tokens_total=100,
+            input_tokens_uncached=100,
+            output_tokens_total=20,
+            cost_usd_estimate=0.001,
+            pricing_version="test",
+            pricing_source="test",
+        ),
         # `raw` is echoed back verbatim; a marker string is enough to prove it
         # travelled unchanged.
         raw=[{"type": "marker", "calls": [c.name for c in tool_calls], "text": text}],
@@ -430,7 +437,14 @@ class FakeProvider:
             return AssistantTurn(
                 text=self.qa_text,
                 tool_calls=[],
-                usage=Usage(input_tokens=500, output_tokens=200, cost_usd=0.01),
+                usage=Usage(
+                    input_tokens_total=500,
+                    input_tokens_uncached=500,
+                    output_tokens_total=200,
+                    cost_usd_estimate=0.01,
+                    pricing_version="test",
+                    pricing_source="test",
+                ),
                 raw=[],
                 stop_reason="end_turn",
             )
@@ -949,7 +963,12 @@ class TestReconstructableRequestManifest:
         refusal = AssistantTurn(
             text="",
             tool_calls=[],
-            usage=Usage(input_tokens=1),
+            usage=Usage(
+                input_tokens_total=1,
+                input_tokens_uncached=1,
+                pricing_version="test",
+                pricing_source="test",
+            ),
             raw=[],
             stop_reason="refusal",
             refusal="refusal (category=test)",
@@ -1968,7 +1987,12 @@ class TestErrorPolicy:
         refusal = AssistantTurn(
             text="",
             tool_calls=[],
-            usage=Usage(input_tokens=100, output_tokens=0),
+            usage=Usage(
+                input_tokens_total=100,
+                input_tokens_uncached=100,
+                pricing_version="test",
+                pricing_source="test",
+            ),
             raw=[],  # the real wire shape of a pre-output decline
             stop_reason="refusal",
             refusal="refusal (category=cyber)",
@@ -1985,6 +2009,10 @@ class TestErrorPolicy:
         cfg = ModelConfig(
             name="t", provider="anthropic", model_id="claude-fable-5",
             max_tokens=8, price_in_per_mtok=1.0, price_out_per_mtok=1.0,
+            price_cache_read_per_mtok=0.1,
+            price_cache_write_per_mtok=1.25,
+            pricing_version="test",
+            pricing_source="test",
         )
         adapter = AnthropicProvider.__new__(AnthropicProvider)
         adapter.cfg = cfg
@@ -2363,9 +2391,12 @@ class TestQaExchange:
         final = runner.run()
         episode = final["tokens_breakdown"]["episode"]
         qa = final["tokens_breakdown"]["qa"]
-        assert episode["input_tokens"] == 200 and qa["input_tokens"] == 500
-        assert final["tokens"]["input_tokens"] == 700
-        assert final["tokens"]["output_tokens"] == qa["output_tokens"] + episode["output_tokens"]
+        assert episode["input_tokens_total"] == 200
+        assert qa["input_tokens_total"] == 500
+        assert final["tokens"]["input_tokens_total"] == 700
+        assert final["tokens"]["output_tokens_total"] == (
+            qa["output_tokens_total"] + episode["output_tokens_total"]
+        )
 
 
 class TestQaAnswerSplitting:
@@ -2622,10 +2653,13 @@ class TestTrialLogSchema:
     def test_the_per_turn_usage_is_recorded_for_doc_06_s8_cost_accounting(self, document):
         for record in document["turns"]:
             assert set(record["usage"]) == {
-                "input_tokens", "output_tokens", "cache_read_tokens",
-                "cache_write_tokens", "cost_usd_estimate",
+                "input_tokens_total", "input_tokens_uncached",
+                "output_tokens_total", "cache_read_tokens",
+                "cache_write_tokens", "reasoning_tokens",
+                "provider_reported_total_tokens",
+                "cost_usd_estimate", "pricing_version", "pricing_source",
             }
-            assert record["usage"]["input_tokens"] == 100
+            assert record["usage"]["input_tokens_total"] == 100
 
     def test_the_video_path_key_is_always_present(self, document, tmp_path):
         """Rule-11's evidence link. Absent (rather than null) would make an
@@ -2816,8 +2850,11 @@ class TestTrialLogSchema:
         assert set(final["outcome"]) == {STAGE_FIND_KITCHEN, STAGE_RETURN_HOME}
         assert final["metrics"] == {}, "§5 values are computed post-hoc by T4.1"
         assert set(final["tokens"]) == {
-            "input_tokens", "output_tokens", "cache_read_tokens",
-            "cache_write_tokens", "cost_usd_estimate",
+            "input_tokens_total", "input_tokens_uncached",
+            "output_tokens_total", "cache_read_tokens",
+            "cache_write_tokens", "reasoning_tokens",
+            "provider_reported_total_tokens",
+            "cost_usd_estimate", "pricing_version", "pricing_source",
         }
         # The decision inputs, so the scorer recomputes rather than trusts.
         # TR.2 widened this set: criterion v2's goal is a REGION, so one

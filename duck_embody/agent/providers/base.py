@@ -157,29 +157,123 @@ class ToolCall:
 
 @dataclass
 class Usage:
-    input_tokens: int = 0
-    output_tokens: int = 0
+    """Normalized token usage; provider-native meanings never leak above adapters.
+
+    Anthropic's ``usage.input_tokens`` excludes cache reads and creations, while
+    OpenAI's ``usage.input_tokens`` includes both.  Keeping either value under an
+    unqualified ``input_tokens`` key made cross-provider totals incomparable and
+    caused GPT cache reads to be billed twice.  Adapters therefore normalize to
+    one invariant:
+
+    ``input_tokens_total == input_tokens_uncached + cache_read_tokens
+    + cache_write_tokens``.
+    """
+
+    input_tokens_total: int = 0
+    input_tokens_uncached: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
-    cost_usd: float = 0.0
+    output_tokens_total: int = 0
+    reasoning_tokens: int | None = None
+    provider_reported_total_tokens: int | None = None
+    cost_usd_estimate: float = 0.0
+    pricing_version: str = ""
+    pricing_source: str = ""
+
+    def __post_init__(self) -> None:
+        counts = {
+            "input_tokens_total": self.input_tokens_total,
+            "input_tokens_uncached": self.input_tokens_uncached,
+            "cache_read_tokens": self.cache_read_tokens,
+            "cache_write_tokens": self.cache_write_tokens,
+            "output_tokens_total": self.output_tokens_total,
+        }
+        for name, value in counts.items():
+            if value < 0:
+                raise ValueError(f"{name} must be non-negative, got {value}")
+        partition = (
+            self.input_tokens_uncached
+            + self.cache_read_tokens
+            + self.cache_write_tokens
+        )
+        if self.input_tokens_total != partition:
+            raise ValueError(
+                "normalized input-token partition mismatch: "
+                f"total={self.input_tokens_total}, partition={partition}"
+            )
+
+    def _is_identity(self) -> bool:
+        return not any(
+            (
+                self.input_tokens_total,
+                self.output_tokens_total,
+                self.cost_usd_estimate,
+                self.pricing_version,
+                self.pricing_source,
+                self.reasoning_tokens is not None,
+                self.provider_reported_total_tokens is not None,
+            )
+        )
 
     def __add__(self, other: "Usage") -> "Usage":
+        if self._is_identity():
+            return dataclasses.replace(other)
+        if other._is_identity():
+            return dataclasses.replace(self)
+        if (
+            self.pricing_version,
+            self.pricing_source,
+        ) != (
+            other.pricing_version,
+            other.pricing_source,
+        ):
+            raise ValueError(
+                "cannot aggregate usage from different pricing sheets: "
+                f"{self.pricing_version!r}/{self.pricing_source!r} vs "
+                f"{other.pricing_version!r}/{other.pricing_source!r}"
+            )
+
+        def optional_sum(left: int | None, right: int | None) -> int | None:
+            return left + right if left is not None and right is not None else None
+
         return Usage(
-            input_tokens=self.input_tokens + other.input_tokens,
-            output_tokens=self.output_tokens + other.output_tokens,
+            input_tokens_total=self.input_tokens_total + other.input_tokens_total,
+            input_tokens_uncached=(
+                self.input_tokens_uncached + other.input_tokens_uncached
+            ),
+            output_tokens_total=(
+                self.output_tokens_total + other.output_tokens_total
+            ),
             cache_read_tokens=self.cache_read_tokens + other.cache_read_tokens,
             cache_write_tokens=self.cache_write_tokens + other.cache_write_tokens,
-            cost_usd=self.cost_usd + other.cost_usd,
+            reasoning_tokens=optional_sum(
+                self.reasoning_tokens, other.reasoning_tokens
+            ),
+            provider_reported_total_tokens=optional_sum(
+                self.provider_reported_total_tokens,
+                other.provider_reported_total_tokens,
+            ),
+            cost_usd_estimate=(
+                self.cost_usd_estimate + other.cost_usd_estimate
+            ),
+            pricing_version=self.pricing_version,
+            pricing_source=self.pricing_source,
         )
 
     def as_dict(self) -> dict:
-        return {
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
+        result = {
+            "input_tokens_total": self.input_tokens_total,
+            "input_tokens_uncached": self.input_tokens_uncached,
             "cache_read_tokens": self.cache_read_tokens,
             "cache_write_tokens": self.cache_write_tokens,
-            "cost_usd_estimate": round(self.cost_usd, 6),
+            "output_tokens_total": self.output_tokens_total,
+            "reasoning_tokens": self.reasoning_tokens,
+            "provider_reported_total_tokens": self.provider_reported_total_tokens,
+            "cost_usd_estimate": round(self.cost_usd_estimate, 6),
+            "pricing_version": self.pricing_version,
+            "pricing_source": self.pricing_source,
         }
+        return result
 
 
 @dataclass
@@ -263,6 +357,10 @@ def response_metadata(response: Any, *, alias: str, model_id: str) -> dict[str, 
         "provider_request_id": first("_request_id", "request_id"),
         "created": first("created_at", "created"),
         "fingerprint": first("system_fingerprint", "fingerprint"),
+        # Usage carries no prompt or reasoning content and is safe to archive.
+        # Keeping the complete provider object makes future schema additions
+        # recoverable without guessing from the normalized columns.
+        "provider_usage": _native_json_value(getattr(response, "usage", None)),
         "native_response_sha256": native_response_sha256(response),
     }
 
@@ -291,39 +389,29 @@ class ModelConfig:
     max_tokens: int
     price_in_per_mtok: float
     price_out_per_mtok: float
+    price_cache_read_per_mtok: float
+    price_cache_write_per_mtok: float
+    pricing_version: str
+    pricing_source: str
     #: Extra provider-specific request parameters, verbatim from the YAML.
     params: dict = field(default_factory=dict)
     notes: str = ""
 
-    #: Prompt-cache multipliers on the input rate. Anthropic bills a cache READ
-    #: at 0.1x and the one-time WRITE at 1.25x. OpenAI's published cached-input
-    #: rate for gpt-5.6-sol is $0.50 against $5.00, i.e. the same 0.1x, and it
-    #: has no separate write charge — so `cache_write_tokens` is simply 0 there
-    #: and the write term vanishes without needing a per-provider branch.
-    CACHE_READ_MULTIPLIER = 0.1
-    CACHE_WRITE_MULTIPLIER = 1.25
-
     def cost(self, usage: Usage) -> float:
-        """USD for one call, INCLUDING the prompt-cache terms.
-
-        The cache terms are not decoration. With caching on, `input_tokens`
-        counts only the UNCACHED remainder — 84 tokens on a measured trial call
-        — while the 3,856-token cached prefix is reported separately in
-        `cache_read_tokens` / `cache_write_tokens`. Summing only input+output
-        would therefore report a trial's cost as a small fraction of the real
-        invoice, and would report the cached and uncached calls as costing
-        exactly the same amount (measured: both $0.0010 before this fix), which
-        is the tell that the cache columns were being dropped on the floor.
-
-        Cost is a published per-model column, so an error here is a wrong number
-        in the write-up rather than a crash.
-        """
+        """USD for normalized, disjoint token buckets from one call."""
         return (
-            usage.input_tokens * self.price_in_per_mtok
-            + usage.cache_read_tokens * self.price_in_per_mtok * self.CACHE_READ_MULTIPLIER
-            + usage.cache_write_tokens * self.price_in_per_mtok * self.CACHE_WRITE_MULTIPLIER
-            + usage.output_tokens * self.price_out_per_mtok
+            usage.input_tokens_uncached * self.price_in_per_mtok
+            + usage.cache_read_tokens * self.price_cache_read_per_mtok
+            + usage.cache_write_tokens * self.price_cache_write_per_mtok
+            + usage.output_tokens_total * self.price_out_per_mtok
         ) / 1_000_000
+
+    def price_usage(self, usage: Usage) -> Usage:
+        """Attach cost and immutable pricing provenance to normalized usage."""
+        usage.cost_usd_estimate = self.cost(usage)
+        usage.pricing_version = self.pricing_version
+        usage.pricing_source = self.pricing_source
+        return usage
 
 
 def load_model_config(name: str) -> ModelConfig:
@@ -347,6 +435,10 @@ def load_model_config(name: str) -> ModelConfig:
         max_tokens=raw["max_tokens"],
         price_in_per_mtok=raw["price_in_per_mtok"],
         price_out_per_mtok=raw["price_out_per_mtok"],
+        price_cache_read_per_mtok=raw["price_cache_read_per_mtok"],
+        price_cache_write_per_mtok=raw["price_cache_write_per_mtok"],
+        pricing_version=str(raw["pricing_version"]),
+        pricing_source=raw["pricing_source"],
         params=raw.get("params") or {},
         notes=raw.get("notes", ""),
     )

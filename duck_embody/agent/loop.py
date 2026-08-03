@@ -1785,13 +1785,11 @@ class EpisodeRunner:
             "collision_event_ids": sorted(self.context.collision_event_ids),
             # doc 06 §4: "§5 values, computed post-hoc by scorer". T4.1 fills it.
             "metrics": {},
-            # WIDENED from doc 06 §4's {input, output, cost_usd_estimate} to
-            # Usage.as_dict()'s five keys, recorded in §4 in the same commit. The
-            # two cache fields are not decoration: doc 06 §8 names prompt caching
-            # on the stable prefix as the main lever on Anthropic input cost, and
-            # a batch that cannot see whether it hit the cache cannot report what
-            # it actually spent. `input_tokens` here is the provider's own name,
-            # so no remapping can silently transpose the two columns.
+            # TR.7 normalizes the providers' incompatible meanings:
+            # Anthropic input_tokens excludes its cache buckets; OpenAI's
+            # includes them. Usage.as_dict() stores explicit total/uncached/read/
+            # write columns plus pricing provenance, so both token comparisons
+            # and the published bill have one meaning.
             "tokens": total.as_dict(),
             "tokens_breakdown": {
                 "episode": self.episode_usage.as_dict(),

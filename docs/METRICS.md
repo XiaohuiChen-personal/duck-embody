@@ -840,3 +840,58 @@ consequence of a frozen decision.
    pre-registered predicate, so the v2 success has no `return_home` data, and
    the conditional return rate excludes it (published as
    `stage1_successes_never_offered_return`).
+
+---
+
+## 6. Provider usage and cost accounting
+
+`Usage` stores one normalized partition for every response:
+
+- `input_tokens_total = input_tokens_uncached + cache_read_tokens +
+  cache_write_tokens`;
+- `output_tokens_total`;
+- nullable `reasoning_tokens` and `provider_reported_total_tokens`;
+- `cost_usd_estimate`, `pricing_version`, and `pricing_source`.
+
+Anthropic's Messages API reports `input_tokens` as the uncached remainder, with
+`cache_read_input_tokens` and `cache_creation_input_tokens` outside it. Therefore
+the adapter adds all three to obtain total input. OpenAI's Responses API reports
+`usage.input_tokens` as total input; `input_tokens_details.cached_tokens` and
+`cache_write_tokens` are subsets. Therefore the adapter subtracts both to obtain
+uncached input before billing. The provider's complete raw usage object is also
+archived under response metadata; it contains no API key, prompt, or reasoning
+content.
+
+Prices are explicit per bucket in each model YAML. For GPT-5.6 Sol standard
+short-context processing on 2026-08-02: uncached input $5.00/MTok, cache reads
+$0.50/MTok, cache writes $6.25/MTok, and output $30.00/MTok. Source:
+https://developers.openai.com/api/docs/pricing and
+https://developers.openai.com/api/docs/guides/prompt-caching. Reasoning tokens
+are already included in OpenAI `output_tokens` and are not billed a second time.
+
+A controlled GPT-5.6 Sol probe on 2026-08-02 confirmed the documented
+partition. With one explicit 7,203-token breakpoint, call 1 reported 7,210 total
+= 7 uncached + 7,203 writes; the identical call and a changed-suffix call each
+reported 7,210 = 7 uncached + 7,203 reads. Estimated costs were $0.04520375 for
+the write and $0.00378650 for each read. The complete raw usage objects and
+response IDs (no prompt, cache key, output, or credential) are archived at
+`results/probes/gpt56_cache_usage_20260802.json`.
+
+### Historical `v5d_r2` disposition
+
+Raw trial JSON is immutable and remains unchanged. Its GPT records captured
+total input and cache reads but not GPT-5.6 cache writes. Exact GPT cost is
+therefore unrecoverable. `scripts/build_scores.py` publishes both the original
+reported value and a corrected lower bound:
+
+`(input_total - cache_reads) × ordinary_input_rate + cache_reads × read_rate +
+output × output_rate`.
+
+This treats every unknown non-read token as ordinary input. Any hidden cache
+write can only increase the charge by the 25% write premium, so the result is a
+genuine lower bound rather than an invented point estimate. For seeds 101–104,
+original → lower bound is respectively $0.869054 → ≥$0.576264,
+$1.373387 → ≥$0.876917, $1.582117 → ≥$1.085647, and
+$1.450030 → ≥$0.940830. Source fields: each immutable
+`results/raw_v5d_r2/gpt56sol_seed*.json final.tokens`; formula:
+`duck_embody.scoring.historical_openai_cost_lower_bound`.

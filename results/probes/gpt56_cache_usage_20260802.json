@@ -1,0 +1,96 @@
+{
+  "schema": "duck-embody-gpt56-cache-probe-v1",
+  "created_utc": "2026-08-03T01:45:32.297958+00:00",
+  "model": "gpt-5.6-sol",
+  "prompt_archived": false,
+  "cache_key_archived": false,
+  "pricing_version": "2026-08-02",
+  "pricing_source": "https://developers.openai.com/api/docs/pricing",
+  "cache_semantics_source": "https://developers.openai.com/api/docs/guides/prompt-caching",
+  "rates_usd_per_mtok": {
+    "uncached_input": 5.0,
+    "cache_read": 0.5,
+    "cache_write": 6.25,
+    "output": 30.0
+  },
+  "responses": [
+    {
+      "step": "write",
+      "response_id": "resp_08f095b4fd0b94d0006a6ff2b39970819082d5309793def514",
+      "status": "completed",
+      "usage_raw": {
+        "input_tokens": 7210,
+        "input_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 7203
+        },
+        "output_tokens": 5,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 7215
+      },
+      "usage_normalized": {
+        "input_tokens_total": 7210,
+        "input_tokens_uncached": 7,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 7203,
+        "output_tokens_total": 5,
+        "provider_reported_total_tokens": 7215,
+        "cost_usd_estimate": 0.04520375
+      }
+    },
+    {
+      "step": "read",
+      "response_id": "resp_0de7c9d4efb8a958006a6ff2b6125c8193be6c85a6b79f1a64",
+      "status": "completed",
+      "usage_raw": {
+        "input_tokens": 7210,
+        "input_tokens_details": {
+          "cached_tokens": 7203,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 5,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 7215
+      },
+      "usage_normalized": {
+        "input_tokens_total": 7210,
+        "input_tokens_uncached": 7,
+        "cache_read_tokens": 7203,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 5,
+        "provider_reported_total_tokens": 7215,
+        "cost_usd_estimate": 0.0037865
+      }
+    },
+    {
+      "step": "changed_suffix",
+      "response_id": "resp_0fcc33b746db0c32006a6ff2b947d08194bb2930f6a80db33c",
+      "status": "completed",
+      "usage_raw": {
+        "input_tokens": 7210,
+        "input_tokens_details": {
+          "cached_tokens": 7203,
+          "cache_write_tokens": 0
+        },
+        "output_tokens": 5,
+        "output_tokens_details": {
+          "reasoning_tokens": 0
+        },
+        "total_tokens": 7215
+      },
+      "usage_normalized": {
+        "input_tokens_total": 7210,
+        "input_tokens_uncached": 7,
+        "cache_read_tokens": 7203,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 5,
+        "provider_reported_total_tokens": 7215,
+        "cost_usd_estimate": 0.0037865
+      }
+    }
+  ]
+}

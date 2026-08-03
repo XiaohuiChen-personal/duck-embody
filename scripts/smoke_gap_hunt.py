@@ -487,7 +487,12 @@ class ScriptedNavigator:
     # -- internals -----------------------------------------------------------
 
     def _usage(self):
-        return self._usage_cls(input_tokens=1, output_tokens=1, cache_read_tokens=1)
+        return self._usage_cls(
+            input_tokens_total=2,
+            input_tokens_uncached=1,
+            output_tokens_total=1,
+            cache_read_tokens=1,
+        )
 
     def _call(self, tool: str, **args):
         # First parameter is `tool`, NOT `name`: update_room/set_current_room

@@ -10,6 +10,10 @@ max_tokens: 16000
 
 price_in_per_mtok: 5.0
 price_out_per_mtok: 25.0
+price_cache_read_per_mtok: 0.5
+price_cache_write_per_mtok: 6.25
+pricing_version: "2026-08-02"
+pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing"
 
 # Same as Fable 5: sampling parameters return 400; `effort` left at the API
 # default so both Anthropic contestants are configured identically.

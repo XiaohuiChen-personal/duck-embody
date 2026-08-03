@@ -230,13 +230,26 @@ class AnthropicProvider:
         return self._parse(response)
 
     def _parse(self, response) -> AssistantTurn:
-        usage = Usage(
-            input_tokens=getattr(response.usage, "input_tokens", 0) or 0,
-            output_tokens=getattr(response.usage, "output_tokens", 0) or 0,
-            cache_read_tokens=getattr(response.usage, "cache_read_input_tokens", 0) or 0,
-            cache_write_tokens=getattr(response.usage, "cache_creation_input_tokens", 0) or 0,
+        # Anthropic's `input_tokens` is ONLY the uncached remainder. Cache reads
+        # and cache creations are additional, disjoint buckets, so normalized
+        # total input is their sum (Messages API usage documentation, 2026-08-02).
+        input_uncached = getattr(response.usage, "input_tokens", 0) or 0
+        cache_read = (
+            getattr(response.usage, "cache_read_input_tokens", 0) or 0
         )
-        usage.cost_usd = self.cfg.cost(usage)
+        cache_write = (
+            getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+        )
+        usage = Usage(
+            input_tokens_total=input_uncached + cache_read + cache_write,
+            input_tokens_uncached=input_uncached,
+            output_tokens_total=(
+                getattr(response.usage, "output_tokens", 0) or 0
+            ),
+            cache_read_tokens=cache_read,
+            cache_write_tokens=cache_write,
+        )
+        self.cfg.price_usage(usage)
 
         stop_reason = response.stop_reason or ""
 

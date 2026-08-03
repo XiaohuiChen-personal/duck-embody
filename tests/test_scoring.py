@@ -2509,6 +2509,52 @@ class TestBumpsAndFalls:
 # ---------------------------------------------------------------------------
 
 
+class TestHistoricalOpenAICostRecovery:
+    def test_cached_reads_are_not_double_charged(self):
+        usage = {
+            "input_tokens": 153_177,
+            "output_tokens": 2_463,
+            "cache_read_tokens": 58_558,
+            # Zero here is not evidence of zero writes: the old adapter never
+            # captured OpenAI's detail field.
+            "cache_write_tokens": 0,
+        }
+        lower = scoring.historical_openai_cost_lower_bound(
+            usage,
+            input_per_mtok=5.0,
+            cache_read_per_mtok=0.5,
+            output_per_mtok=30.0,
+        )
+        assert lower == pytest.approx(0.576264)
+        assert lower < 0.869054  # the legacy double-read-charge estimate
+
+    def test_no_cache_reduces_to_normal_input_plus_output(self):
+        lower = scoring.historical_openai_cost_lower_bound(
+            {
+                "input_tokens": 1_000_000,
+                "output_tokens": 100_000,
+                "cache_read_tokens": 0,
+            },
+            input_per_mtok=5.0,
+            cache_read_per_mtok=0.5,
+            output_per_mtok=30.0,
+        )
+        assert lower == pytest.approx(8.0)
+
+    def test_impossible_legacy_partition_is_rejected(self):
+        with pytest.raises(scoring.ScoringError, match="partition"):
+            scoring.historical_openai_cost_lower_bound(
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 1,
+                    "cache_read_tokens": 11,
+                },
+                input_per_mtok=5.0,
+                cache_read_per_mtok=0.5,
+                output_per_mtok=30.0,
+            )
+
+
 class TestStatistics:
     def test_the_bootstrap_constants_come_from_the_frozen_config(self):
         config = scoring.scoring_config()

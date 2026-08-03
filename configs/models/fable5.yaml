@@ -13,6 +13,10 @@ max_tokens: 16000
 # USD per million tokens.
 price_in_per_mtok: 10.0
 price_out_per_mtok: 50.0
+price_cache_read_per_mtok: 1.0
+price_cache_write_per_mtok: 12.5
+pricing_version: "2026-08-02"
+pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing"
 
 # No sampling parameters. temperature/top_p/top_k were REMOVED on this model
 # and return HTTP 400 — doc 05 §7.1's warning is correct. Decoding determinism

@@ -122,6 +122,44 @@ MIN_CI_VALUES = 3
 
 STAGES: tuple[str, str] = (STAGE_FIND_KITCHEN, STAGE_RETURN_HOME)
 
+
+def historical_openai_cost_lower_bound(
+    usage: Mapping[str, object],
+    *,
+    input_per_mtok: float,
+    cache_read_per_mtok: float,
+    output_per_mtok: float,
+) -> float:
+    """Recover the minimum GPT cost from a legacy, write-blind usage record.
+
+    Legacy logs stored OpenAI ``input_tokens`` (the provider's TOTAL) and
+    ``cache_read_tokens`` but discarded GPT-5.6 ``cache_write_tokens``.  The
+    exact cost is therefore unrecoverable.  Billing every non-read token at the
+    ordinary input rate is a valid lower bound: any hidden writes replace that
+    rate with the higher cache-write rate, never a lower one.
+
+    This function deliberately does not read or rewrite raw trial files.
+    """
+    try:
+        total_input = int(usage["input_tokens"])
+        cache_read = int(usage.get("cache_read_tokens", 0) or 0)
+        output = int(usage["output_tokens"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ScoringError(f"invalid legacy OpenAI usage object: {usage!r}") from exc
+    if min(total_input, cache_read, output) < 0 or cache_read > total_input:
+        raise ScoringError(f"invalid legacy OpenAI token partition: {usage!r}")
+    uncached_or_write = total_input - cache_read
+    return round(
+        (
+            uncached_or_write * input_per_mtok
+            + cache_read * cache_read_per_mtok
+            + output * output_per_mtok
+        )
+        / 1_000_000,
+        6,
+    )
+
+
 #: doc 06 §5.7's evidence sources: the tool calls that name a room, mapped to the
 #: argument carrying the name. See :func:`room_evidence` for why
 #: ``add_landmark`` contributes the pose at the call, not a landmark position.

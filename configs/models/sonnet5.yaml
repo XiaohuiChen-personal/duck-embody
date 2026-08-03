@@ -25,6 +25,10 @@ max_tokens: 16000
 # durable one.
 price_in_per_mtok: 3.0
 price_out_per_mtok: 15.0
+price_cache_read_per_mtok: 0.3
+price_cache_write_per_mtok: 3.75
+pricing_version: "2026-08-02"
+pricing_source: "https://platform.claude.com/docs/en/about-claude/pricing"
 
 # No sampling parameters: non-default temperature/top_p/top_k are REJECTED on
 # this model. `effort` deliberately unset (API default applies), matching the

@@ -1026,8 +1026,16 @@ the warning below for Anthropic.</li>
 API params, context K, image size <span class="src">source: configs/models/README.md</span>).</li>
 <li><strong>Retry</strong>: exponential backoff + jitter on HTTP 429 / 5xx / connection errors (both official
 SDKs do this natively; we set the retry count and log every retry). Exhaustion → infra-failed trial (§8).</li>
-<li><strong>Accounting</strong>: token counts from each response's usage object, multiplied by the price sheet
-in the model config; reported per trial.</li>
+<li><strong>Accounting (normalized by TR.7)</strong>: adapters emit
+<code>input_tokens_total</code>, <code>input_tokens_uncached</code>,
+<code>cache_read_tokens</code>, <code>cache_write_tokens</code>,
+<code>output_tokens_total</code>, optional reasoning/provider totals, estimated
+cost, and the pricing sheet's version/source. Anthropic reports uncached input,
+cache reads, and cache creations as three additive buckets. OpenAI reports total
+input with cached reads and GPT-5.6 writes as subsets in
+<code>input_tokens_details</code>; the adapter subtracts those subsets before
+billing. Raw provider usage objects are archived in response metadata so future
+fields remain recoverable without prompt or reasoning content.</li>
 </ul>
 
 <div class="warning"><strong>"temperature 0" cannot be sent to the Anthropic models.</strong> The locked models

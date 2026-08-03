@@ -11,8 +11,8 @@ max_tokens: 16000
 # as an open question and the cost table's OpenAI row as TBD). Read from
 # OpenAI's published pricing page for the gpt-5.6 family:
 #   gpt-5.6-sol    $5.00 in / $30.00 out / $0.50 cached-in
-#   gpt-5.6-terra  $2.50 / $15.00
-#   gpt-5.6-luna   $1.00 /  $6.00
+#   gpt-5.6-terra  $2.00 / $12.00
+#   gpt-5.6-luna   $0.20 /  $1.20
 #
 # A 0.0 placeholder is worse than no number at all: runner.py multiplies by it,
 # so every cost this contestant reported would have been exactly $0.00 — a
@@ -20,11 +20,13 @@ max_tokens: 16000
 # would compare across labs.
 price_in_per_mtok: 5.0
 price_out_per_mtok: 30.0
-# Reads bill at 0.1x. Recorded because OpenAI caches AUTOMATICALLY while
-# Anthropic requires explicit cache_control markers — so this contestant gets a
-# discount the other two do not. That is a COST asymmetry, never a capability
-# one (it changes the bill, not what any model sees), but it must be stated
-# wherever per-model cost is published.
+price_cache_read_per_mtok: 0.5
+price_cache_write_per_mtok: 6.25
+pricing_version: "2026-08-02"
+pricing_source: "https://developers.openai.com/api/docs/pricing"
+# GPT-5.6 cache reads bill at 0.1x and writes at 1.25x. OpenAI's input_tokens
+# already INCLUDES both subsets; the adapter subtracts them before applying the
+# four disjoint rates. This differs from Anthropic's additive usage shape.
 
 # T3.3 temperature probe RESULT (doc 05 §7.1 open question), recorded here so
 # the decision lives in the frozen config rather than being assumed in code:

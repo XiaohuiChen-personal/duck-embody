@@ -15,6 +15,15 @@
     "seed": 20260726,
     "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
   },
+  "cost_accounting": {
+    "schema": "normalized-provider-usage-v1",
+    "historical_v5d_r2_gpt": {
+      "exact": false,
+      "disposition": "Raw JSON is unchanged. Published GPT costs are corrected lower bounds using recoverable cache reads; exact costs are unrecoverable because legacy logs omitted cache-write usage.",
+      "pricing_version": "2026-08-02",
+      "pricing_source": "https://developers.openai.com/api/docs/pricing"
+    }
+  },
   "trials": [
     {
       "trial_id": "sonnet5_seed101",
@@ -98,6 +107,9 @@
         "kitchen"
       ],
       "cost_usd": 1.204498,
+      "cost_usd_original_reported": 1.204498,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 321520,
         "output_tokens": 11364,
@@ -182,6 +194,9 @@
         "bedroom"
       ],
       "cost_usd": 1.365291,
+      "cost_usd_original_reported": 1.365291,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 364573,
         "output_tokens": 14436,
@@ -269,6 +284,9 @@
         "hallway"
       ],
       "cost_usd": 1.55121,
+      "cost_usd_original_reported": 1.55121,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 413526,
         "output_tokens": 17040,
@@ -364,6 +382,9 @@
         "kitchen"
       ],
       "cost_usd": 1.163052,
+      "cost_usd_original_reported": 1.163052,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 323350,
         "output_tokens": 9198,
@@ -458,6 +479,9 @@
         "kitchen"
       ],
       "cost_usd": 1.244771,
+      "cost_usd_original_reported": 1.244771,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 184582,
         "output_tokens": 9757,
@@ -545,6 +569,9 @@
         "hallway"
       ],
       "cost_usd": 4.35733,
+      "cost_usd_original_reported": 4.35733,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 684094,
         "output_tokens": 33860,
@@ -629,6 +656,9 @@
         "hallway"
       ],
       "cost_usd": 3.717913,
+      "cost_usd_original_reported": 3.717913,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 539011,
         "output_tokens": 37571,
@@ -723,6 +753,9 @@
         "kitchen"
       ],
       "cost_usd": 2.329959,
+      "cost_usd_original_reported": 2.329959,
+      "cost_exact": true,
+      "cost_basis": "legacy_provider_usage",
       "tokens": {
         "input_tokens": 360081,
         "output_tokens": 18381,
@@ -814,7 +847,10 @@
         "living_room",
         "kitchen"
       ],
-      "cost_usd": 0.869054,
+      "cost_usd": 0.576264,
+      "cost_usd_original_reported": 0.869054,
+      "cost_exact": false,
+      "cost_basis": "lower_bound_missing_gpt56_cache_write_tokens",
       "tokens": {
         "input_tokens": 153177,
         "output_tokens": 2463,
@@ -904,7 +940,10 @@
         "bedroom",
         "hallway"
       ],
-      "cost_usd": 1.373387,
+      "cost_usd": 0.876917,
+      "cost_usd_original_reported": 1.373387,
+      "cost_exact": false,
+      "cost_basis": "lower_bound_missing_gpt56_cache_write_tokens",
       "tokens": {
         "input_tokens": 240844,
         "output_tokens": 3984,
@@ -991,7 +1030,10 @@
         "hallway",
         "bedroom"
       ],
-      "cost_usd": 1.582117,
+      "cost_usd": 1.085647,
+      "cost_usd_original_reported": 1.582117,
+      "cost_exact": false,
+      "cost_basis": "lower_bound_missing_gpt56_cache_write_tokens",
       "tokens": {
         "input_tokens": 276716,
         "output_tokens": 4963,
@@ -1083,7 +1125,10 @@
       "visited_rooms": [
         "living_room"
       ],
-      "cost_usd": 1.45003,
+      "cost_usd": 0.94083,
+      "cost_usd_original_reported": 1.45003,
+      "cost_exact": false,
+      "cost_basis": "lower_bound_missing_gpt56_cache_write_tokens",
       "tokens": {
         "input_tokens": 257586,
         "output_tokens": 3706,
@@ -1761,14 +1806,14 @@
         "n_total": 4
       },
       "cost_usd": {
-        "mean": 1.3186,
+        "mean": 0.8699,
         "ci95": [
-          1.0143,
-          1.5299
+          0.6674,
+          1.0335
         ],
         "n_defined": 4,
         "n_total": 4,
-        "sum": 5.274588
+        "sum": 3.479658
       },
       "total_turns": {
         "mean": 36.0,

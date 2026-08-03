@@ -299,8 +299,9 @@ def main() -> int:
                 )
             tokens = final["tokens"]
             print(
-                f"  tokens         in {tokens['input_tokens']} / out "
-                f"{tokens['output_tokens']} / cached {tokens['cache_read_tokens']}"
+                f"  tokens         in {tokens['input_tokens_total']} "
+                f"({tokens['input_tokens_uncached']} uncached) / out "
+                f"{tokens['output_tokens_total']} / cached {tokens['cache_read_tokens']}"
                 f"  ~${tokens['cost_usd_estimate']:.4f}"
             )
 

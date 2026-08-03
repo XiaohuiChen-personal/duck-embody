@@ -295,6 +295,19 @@ Robot / policy (paths in parent repo or `~/IsaacLab`):
 - **Pausing is safe**: physics advances ONLY inside `env.step()`. Not stepping = frozen.
 
 Agent harness (found in T3.4's review pass, 2026-07-26):
+- **Provider `input_tokens` fields do not mean the same thing** (TR.7,
+  2026-08-02). Anthropic reports the uncached remainder and puts cache reads /
+  creations outside it, so total input is their sum. OpenAI reports total input
+  and puts GPT-5.6 cache reads / writes inside it as subsets; subtract both to
+  obtain uncached input. A shared formula on the native field double-charged
+  GPT reads and omitted its 1.25x write premium. `Usage` now stores
+  total/uncached/read/write explicitly, archives raw provider usage in response
+  metadata, and carries pricing version/source. Controlled GPT-5.6 Sol probe:
+  7,210 total input = 7 uncached + 7,203 write on call 1, then 7 + 7,203 read on
+  calls 2/3 (`results/probes/gpt56_cache_usage_20260802.json`). Historical
+  `v5d_r2` raw JSON remains untouched; exact GPT cost is unrecoverable because
+  writes were not captured, so reports publish original values plus corrected
+  lower bounds.
 - **Never import `anthropic`/`openai` before `AppLauncher`** (measured, T3.5's
   first sanity run): imported pre-kit, the anthropic SDK loses the ability to
   strip its own unset-parameter defaults — twelve `Omit` sentinels

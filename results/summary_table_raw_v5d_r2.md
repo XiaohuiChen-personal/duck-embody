@@ -25,9 +25,11 @@ Batch: 3 models x 4 seeds (101-104), config_hash `0e9017a84c06`, freeze commit `
 | map recall | 0.250 [0.000, 0.500] | 0.375 [0.000, 0.750] | 0.500 [0.125, 0.875] |
 | edge accuracy | 0.000 [0.000, 0.000] (n=3/4) | 0.333 [0.000, 1.000] (n=3/4) | 0.000 [0.000, 0.000] (n=3/4) |
 | QA score (0-1) | 0.350 [0.300, 0.450] | 0.600 [0.475, 0.700] | 0.275 [0.100, 0.450] |
-| cost (USD / trial) | 1.321 [1.184, 1.464], sum $5.28 | 2.913 [1.787, 4.038], sum $11.65 | 1.319 [1.014, 1.530], sum $5.27 |
+| cost (USD / trial); GPT lower bound | 1.321 [1.184, 1.464], sum $5.28 | 2.913 [1.787, 4.038], sum $11.65 | 0.870 [0.667, 1.034], sum $3.48 |
 | total turns / trial | 39.75 [39.25, 40.00], sum 159 | 32.75 [26.50, 38.50], sum 131 | 36.00 [28.00, 40.00], sum 144 |
 | stage-1 end reasons | declare_done: 3, turn_cap: 1 | declare_done: 4 | declare_done: 3, turn_cap: 1 |
+
+**v5d_r2 GPT cost correction.** Raw trial JSON is unchanged. The GPT cost cells above are lower bounds computed from total input, recoverable cache reads, and output at the 2026-08-02 GPT-5.6 Sol rates. Legacy logs omitted `cache_write_tokens`, so the exact charge cannot be recovered; each hidden write would add the 25% write premium. Original reported → corrected lower bound: `gpt56sol_seed101` $0.869054 → ≥$0.576264, `gpt56sol_seed102` $1.373387 → ≥$0.876917, `gpt56sol_seed103` $1.582117 → ≥$1.085647, `gpt56sol_seed104` $1.450030 → ≥$0.940830.
 
 Notes: definitions per doc 06 §§5.3-5.4 (SPL is 0.0 on failure; time-to-kitchen defined only on success). Batch-specific commentary is omitted for a redirected results dir — see the per-trial audit files alongside the raw JSONs.
 
@@ -55,10 +57,10 @@ Notes: definitions per doc 06 §§5.3-5.4 (SPL is 0.0 on failure; time-to-kitche
 
 | Trial | Stage-1 outcome (v2) | Progress | SPL | Path (m) | Turns | Bumps | Falls | Drift (m) | Corr. | Map P | Map R | Edge acc | QA | Cost ($) | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| gpt56sol_seed101 | declared_elsewhere | 0.609 | 0.000 | 4.90 | 24 | 4 | 0 | 0.766 | 1 | 0.50 | 0.50 | 0.00 | 0.50 | 0.869 | [gpt56sol_seed101.mp4](videos/gpt56sol_seed101.mp4) |
-| gpt56sol_seed102 | declared_elsewhere | 0.000 | 0.000 | 16.05 | 40 | 16 | 0 | 0.057 | 0 | 1.00 | 0.50 | — | 0.20 | 1.373 | [gpt56sol_seed102.mp4](videos/gpt56sol_seed102.mp4) |
-| gpt56sol_seed103 | declared_elsewhere | 0.274 | 0.000 | 10.40 | 40 | 14 | 0 | 0.148 | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 1.582 | [gpt56sol_seed103.mp4](videos/gpt56sol_seed103.mp4) |
-| gpt56sol_seed104 | timeout_turns | 0.000 | 0.000 | 13.65 | 40 | 9 | 0 | 0.377 | 2 | 1.00 | 1.00 | 0.00 | 0.40 | 1.450 | [gpt56sol_seed104.mp4](videos/gpt56sol_seed104.mp4) |
+| gpt56sol_seed101 | declared_elsewhere | 0.609 | 0.000 | 4.90 | 24 | 4 | 0 | 0.766 | 1 | 0.50 | 0.50 | 0.00 | 0.50 | 0.576 | [gpt56sol_seed101.mp4](videos/gpt56sol_seed101.mp4) |
+| gpt56sol_seed102 | declared_elsewhere | 0.000 | 0.000 | 16.05 | 40 | 16 | 0 | 0.057 | 0 | 1.00 | 0.50 | — | 0.20 | 0.877 | [gpt56sol_seed102.mp4](videos/gpt56sol_seed102.mp4) |
+| gpt56sol_seed103 | declared_elsewhere | 0.274 | 0.000 | 10.40 | 40 | 14 | 0 | 0.148 | 1 | 0.00 | 0.00 | 0.00 | 0.00 | 1.086 | [gpt56sol_seed103.mp4](videos/gpt56sol_seed103.mp4) |
+| gpt56sol_seed104 | timeout_turns | 0.000 | 0.000 | 13.65 | 40 | 9 | 0 | 0.377 | 2 | 1.00 | 1.00 | 0.00 | 0.40 | 0.941 | [gpt56sol_seed104.mp4](videos/gpt56sol_seed104.mp4) |
 
 Per-question QA scores, matched room names, visited rooms, token counts and the return_home rows are in `results/scores.json`; raw evidence is `results/raw/<trial>.json` and `results/videos/<trial>.mp4`.
 
