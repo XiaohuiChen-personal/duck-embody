@@ -2178,6 +2178,22 @@ fix, not a prompt or acceptance-threshold change.
   `results/smokes/t9_canary_prefreeze_audits/sonnet5_seed101.md` is PASS on all
   checklist fields. Cost: $0.1288.
 
+**L6 first-attempt refusal (2026-08-03, preserved).** The first mini cell
+completed under write-once manifest `v5d-r3` SHA `3dd077bf…`, but reuse correctly
+refused before seed 102: the manifest recorded the clean parent at
+`7dde4ba952fb40c5ffb29441a1895f6f8863fdcc` while the stale pyproject pin still
+named `2fc57c9c…`. The manifest builder had written and launched seed 101 without
+running its own refusal set; only the existing-manifest path checked it. That
+cell is **INVALID provenance evidence**, not an L7 result, and is preserved under
+`results/incomplete/mini_v5d_r3_invalid_parent_20260803/`. Fix: validate both new
+and reused manifests before Kit, update the documented parent pin to the actual
+clean read-only tree, rerun L0, commit, and create a new write-once manifest.
+Neither prompt, task criterion, model config, nor policy checkpoint changed.
+The same pass restored `results/freeze.json` to the immutable `v5d_r2` legacy
+artifact: `runner.py --freeze` had overwritten that tracked historical fixture,
+causing the pinned forensic baseline test to fail. New work uses only
+`results/manifests/<batch_id>.json`; it does not repurpose the legacy filename.
+
 ---
 
 ## Standing constraints (every task)

@@ -1,9 +1,8 @@
 {
   "schema": "duck-embody-freeze-v1",
-  "frozen_at": "2026-08-03T02:59:48Z",
-  "freeze_commit": "1c9c6a7f98280aee3137d47a56f5b593f534ac48",
-  "config_hash": "d30462d03c764c7c8520cae5910ea704eedbe94f96dfbf965d551ba6859ea46b",
-  "success_criterion": "v2_any_counter",
+  "frozen_at": "2026-07-30T08:43:31Z",
+  "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+  "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
   "matrix": {
     "models": [
       "sonnet5",
@@ -18,24 +17,24 @@
     ]
   },
   "files": {
-    "duck_embody/agent/prompts.py": "760825f46ec14b7db5244cc9a4954c4dfb152c64ec660eabb4d101cf26e909af",
-    "duck_embody/agent/tools.py": "8bc9e95f27a5193164d5a1025232e542aa02d11788b93e6ef43141e25413fdaa",
-    "duck_embody/agent/memory.py": "c22420320933e3aec9253174b73945e655d4d25fb6bd375e4842f6013d101f1a",
-    "duck_embody/agent/loop.py": "61acf19fcde9c8ed148e4eb7c48331a1df461a9e58cb4b37a8cde9e895b64ca0",
-    "duck_embody/agent/providers/base.py": "c7c914a567b26dd1f9c88ef2883c5ece6d595873e0024678f78990ae9f1aefef",
-    "duck_embody/agent/providers/anthropic.py": "493c1659e5e5e587407c3f5ca9348fdbdd4d0242a4e84c4e8332420981eda866",
-    "duck_embody/agent/providers/openai.py": "7747ad04591e9b4a3aa0914fea02c709f191558266ee88bbddea54cd5a11de21",
-    "duck_embody/sim/policy_wrapper.py": "ec807a8f8816a270285dbdec62742b4124c7f33acf3b47d0f5e49d184347858e",
-    "duck_embody/sim/recorder.py": "1237d0271195e1cf57b88f60017f82893079d090509489c81398ad5050cd75d8",
-    "duck_embody/sim/session.py": "dc86a43905753ea8c2186a6b2d5940b75f6154aa5ec13197c5bdb7b8ee27fec7",
+    "duck_embody/agent/prompts.py": "8d55e311e483f25153d7fae06de7f70463b50950948321212a3e89c3086fa264",
+    "duck_embody/agent/tools.py": "c423de5fb965ff327178c12cfd3784046cc920f446f39de128f72333bdd772cc",
+    "duck_embody/agent/memory.py": "f9c81b13b978ebd43b2bf948032a211749841cb5fe81dba55c38d62604ceba28",
+    "duck_embody/agent/loop.py": "08bf991600af03f6503b58d6515196d95f2caaeaf90f06b6351d6f187f019b7d",
+    "duck_embody/agent/providers/base.py": "1b86b79e444d5132ec4658708a354ae36e4a1c783285680841e3371967f95135",
+    "duck_embody/agent/providers/anthropic.py": "5c7e223f558378ddbc131889744beb48e9e053306f62b270f9ab0f7294ff99f1",
+    "duck_embody/agent/providers/openai.py": "ad42a79115612aad928cfc2590b488c7424e8882d09576dc8298724f649ba441",
+    "duck_embody/sim/policy_wrapper.py": "4c9c177eaa98bd2c289877947a74bea68a5165a67f1a90bc4673ad26b91bbc2e",
+    "duck_embody/sim/recorder.py": "5eae143ced79154ddda1c56db07f2904de160531eb35312eb84a2cc87aa0cb25",
+    "duck_embody/sim/session.py": "fa9d47de284ccba4cdfd6cb4e39661aad454ba3648511a88270aa8357ee4a994",
     "duck_embody/env/embody_env_cfg.py": "92ddbf1f3503ed251af36cd39e68799f2b97927ca8ad1a7ba6280a366ea4cc5b",
     "duck_embody/env/scene_builder.py": "9e5d5c5c272957cb3824403c264bf11aaebb40d537ddb39c4ff522048f738d3f",
     "duck_embody/env/camera.py": "3a307e09980dac6ef8e45698626f22f7b819f69f9870a03a613b16bad11bd945",
-    "duck_embody/env/apartment_layout.py": "6b254f23dbb182d15eca8483f9f03b649fdb4227cfe3c52ef37784d752f5642a",
-    "duck_embody/tasks/find_kitchen.py": "fb40cbdd4c012d286374f60f002ee98bfc904c48ffb6d8c0909a78642b6f53ea",
-    "configs/benchmark.yaml": "de8338b3da0b051178bc26cc3c454f8893d0b8cf0849bfc92ce711ed5d47ff47",
-    "configs/models/sonnet5.yaml": "2827fc7ef241df047f054a7f20b65476bfb6c02c57cf1735ab2783c70bca95a4",
-    "configs/models/opus5.yaml": "fa86cb51729d22cd448bc63c47c80c7f13bef437f54cfffae8e3ea861e59a3f1",
-    "configs/models/gpt56sol.yaml": "be2c4c2703a7cd8f4ed6a37c00d858f02c2deb637d6da4c8c7fb94cbaeed39e0"
+    "duck_embody/env/apartment_layout.py": "1d04ee229789ac8fdc1bfa92f8c5b0fc724fad092ea3633204aa37a720ca2d20",
+    "duck_embody/tasks/find_kitchen.py": "ed3d710c27bedfc819200432a691dbe800990b31394c2848f768d19dcfdbdfd3",
+    "configs/benchmark.yaml": "b773662bc1809e5939611b932d40efe22d88966da0a2015dc05f0adaa70a2633",
+    "configs/models/sonnet5.yaml": "38640819c127c244830889f2a2212eb8e91b54ea5354f2364f069ddcba791420",
+    "configs/models/opus5.yaml": "b9bc5f28fab92f23e906e54aa289412fa295c3ef7e5d971731594c15dbcd1657",
+    "configs/models/gpt56sol.yaml": "0aa454b77d1062d0735412d826689aaf96c492a754b1c4920cd5c003e9466dd3"
   }
 }

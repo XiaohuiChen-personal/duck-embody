@@ -285,6 +285,12 @@ def main() -> int:
                 calibration_path=Path(args.calibration),
                 argv=invocation_argv,
             )
+            refusals = batch_manifest_refusals(manifest)
+            if refusals:
+                print("FATAL: new canary/mini-batch manifest is not runnable:")
+                for reason in refusals:
+                    print(f"  - {reason}")
+                return 2
             write_manifest_once(path, manifest)
         provenance = {
             "batch_manifest_sha256": manifest["manifest_sha256"],

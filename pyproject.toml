@@ -41,7 +41,7 @@ testpaths = ["tests"]
 parent_repo = "https://github.com/XiaohuiChen-personal/Open_Duck_Mini_Jetson"
 parent_repo_path = "~/Projects/Open_Duck_Mini_Jetson"
 parent_repo_branch = "v2"
-parent_repo_commit = "2fc57c9c3ca6749cf03c2c711bb0a74844b8c16b"
+parent_repo_commit = "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc"
 candidate_checkpoint_archive = "exported_policies/v5d_contact_wrench_ppo/model_5998.pt"
 # Recorded 2026-07-26 (T0.1). embody_env_cfg.py asserts this at import and warns
 # on mismatch. The vendored policy in policy/ was produced at this commit.

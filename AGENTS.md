@@ -204,9 +204,10 @@ deviate, update the doc in the same commit:
   AppLauncher must be constructed BEFORE importing torch/isaaclab.
 - Parent robot repo: `~/Projects/Open_Duck_Mini_Jetson` (branch `v2`). Its
   `isaac_lab_env` package registers the duck gym tasks; import it to trigger
-  registration. **Pinned commit `34f70fda182120369f954a4b1ccfa1edf58190ea`**
-  (recorded 2026-07-26 by T0.1 in `pyproject.toml` `[tool.duck-embody]`;
-  `embody_env_cfg.py` asserts it at import and warns on mismatch).
+  registration. **Pinned commit `7dde4ba952fb40c5ffb29441a1895f6f8863fdcc`**
+  (updated 2026-08-03 before the T9 freeze to bind the clean parent tree that
+  contains the archived v5d checkpoint; `pyproject.toml` is authoritative and
+  `embody_env_cfg.py` asserts it at import).
 - Policy checkpoint (**vendored into `policy/` by T0.1** — see `policy/README.md`
   for provenance, checksums, training config, and the eval record). Source:
   `~/IsaacLab/logs/rsl_rl/open_duck_ppo_robust/2026-07-07_00-15-43/model_2999.pt`
