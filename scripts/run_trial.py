@@ -247,8 +247,11 @@ def main() -> int:
     # than the one the T3.5 gate proved.
     from duck_embody.runner import (
         announce,
+        batch_manifest_refusals,
         build_batch_manifest,
+        file_sha256,
         manifest_path,
+        read_batch_manifest,
         run_one_trial,
         write_manifest_once,
     )
@@ -256,14 +259,33 @@ def main() -> int:
 
     provenance = None
     if args.batch_id:
-        manifest = build_batch_manifest(
-            batch_id=args.batch_id,
-            checkpoint=Path(args.checkpoint),
-            calibration_path=Path(args.calibration),
-            argv=invocation_argv,
-        )
         path = manifest_path(args.batch_id)
-        write_manifest_once(path, manifest)
+        if path.exists():
+            manifest = read_batch_manifest(path)
+            refusals = batch_manifest_refusals(manifest)
+            if file_sha256(Path(args.checkpoint).expanduser().resolve()) != (
+                manifest.get("policy") or {}
+            ).get("checkpoint_sha256"):
+                refusals.append("requested checkpoint differs from existing manifest")
+            if str(Path(args.calibration).expanduser().resolve()) != (
+                ((manifest.get("policy") or {}).get("calibration") or {}).get(
+                    "source"
+                )
+            ):
+                refusals.append("requested calibration differs from existing manifest")
+            if refusals:
+                print("FATAL: existing canary/mini-batch manifest is not reusable:")
+                for reason in refusals:
+                    print(f"  - {reason}")
+                return 2
+        else:
+            manifest = build_batch_manifest(
+                batch_id=args.batch_id,
+                checkpoint=Path(args.checkpoint),
+                calibration_path=Path(args.calibration),
+                argv=invocation_argv,
+            )
+            write_manifest_once(path, manifest)
         provenance = {
             "batch_manifest_sha256": manifest["manifest_sha256"],
             "checkpoint_sha256": manifest["policy"]["checkpoint_sha256"],
