@@ -1,0 +1,119 @@
+{
+ "trial_id": "opus5_seed102",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "claude-opus-5",
+ "seed": 102,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 3,
+  "correct_position": 1,
+  "declare_done": 1,
+  "get_observation": 24,
+  "look_around": 10,
+  "mark_exit": 4,
+  "move": 30,
+  "send_velocity": 5,
+  "set_current_room": 2,
+  "turn_to_heading": 31,
+  "update_plan": 4,
+  "update_room": 3
+ },
+ "motion_calls": 66,
+ "multi_motion_turns": 23,
+ "multi_motion_turn_idx": [
+  2,
+  4,
+  6,
+  8,
+  10,
+  11,
+  13,
+  15,
+  19,
+  21,
+  23,
+  25,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  36,
+  37,
+  38,
+  39
+ ],
+ "bumped_motion_calls": 46,
+ "counted_bumps": 26,
+ "falls": 0,
+ "corrections": {
+  "calls": 1,
+  "accepted": 1,
+  "rejected": 0,
+  "worsened": 1,
+  "improved": 0,
+  "error_before_sum_m": 0.0421218295823874,
+  "error_after_sum_m": 0.25574326500340244,
+  "net_added_error_m": 0.21362143542101503,
+  "ledger": [
+   {
+    "trial_id": "opus5_seed102",
+    "stage": "find_kitchen",
+    "turn_idx": 25,
+    "global_turn_idx": 25,
+    "place": "corridor_west@180",
+    "accepted": true,
+    "motion_calls_before": 1,
+    "true_xy": [
+     4.175463676452637,
+     2.8042969703674316
+    ],
+    "true_xy_source": "motion_call[0]",
+    "old_xy": [
+     4.138834515617864,
+     2.82509488141417
+    ],
+    "new_xy": [
+     4.18,
+     3.06
+    ],
+    "error_before_m": 0.0421218295823874,
+    "error_after_m": 0.25574326500340244,
+    "effect_m": 0.21362143542101503,
+    "reason": "Standing in the passage between corridor west end area and bedroom_start; recognized plant + partition edge"
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "opus5_seed102",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 1.9819,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

@@ -1,0 +1,115 @@
+{
+ "trial_id": "gpt56sol_seed103",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "gpt-5.6-sol",
+ "seed": 103,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 1,
+  "correct_position": 2,
+  "declare_done": 1,
+  "get_observation": 8,
+  "look_around": 3,
+  "mark_exit": 5,
+  "move": 10,
+  "send_velocity": 10,
+  "set_current_room": 3,
+  "turn_to_heading": 8,
+  "update_plan": 3,
+  "update_room": 2
+ },
+ "motion_calls": 28,
+ "multi_motion_turns": 0,
+ "multi_motion_turn_idx": [],
+ "bumped_motion_calls": 16,
+ "counted_bumps": 14,
+ "falls": 0,
+ "corrections": {
+  "calls": 2,
+  "accepted": 1,
+  "rejected": 1,
+  "worsened": 1,
+  "improved": 0,
+  "error_before_sum_m": 0.025583352090234837,
+  "error_after_sum_m": 0.028561687625209026,
+  "net_added_error_m": 0.0029783355349741886,
+  "ledger": [
+   {
+    "trial_id": "gpt56sol_seed103",
+    "stage": "find_kitchen",
+    "turn_idx": 10,
+    "global_turn_idx": 10,
+    "place": "",
+    "accepted": false,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.0936,
+     2.7709
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": null,
+    "new_xy": null,
+    "error_before_m": null,
+    "error_after_m": null,
+    "effect_m": null,
+    "reason": null
+   },
+   {
+    "trial_id": "gpt56sol_seed103",
+    "stage": "find_kitchen",
+    "turn_idx": 11,
+    "global_turn_idx": 11,
+    "place": "LivingRoom@90",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.0936,
+     2.7709
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.1159771463932473,
+     2.758499547449061
+    ],
+    "new_xy": [
+     1.12,
+     2.76
+    ],
+    "error_before_m": 0.025583352090234837,
+    "error_after_m": 0.028561687625209026,
+    "effect_m": 0.0029783355349741886,
+    "reason": "Recognize the narrow EntryHall/LivingRoom threshold immediately behind me; re-anchor at the LivingRoom side."
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "gpt56sol_seed103",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 2.3257,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

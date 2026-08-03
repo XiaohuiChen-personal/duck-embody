@@ -1,0 +1,127 @@
+{
+ "trial_id": "sonnet5_seed103",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+ "model": "claude-sonnet-5",
+ "seed": 103,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "correct_position": 2,
+  "declare_done": 1,
+  "get_observation": 7,
+  "look_around": 10,
+  "mark_exit": 6,
+  "move": 16,
+  "set_current_room": 3,
+  "turn_to_heading": 11,
+  "update_plan": 3,
+  "update_room": 2
+ },
+ "motion_calls": 27,
+ "multi_motion_turns": 7,
+ "multi_motion_turn_idx": [
+  3,
+  21,
+  23,
+  24,
+  25,
+  29,
+  35
+ ],
+ "bumped_motion_calls": 15,
+ "counted_bumps": 9,
+ "falls": 0,
+ "corrections": {
+  "calls": 2,
+  "accepted": 2,
+  "rejected": 0,
+  "worsened": 2,
+  "improved": 0,
+  "error_before_sum_m": 0.17157394661519806,
+  "error_after_sum_m": 0.22731810191749888,
+  "net_added_error_m": 0.05574415530230081,
+  "ledger": [
+   {
+    "trial_id": "sonnet5_seed103",
+    "stage": "find_kitchen",
+    "turn_idx": 12,
+    "global_turn_idx": 12,
+    "place": "Alcove1@270",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     4.1052,
+     2.8462
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     4.257357825550114,
+     2.83660770015762
+    ],
+    "new_xy": [
+     4.26,
+     2.84
+    ],
+    "error_before_m": 0.15245988355106782,
+    "error_after_m": 0.15492411045411864,
+    "effect_m": 0.0024642269030508146,
+    "reason": "Re-anchoring at known doorway before backtracking to Hallway1"
+   },
+   {
+    "trial_id": "sonnet5_seed103",
+    "stage": "find_kitchen",
+    "turn_idx": 30,
+    "global_turn_idx": 30,
+    "place": "Hallway1",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     0.406,
+     3.0817
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     0.3924143164164341,
+     3.0951453191998843
+    ],
+    "new_xy": [
+     0.43,
+     3.15
+    ],
+    "error_before_m": 0.019114063064130254,
+    "error_after_m": 0.07239399146338024,
+    "effect_m": 0.053279928399249984,
+    "reason": "Returned to Hallway1 anchor area after Alcove1 dead-end"
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "sonnet5_seed103",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 2.9246,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

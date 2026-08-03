@@ -1,0 +1,150 @@
+{
+ "trial_id": "opus5_seed104",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "claude-opus-5",
+ "seed": 104,
+ "turns": 31,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 5,
+  "correct_position": 3,
+  "declare_done": 2,
+  "get_observation": 9,
+  "look_around": 7,
+  "mark_exit": 4,
+  "move": 11,
+  "send_velocity": 2,
+  "set_current_room": 4,
+  "turn_to_heading": 10,
+  "update_plan": 6,
+  "update_room": 2
+ },
+ "motion_calls": 23,
+ "multi_motion_turns": 2,
+ "multi_motion_turn_idx": [
+  18,
+  4
+ ],
+ "bumped_motion_calls": 7,
+ "counted_bumps": 6,
+ "falls": 0,
+ "corrections": {
+  "calls": 3,
+  "accepted": 3,
+  "rejected": 0,
+  "worsened": 3,
+  "improved": 0,
+  "error_before_sum_m": 0.44128270089364335,
+  "error_after_sum_m": 0.6302848363045295,
+  "net_added_error_m": 0.18900213541088612,
+  "ledger": [
+   {
+    "trial_id": "opus5_seed104",
+    "stage": "return_home",
+    "turn_idx": 3,
+    "global_turn_idx": 25,
+    "place": "kitchen@195",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.9884,
+     1.3559
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     2.0355574294813774,
+     1.2901090960074093
+    ],
+    "new_xy": [
+     2.15,
+     1.21
+    ],
+    "error_before_m": 0.08094606972208959,
+    "error_after_m": 0.2177185568572418,
+    "effect_m": 0.13677248713515222,
+    "reason": "Walked back ~1.0 m from the counter toward the kitchen/living_dining gap; estimate (2.04,1.29) matches the doorway anchor within ~0.1 m, so snapping to it to kill drift before the return leg."
+   },
+   {
+    "trial_id": "opus5_seed104",
+    "stage": "return_home",
+    "turn_idx": 6,
+    "global_turn_idx": 28,
+    "place": "living_dining@15",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.1845,
+     1.1187
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.28233617539739,
+     0.9442767879533543
+    ],
+    "new_xy": [
+     1.33,
+     0.96
+    ],
+    "error_before_m": 0.19998843495826948,
+    "error_after_m": 0.2153042962878354,
+    "effect_m": 0.015315861329565916,
+    "reason": "Passed back through the kitchen gap onto brown wood floor; estimate (1.28,0.94) is within 0.06 m of the living_dining-side doorway anchor (1.33,0.96), so pinning there."
+   },
+   {
+    "trial_id": "opus5_seed104",
+    "stage": "return_home",
+    "turn_idx": 9,
+    "global_turn_idx": 31,
+    "place": "living_dining",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.1855,
+     2.3398
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.3307551458106976,
+     2.2718847097895702
+    ],
+    "new_xy": [
+     1.37,
+     2.27
+    ],
+    "error_before_m": 0.16034819621328428,
+    "error_after_m": 0.19726198315945223,
+    "effect_m": 0.036913786946167954,
+    "reason": "Back at the start: north grey wall close, dark TV east, red sofa west, dining table south \u2014 same four-view signature I recorded at the start anchor."
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "opus5_seed104",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "success",
+    "live_end_reason": "declare_done",
+    "live_success": true,
+    "live_distance_m": 0.3025,
+    "live_radius_m": 0.35,
+    "published_success_v2": true,
+    "published_success_preregistered": true,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": true,
+    "live_outcome": "success",
+    "live_end_reason": "declare_done",
+    "live_success": true,
+    "live_distance_m": 0.1972,
+    "live_radius_m": 0.5,
+    "published_success_v2": true,
+    "published_success_preregistered": true,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

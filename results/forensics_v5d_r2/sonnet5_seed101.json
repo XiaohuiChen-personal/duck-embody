@@ -1,0 +1,95 @@
+{
+ "trial_id": "sonnet5_seed101",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+ "model": "claude-sonnet-5",
+ "seed": 101,
+ "turns": 39,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 2,
+  "correct_position": 1,
+  "declare_done": 1,
+  "get_observation": 10,
+  "look_around": 8,
+  "mark_exit": 4,
+  "move": 7,
+  "send_velocity": 3,
+  "set_current_room": 2,
+  "turn_to_heading": 9,
+  "update_plan": 3,
+  "update_room": 3
+ },
+ "motion_calls": 19,
+ "multi_motion_turns": 0,
+ "multi_motion_turn_idx": [],
+ "bumped_motion_calls": 14,
+ "counted_bumps": 8,
+ "falls": 0,
+ "corrections": {
+  "calls": 1,
+  "accepted": 1,
+  "rejected": 0,
+  "worsened": 1,
+  "improved": 0,
+  "error_before_sum_m": 0.02418599534987987,
+  "error_after_sum_m": 1.5036962093454913,
+  "net_added_error_m": 1.4795102139956113,
+  "ledger": [
+   {
+    "trial_id": "sonnet5_seed101",
+    "stage": "find_kitchen",
+    "turn_idx": 21,
+    "global_turn_idx": 21,
+    "place": "RedRoom@0",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.8145,
+     1.2302
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.7914010501664603,
+     1.223030558762914
+    ],
+    "new_xy": [
+     0.5,
+     0.5
+    ],
+    "error_before_m": 0.02418599534987987,
+    "error_after_m": 1.5036962093454913,
+    "effect_m": 1.4795102139956113,
+    "reason": "Just passed through the doorway marked RedRoom exit at 0 deg into Kitchen"
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "sonnet5_seed101",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 0.9476,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

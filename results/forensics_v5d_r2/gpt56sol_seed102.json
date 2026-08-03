@@ -1,0 +1,66 @@
+{
+ "trial_id": "gpt56sol_seed102",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "gpt-5.6-sol",
+ "seed": 102,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 1,
+  "declare_done": 1,
+  "get_observation": 3,
+  "look_around": 3,
+  "move": 12,
+  "send_velocity": 6,
+  "set_current_room": 1,
+  "turn_to_heading": 15,
+  "update_plan": 1,
+  "update_room": 1
+ },
+ "motion_calls": 33,
+ "multi_motion_turns": 0,
+ "multi_motion_turn_idx": [],
+ "bumped_motion_calls": 28,
+ "counted_bumps": 16,
+ "falls": 0,
+ "corrections": {
+  "calls": 0,
+  "accepted": 0,
+  "rejected": 0,
+  "worsened": 0,
+  "improved": 0,
+  "error_before_sum_m": 0.0,
+  "error_after_sum_m": 0.0,
+  "net_added_error_m": 0.0,
+  "ledger": []
+ },
+ "outcomes": {
+  "trial_id": "gpt56sol_seed102",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 2.9955,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

@@ -1695,6 +1695,222 @@ confirmation (rule 7); acceptance (owner sign-off) still open.
 
 ---
 
+## Phase R — V5d R2 harness remediation
+
+**Why this phase exists.** Phase 4 closed the v4 batch and this plan stopped
+there, but two further batches ran afterwards (`results/raw_v5d`, aborted;
+`results/raw_v5d_r2`, complete under `config_hash 0e9017a84c06…`). The v5d_r2
+batch was then investigated end to end and the findings are in
+[`docs/research/V5D_R2_HARNESS_FORENSICS.md`](research/V5D_R2_HARNESS_FORENSICS.md);
+the task-level repair sequence is
+[`docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md`](research/GROK45_V5D_R2_REMEDIATION_PLAN.md)
+(T0–T9). This phase is the plan-of-record entry for that sequence, so PLAN.md
+stops claiming the project ended at T4.5 (forensics F-12: stale institutional
+memory).
+
+`results/raw_v5d_r2/` is **immutable evidence**. No task in this phase edits it,
+deletes it, or selectively reruns a cell.
+
+### TR.0 `[x]` Forensic baseline parser + replay tools [no sim]
+
+**DONE 2026-08-02.** All ten pinned baseline facts reproduce exactly from the
+raw JSON through one parser. Evidence in *Completion evidence* below.
+
+- **Context:** `scripts/auto_audit.sh` reads top-level `corrections` and
+  `stages.*.drift_m` fields that **do not exist** in the trial schema, so the
+  generated Markdown said "0 corrections" for `sonnet5_seed101` — the trial
+  holding the batch's worst harmful correction (+1.480 m) — and for
+  `opus5_seed104`, which has three. Every later remediation task has to prove it
+  addressed a forensic defect, which requires one correct, tested reader of the
+  raw schema instead of three ad-hoc reimplementations of it.
+- **Read first:** `docs/research/V5D_R2_HARNESS_FORENSICS.md` (whole document,
+  especially F-01, F-02, F-04, F-08); the T0 section of
+  `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md`; doc 06 §4 (log schema) and
+  §5 (metric formulas); AGENTS.md rules 3 (evidence discipline) and 10.
+- **Depends on:** nothing. It is the prerequisite for TR.1–TR.9.
+- **Behavior change:** none. Read-only analysis; no frozen file is touched.
+
+**Adversarial plan review (2026-08-02, rule 10.1).** The T0 text in the
+remediation plan was checked against the actual artifacts before any code was
+written. Five corrections/clarifications, all confirmed by reading
+`results/raw_v5d_r2/*.json`:
+
+1. **`execution.calls[]` holds motion calls only** (measured across the batch:
+   `turn_to_heading` 159 + `move` 151 + `send_velocity` 33 = 343 entries, and no
+   entry for any of the 12 other tools). So step 2 of the plan's
+   `correction_events` recipe — "advance through each earlier motion call using
+   its scoring-only true pose" — must count *motion* tool calls in
+   `model_output.tool_calls` order and index into `execution.calls`; the two
+   lists are not positionally aligned.
+2. **`model_output.dispatched` excludes `declare_done`.** 11 of 434 turns have
+   `dispatched < len(tool_calls)`, and in every one the shortfall is exactly a
+   trailing `declare_done` (verified per turn). A parser that pairs blindly by
+   index would attribute an undispatched call to real state. The parser marks
+   calls at index ≥ `dispatched` as not dispatched and never pairs them.
+3. **Correction records key on `(stage, turn)`, not `turn` alone.**
+   `memory_snapshot.corrections` is cumulative and stage-local; `opus5_seed104`
+   has both a `find_kitchen` and a `return_home` turn 3, and only the latter
+   carries a correction. Filtering on `turn` alone mixes stages.
+4. **`published_and_live_outcomes(document)` really can take one argument.**
+   The published v2 verdict is recomputable from the trial JSON alone via
+   `duck_embody.scoring.stage_success`, because that predicate reads only the
+   log plus the committed layout — verified by importing `duck_embody.scoring`
+   under the *system* python (it pulls in `env/apartment_layout.py`,
+   `tasks/find_kitchen.py` and `agent/prompts.py`, all pure). No scores file is
+   needed, so the forensic verdict cannot drift from a stale
+   `results/scores_raw_v5d_r2.json`.
+5. **Both interpreters in the plan's replay command exist**
+   (`~/IsaacLab/_isaac_sim/python.sh` and `~/IsaacLab/isaaclab.sh -p`). The
+   module is pure, so it runs under either; tests still go through
+   `scripts/run_tests.sh` (kit python) per the repo's interpreter policy.
+
+**Pinned-fact audit (the plan's "10 pending visual audits at the time of this
+investigation").** Re-counted 2026-08-02: `results/audits_v5d_r2/` holds 12
+Markdown files, **10** of which still contain `_pending visual pass`
+(`gpt56sol_seed101–104`, `opus5_seed101–104`, `sonnet5_seed103`,
+`sonnet5_seed104`); the two complete ones are `sonnet5_seed101` and
+`sonnet5_seed102`. No discrepancy — the pin is asserted exactly, with the
+pending file list asserted as a set so a later hand-edit cannot silently keep
+the count while changing which trial is unaudited.
+
+- **Steps:**
+  1. `duck_embody/forensics.py` — pure module (no Isaac/kit imports):
+     `load_trial` / `load_batch` with structural validation,
+     `iter_tool_calls`, `iter_motion_calls`, `correction_events`,
+     `correction_error_effects`, `published_and_live_outcomes`,
+     `batch_integrity`, `visual_audit_status`, plus batch aggregation.
+  2. `scripts/analyze_trial.py` — reads a batch directory or explicit paths,
+     writes per-trial + batch forensic JSON under `results/forensics_v5d_r2/`,
+     never writing inside the raw directory (refuses if asked to).
+  3. `tests/test_forensics.py` — pins the ten baseline facts against the real
+     batch, plus a malformed fixture and correction-ordering cases.
+- **Deliverables:** `duck_embody/forensics.py`, `scripts/analyze_trial.py`,
+  `tests/test_forensics.py`, `tests/fixtures/trial_malformed_calls.json`,
+  `results/forensics_v5d_r2/*.json`.
+- **Unit tests:** `bash scripts/run_tests.sh tests/test_forensics.py -q`.
+- **Smoke test [no sim]:** run the analyzer over all 12 raw trials; confirm
+  `git status` shows no modification under `results/raw_v5d_r2/`.
+- **Acceptance:** every pinned count exact (no weakened assertions), malformed
+  fixture rejected with an actionable message, ordering covered for motion
+  before *and* after a correction in one turn.
+
+**Completion evidence (2026-08-02).**
+
+- Tests: `bash scripts/run_tests.sh tests/test_forensics.py -q` →
+  **34 passed in 0.08s** (kit python, `PYTHONDONTWRITEBYTECODE=1`). Full suite
+  unaffected: `bash scripts/run_tests.sh tests/ -q` → **1623 passed, 3 skipped**.
+  (Wrapper note: `isaaclab.sh` emits a `tabs: terminal type 'dumb'` line and
+  produces no pytest output at all under a non-TTY shell — prefix `TERM=xterm`
+  when capturing the log.)
+- Analyzer: `PYTHONDONTWRITEBYTECODE=1 ~/IsaacLab/_isaac_sim/python.sh
+  scripts/analyze_trial.py results/raw_v5d_r2` → wrote
+  `results/forensics_v5d_r2/batch_summary.json` + 12 per-trial JSONs.
+- `git status --porcelain results/raw_v5d_r2` → empty (raw evidence untouched).
+- Baseline facts reproduced from `results/raw_v5d_r2/*.json` by
+  `duck_embody/forensics.py`, all exact:
+
+  | Pinned fact | Value | Source |
+  |---|---|---|
+  | complete trials | 12 | `final` block present in all 12 documents |
+  | model turns | 434 | `sum(len(turns))` |
+  | config hashes | 1 (`0e9017a84c06…`) | `config.config_hash` |
+  | `correct_position` calls | 16 | `turns[].model_output.tool_calls` |
+  | accepted corrections | 15 | paired `memory_snapshot.corrections` records |
+  | rejected corrections | 1 | `gpt56sol_seed103` find_kitchen t10 (F-10: blank `place` + explicit x/y) |
+  | worsened / improved | 14 / 1 | `error_after − error_before` at the reconstructed true pose |
+  | error before → after | 2.3499 m → 6.0697 m | net **+3.7198 m** (plan pins ≈3.72 m) |
+  | multi-motion turns | 52 | turns with `len(execution.calls) > 1` |
+  | pending visual audits | 10 of 12 | `results/audits_v5d_r2/*.md` |
+
+- `opus5_seed101` reproduced as the F-02 split: live `declared_elsewhere`
+  (0.3607 m from the point target, radius 0.35 m), published v2 `success`,
+  `return_home` `not_run` — i.e. `stage1_success_never_offered_return = True`.
+- The 16 reconstructed correction effects match
+  `V5D_R2_HARNESS_FORENSICS.md` § *Correction-effect ledger* row for row,
+  including the worst regression (`sonnet5_seed101` t21, 0.024 m → 1.504 m) and
+  the single improvement (`sonnet5_seed104` t21, −1.020 m).
+- Two further batch figures the parser re-derives and the tests pin, both
+  matching the forensics document: **0 falls**, and F-05's collision split —
+  **198** motion calls reported contact while only **126** were counted as
+  bumps (`turn_to_heading` contact is excluded by the live counter).
+
+**NEW FINDING — the batch spans two `freeze_commit` values (extends F-06).**
+Not in the forensics document; surfaced by `batch_integrity` on the first run.
+`results/freeze.json` records `84af3f8`, and so do the four `sonnet5` trials
+(08:45–09:29 UTC), but the eight `opus5`/`gpt56sol` trials (09:30–11:27 UTC)
+record `74b46c9` — a commit whose author date is 09:20:42 UTC, i.e. **HEAD moved
+while `sonnet5_seed103` was running** (09:06–09:20 UTC).
+`git merge-base --is-ancestor 84af3f8 74b46c9` confirms the direction.
+
+What this does and does not mean:
+
+- **The fairness contract holds.** All 12 trials carry one `config_hash`
+  (`0e9017a84c06…`), so no doc 06 §2 frozen file changed. Verified directly:
+  `git show --name-only 74b46c9 | grep -v '^results/'` lists exactly one file,
+  `scripts/auto_audit.sh`, which is not in `FROZEN_FILES`; everything else in
+  that commit is `results/` evidence (audit Markdown, contact sheet, frames)
+  plus a `results/freeze.json` rewrite that changed only `frozen_at` and
+  `freeze_commit`, not `config_hash`.
+- **The provenance field is nonetheless unusable on its own.** `freeze_commit`
+  is HEAD-at-launch, not the manifest's commit, so a reader who trusts it to
+  identify the code that ran gets two different answers for one batch. Exactly
+  F-06's shape ("batch provenance does not bind all outcome-affecting inputs"),
+  and TR.6 should stamp the manifest SHA into each trial rather than HEAD.
+
+No assertion was weakened: `tests/test_forensics.py::TestBatchIntegrity`
+pins both commits, the 4/8 split by trial id, and
+`manifest.freeze_commit_matches is False`, so the discrepancy is now a fact the
+suite defends rather than a surprise the next agent re-discovers.
+
+**Adversarial implementation review (2026-08-02).** One defect found and fixed
+(1), plus three decisions the review challenged and confirmed (2–4), recorded so
+a later agent does not "simplify" them back.
+
+1. **`correction_events` could raise `IndexError` instead of a diagnosis.** On a
+   document that had not been through `validate_document` — which is every
+   synthetic document a future test writes — a correction following more motion
+   calls than there are execution records indexed off the end of the list. Now
+   an explicit `ForensicsError` naming the turn and both counts.
+2. **The pending-audit matcher must not be a literal.** Matching the exact
+   placeholder `_pending visual pass_` would silently reclassify a reworded
+   placeholder as a completed audit — the same "PASS that means nothing" shape
+   as F-08. It matches `pending\s+visual` case-insensitively, returns the file
+   names, and the test asserts the pending set rather than only its size.
+3. **`MOTION_TOOLS` is defined locally, not imported from `agent/tools.py`.**
+   This module reads logs that are already written; if TR.4 adds or renames a
+   motion macro, an imported tuple would silently change how a *historical*
+   batch parses. The duplication is deliberate and commented as such.
+4. **The analyzer refuses to write inside its own input.** `--out-dir` is
+   checked against every input path before anything is written, so no
+   invocation can drop generated files into `results/raw_v5d_r2/` (AGENTS.md
+   rule 7). Verified after the run: `git status --porcelain results/raw_v5d_r2`
+   is empty.
+
+Also considered and deliberately left: `published_and_live_outcomes` lets a
+`ScoringError` from `duck_embody.scoring` propagate rather than degrading to a
+`None` verdict — a log inconsistent enough to fail the scorer's own
+cross-checks must not yield a plausible-looking forensic number.
+
+**Known limits (recorded, not fixed here).** The reconstructed true pose at a
+correction instant is the *end* pose of the preceding motion call in the same
+turn, because that is the finest scoring-only granularity the log carries
+(`execution.calls[].true_pose`); a correction issued between two motion calls is
+therefore exact, but the model's estimate at that instant is only as precise as
+the log. `pose_trace` could refine this in a later task if a sub-call instant
+ever matters.
+
+### TR.1–TR.9 `[ ]` Remaining remediation tasks
+
+Not started. Definitions live in
+`docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T1 explicit point anchors,
+T2 canonical success criterion, T3 recorder-independent execution, T4 motion and
+contact semantics, T5 request reconstruction, T6 immutable provenance,
+T7 provider usage and cost, T8 audit and reporting, T9 canary/mini-batch/full
+batch). Each still runs under AGENTS.md rules 10 and 11 and gets its own PLAN
+entry with evidence when it lands.
+
+---
+
 ## Standing constraints (every task)
 
 - AGENTS.md hard rules 1–11.

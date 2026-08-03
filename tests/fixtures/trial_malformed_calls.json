@@ -1,0 +1,77 @@
+{
+  "_why": "Intentionally malformed (PLAN TR.0). Turn 2 lists two dispatched motion tool calls but execution.calls holds only one record, which is the exact corruption that would make correction_events pair a correct_position with the wrong physical instant. The parser must refuse it by name and path, not average over it.",
+  "trial_id": "fixture_malformed_calls",
+  "config": {
+    "freeze_commit": "0000000000000000000000000000000000000000",
+    "config_hash": "fixture",
+    "model": "fixture-model",
+    "model_config": "fixture",
+    "seed": 101,
+    "spawn": {"xy": [0.5, 0.5], "heading_deg": 90.0}
+  },
+  "turns": [
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 1,
+      "global_turn_idx": 1,
+      "timestamp": "2026-07-30T08:45:30Z",
+      "obs": {"frame_paths": [], "compass_deg": 90.0, "position_estimate": {"x": 0.5, "y": 0.5}},
+      "model_output": {"tool_calls": [{"name": "look_around", "args": {}}], "dispatched": 1},
+      "execution": {"calls": []},
+      "true_pose": {"x": 0.5, "y": 0.5, "heading_deg": 90.0},
+      "memory_snapshot": {"corrections": []},
+      "budget": {"stage_turns_used": 1, "stage_turn_cap": 40},
+      "end_reason": null
+    },
+    {
+      "stage": "find_kitchen",
+      "turn_idx": 2,
+      "global_turn_idx": 2,
+      "timestamp": "2026-07-30T08:46:00Z",
+      "obs": {"frame_paths": [], "compass_deg": 90.0, "position_estimate": {"x": 0.5, "y": 0.5}},
+      "model_output": {
+        "tool_calls": [
+          {"name": "turn_to_heading", "args": {"heading_deg": 0}},
+          {"name": "move", "args": {"distance_m": 0.4}}
+        ],
+        "dispatched": 2
+      },
+      "execution": {
+        "calls": [
+          {
+            "tool": "turn_to_heading",
+            "policy_seconds_used": 1.6,
+            "true_pose": [0.5, 0.5, 0.0],
+            "true_displacement_m": 0.0,
+            "distance_moved_m": 0.0,
+            "bumped": false,
+            "counted_as_bump": false,
+            "fell": false,
+            "stop_reason": "reached"
+          }
+        ]
+      },
+      "true_pose": {"x": 0.9, "y": 0.5, "heading_deg": 0.0},
+      "memory_snapshot": {"corrections": []},
+      "budget": {"stage_turns_used": 2, "stage_turn_cap": 40},
+      "end_reason": null
+    }
+  ],
+  "final": {
+    "outcome": {"find_kitchen": "timeout_turns"},
+    "end_reason": {"find_kitchen": "timeout_turns"},
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "end_reason": "timeout_turns",
+        "outcome": "timeout_turns",
+        "success": false,
+        "turns_used": 2,
+        "policy_seconds_used": 1.6,
+        "score": null,
+        "true_pose": {"x": 0.9, "y": 0.5, "heading_deg": 0.0}
+      }
+    },
+    "bumps": 0
+  }
+}

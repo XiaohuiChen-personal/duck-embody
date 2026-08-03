@@ -1,0 +1,120 @@
+{
+ "trial_id": "gpt56sol_seed104",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "gpt-5.6-sol",
+ "seed": 104,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 1,
+  "correct_position": 2,
+  "get_observation": 8,
+  "look_around": 3,
+  "mark_exit": 5,
+  "move": 13,
+  "send_velocity": 1,
+  "set_current_room": 1,
+  "turn_to_heading": 15,
+  "update_plan": 5,
+  "update_room": 1
+ },
+ "motion_calls": 29,
+ "multi_motion_turns": 0,
+ "multi_motion_turn_idx": [],
+ "bumped_motion_calls": 14,
+ "counted_bumps": 9,
+ "falls": 0,
+ "corrections": {
+  "calls": 2,
+  "accepted": 2,
+  "rejected": 0,
+  "worsened": 2,
+  "improved": 0,
+  "error_before_sum_m": 0.3359885444096035,
+  "error_after_sum_m": 0.7308629374189266,
+  "net_added_error_m": 0.3948743930093231,
+  "ledger": [
+   {
+    "trial_id": "gpt56sol_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 29,
+    "global_turn_idx": 29,
+    "place": "Living room",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.0024,
+     2.2163
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     0.9705356376032152,
+     2.210557177552921
+    ],
+    "new_xy": [
+     1.37,
+     2.27
+    ],
+    "error_before_m": 0.032377733098725554,
+    "error_after_m": 0.37150161507051366,
+    "effect_m": 0.3391238819717881,
+    "reason": "Recognize living room sofa, chair and TV; re-anchor before traversing sole frontier."
+   },
+   {
+    "trial_id": "gpt56sol_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 37,
+    "global_turn_idx": 37,
+    "place": "Living room@45",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     0.109,
+     2.4034
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     0.40584152837725296,
+     2.467154464749585
+    ],
+    "new_xy": [
+     0.45,
+     2.29
+    ],
+    "error_before_m": 0.30361081131087797,
+    "error_after_m": 0.359361322348413,
+    "effect_m": 0.05575051103753503,
+    "reason": "Reached mapped northeast doorway anchor after returning west along room edge."
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "gpt56sol_seed104",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "timeout_turns",
+    "live_end_reason": "turn_cap",
+    "live_success": false,
+    "live_distance_m": 2.4564,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

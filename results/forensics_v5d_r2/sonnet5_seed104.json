@@ -1,0 +1,174 @@
+{
+ "trial_id": "sonnet5_seed104",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "84af3f8089a84c77dcf7e0ab3121e0be955941a2",
+ "model": "claude-sonnet-5",
+ "seed": 104,
+ "turns": 40,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 1,
+  "correct_position": 4,
+  "get_observation": 11,
+  "look_around": 8,
+  "mark_exit": 5,
+  "move": 7,
+  "send_velocity": 2,
+  "set_current_room": 3,
+  "turn_to_heading": 10,
+  "update_plan": 3,
+  "update_room": 3
+ },
+ "motion_calls": 19,
+ "multi_motion_turns": 1,
+ "multi_motion_turn_idx": [
+  14
+ ],
+ "bumped_motion_calls": 5,
+ "counted_bumps": 4,
+ "falls": 0,
+ "corrections": {
+  "calls": 4,
+  "accepted": 4,
+  "rejected": 0,
+  "worsened": 3,
+  "improved": 1,
+  "error_before_sum_m": 1.281622024295415,
+  "error_after_sum_m": 1.9288293383429822,
+  "net_added_error_m": 0.6472073140475672,
+  "ledger": [
+   {
+    "trial_id": "sonnet5_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 15,
+    "global_turn_idx": 15,
+    "place": "LivingRoomRed",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.4182,
+     2.2358
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.4160843001018477,
+     2.2366034913672364
+    ],
+    "new_xy": [
+     1.37,
+     2.27
+    ],
+    "error_before_m": 0.002263135973878916,
+    "error_after_m": 0.05910059221361488,
+    "effect_m": 0.05683745623973597,
+    "reason": "Returned near spawn anchor point after dead-end exploration at 135deg"
+   },
+   {
+    "trial_id": "sonnet5_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 20,
+    "global_turn_idx": 20,
+    "place": "LivingRoomRed@270",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.4538,
+     1.1758
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.4049638693731572,
+     1.1230071475768078
+    ],
+    "new_xy": [
+     1.37,
+     2.27
+    ],
+    "error_before_m": 0.0719169863215847,
+    "error_after_m": 1.0974042463923674,
+    "effect_m": 1.0254872600707827,
+    "reason": "Just passed through the doorway at 270 from LivingRoomRed into DiningArea"
+   },
+   {
+    "trial_id": "sonnet5_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 21,
+    "global_turn_idx": 21,
+    "place": "DiningArea",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.4538,
+     1.1758
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.37,
+     2.27
+    ],
+    "new_xy": [
+     1.4,
+     1.12
+    ],
+    "error_before_m": 1.0974042463923674,
+    "error_after_m": 0.07751180555244466,
+    "effect_m": -1.0198924408399228,
+    "reason": "Correcting mistaken anchor - I am physically in DiningArea, not LivingRoomRed. Snapping back to DiningArea anchor."
+   },
+   {
+    "trial_id": "sonnet5_seed104",
+    "stage": "find_kitchen",
+    "turn_idx": 29,
+    "global_turn_idx": 29,
+    "place": "DiningArea@270",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     2.3342,
+     0.4052
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     2.3535014037894557,
+     0.2968683727465997
+    ],
+    "new_xy": [
+     2.33,
+     1.1
+    ],
+    "error_before_m": 0.11003765560758405,
+    "error_after_m": 0.6948126941845552,
+    "effect_m": 0.5847750385769711,
+    "reason": "Passed through doorway from DiningArea into Kitchen at heading 270"
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "sonnet5_seed104",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "timeout_turns",
+    "live_end_reason": "turn_cap",
+    "live_success": false,
+    "live_distance_m": 0.5871,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}

@@ -1,0 +1,95 @@
+{
+ "trial_id": "gpt56sol_seed101",
+ "config_hash": "0e9017a84c066a82637d3db9efa874611c542dbb964efa877bc5aa643f417083",
+ "freeze_commit": "74b46c937ec419c5ece20a86282d321f83ec1166",
+ "model": "gpt-5.6-sol",
+ "seed": 101,
+ "turns": 24,
+ "complete": true,
+ "tool_call_counts": {
+  "add_landmark": 2,
+  "correct_position": 1,
+  "declare_done": 1,
+  "get_observation": 5,
+  "look_around": 3,
+  "mark_exit": 4,
+  "move": 6,
+  "send_velocity": 1,
+  "set_current_room": 2,
+  "turn_to_heading": 6,
+  "update_plan": 5,
+  "update_room": 3
+ },
+ "motion_calls": 13,
+ "multi_motion_turns": 0,
+ "multi_motion_turn_idx": [],
+ "bumped_motion_calls": 6,
+ "counted_bumps": 4,
+ "falls": 0,
+ "corrections": {
+  "calls": 1,
+  "accepted": 1,
+  "rejected": 0,
+  "worsened": 1,
+  "improved": 0,
+  "error_before_sum_m": 0.027513711750993437,
+  "error_after_sum_m": 0.7643880231924097,
+  "net_added_error_m": 0.7368743114414162,
+  "ledger": [
+   {
+    "trial_id": "gpt56sol_seed101",
+    "stage": "find_kitchen",
+    "turn_idx": 16,
+    "global_turn_idx": 16,
+    "place": "Living room@0",
+    "accepted": true,
+    "motion_calls_before": 0,
+    "true_xy": [
+     1.7443,
+     1.2216
+    ],
+    "true_xy_source": "prior_turn",
+    "old_xy": [
+     1.7200647786998022,
+     1.20857470219737
+    ],
+    "new_xy": [
+     0.98,
+     1.21
+    ],
+    "error_before_m": 0.027513711750993437,
+    "error_after_m": 0.7643880231924097,
+    "effect_m": 0.7368743114414162,
+    "reason": "Just passed through the centered east doorway from the living room."
+   }
+  ]
+ },
+ "outcomes": {
+  "trial_id": "gpt56sol_seed101",
+  "stages": {
+   "find_kitchen": {
+    "ran": true,
+    "live_outcome": "declared_elsewhere",
+    "live_end_reason": "declare_done",
+    "live_success": false,
+    "live_distance_m": 0.8066,
+    "live_radius_m": 0.35,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   },
+   "return_home": {
+    "ran": false,
+    "live_outcome": "not_run",
+    "live_end_reason": "not_run",
+    "live_success": false,
+    "live_distance_m": null,
+    "live_radius_m": null,
+    "published_success_v2": false,
+    "published_success_preregistered": false,
+    "criterion_split": false
+   }
+  },
+  "stage1_success_never_offered_return": false
+ }
+}
