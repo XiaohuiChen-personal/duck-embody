@@ -59,6 +59,18 @@ POSE_TRACE_EVERY = 10
 #: near-threshold regime to tune into: the gap is the whole point.
 BUMP_FORCE_N = 1.0
 BUMP_DEBOUNCE_STEPS = 3
+#: Contact must remain continuously confirmed for 0.4 s before a locomotion
+#: macro treats it as blocking. Shorter contacts are grazes: they are reported,
+#: but neither a turn nor a drive is aborted. Release uses the same duration so
+#: gait-cycle force troughs cannot split one physical contact into many events.
+CONTACT_SUSTAINED_S = 0.4
+CONTACT_SUSTAINED_STEPS = round(CONTACT_SUSTAINED_S * CONTROL_HZ)
+CONTACT_STATES = (
+    "free",
+    "candidate_contact",
+    "sustained_contact",
+    "candidate_release",
+)
 
 #: Fall thresholds, MIRRORED from DuckEmbodyEnvCfg (doc 02 §5). Duplicated
 #: rather than imported because embody_env_cfg pulls in the parent repo and
@@ -76,22 +88,15 @@ FALL_TILT_LIMIT_DEG = 60.0
 
 #: Commanded forward speed for `move` (doc 02 §6.2).
 MOVE_SPEED_MPS = 0.2
+#: Reverse walking is deliberately slower than forward walking and remains
+#: inside the asymmetric trained hull (whose reverse edge is -0.148 m/s).
+REVERSE_MOVE_SPEED_MPS = 0.10
 #: Per-call distance cap, so one tool call cannot cross the apartment blind.
 MOVE_MAX_DISTANCE_M = 1.5
 #: Servo/correction interval. 0.2 s = 10 control steps.
 MACRO_CHUNK_S = 0.2
 #: Extra time allowed before a macro gives up, as a multiple of the ideal.
 MACRO_TIME_MARGIN = 1.6
-
-#: How many CONSECUTIVE bumping chunks abort a `move`. MEASURED (gap-hunt S4,
-#: 2026-07-27): with abort-on-first-bump, a 60 ms right-leg graze stopped a
-#: 1.0 m move at 0.347 m in a corridor with 0.80 m geometrically free ahead —
-#: the harness refusing a viable command and telling the model "bumped", which
-#: conflates CONTACT with BLOCKED. One chunk of contact (<= 0.2 s) is a graze:
-#: reported in `status.contact`, not acted on. Two consecutive chunks (0.4 s of
-#: sustained contact) is a block: abort. Fast enough to beat a wall-press
-#: topple, which T2.4 measured at ~2-5 s of pressing.
-MOVE_ABORT_SUSTAINED_CHUNKS = 2
 
 #: P gain on heading error (radians) -> wz. Saturates the +/-0.5 rad/s hull at
 #: ~19 deg of error. Mirrors Isaac Lab's own heading controller structure.
@@ -183,10 +188,8 @@ ODOM_VAR_PER_S = ODOM_NOISE_FLOOR_RATE_MPS ** 2    #: m^2 of variance per second
 #: characterise odometry quality itself.
 
 #: MEASURED velocity realisation factor (T1.3): net displacement / commanded.
-#: Used ONLY here — for the `move` servo target and its timeout margin — and by
-#: wall-clock forecasting. The dead-reckoning integrator the model sees uses
-#: commanded velocity with NO k, so its drift stays honest and measurable
-#: (AGENTS.md rule 5 over doc 02 §6.2's pseudocode; pinned by PLAN T1.3).
+#: Used only for timeout forecasting. Target completion is decided from
+#: accumulated leg odometry, never this calibration factor.
 #:
 #: THIS IS A PROPERTY OF THE POLICY, NOT OF THE HARNESS. Re-measure it with
 #: `scripts/smoke_displacement.py --checkpoint <policy>` and re-derive with
@@ -206,7 +209,7 @@ K_VELOCITY_REALISATION = 0.9617
 
 
 def move_servo_plan(distance_m: float) -> tuple[float, float, int]:
-    """Servo plan for ``move(distance_m)``: (clamped distance, target, chunks).
+    """Forward timeout plan: (clamped request, k-adjusted forecast, chunks).
 
     Extracted from ``PolicyPlayback.move`` on 2026-07-29 because the arithmetic
     existed in TWO places — here and re-implemented inside the test suite's
@@ -219,12 +222,11 @@ def move_servo_plan(distance_m: float) -> tuple[float, float, int]:
     the arithmetic now fails a test instead of shipping. ``FakePlayback`` is
     pinned against it by an agreement test.
 
-    ``k`` is consumed HERE (and only here + wall-clock forecasting): the servo
-    target is the commanded distance whose ACHIEVED distance equals the request.
-    With k < 1 the target therefore exceeds the request. The chunk count rounds
-    UP, so served distance is quantised up to a multiple of
-    ``MOVE_SPEED_MPS * MACRO_CHUNK_S`` (0.04 m) — the finest final-positioning
-    step a model has against the 0.35 m success radius.
+    ``k`` is consumed only to forecast a generous timeout. The second item
+    retains the historical ``distance / k`` contract used by wall-clock
+    planning and test doubles, but it must never decide whether the target was
+    reached: :meth:`PolicyPlayback.move` closes that loop exclusively on
+    accumulated leg odometry.
     """
     distance = max(0.0, min(distance_m, MOVE_MAX_DISTANCE_M))
     target_dist = distance / K_VELOCITY_REALISATION
@@ -383,6 +385,24 @@ class ExecResult:
     #: the model is told; `true_displacement_m` above is scoring-only and never
     #: shown. Set by `move`; the gap between them is the drift being measured.
     dead_reckoned_distance_m: float = 0.0
+    #: Signed distance requested from ``move`` after the per-call clamp. Zero
+    #: for non-move commands.
+    requested_distance_m: float = 0.0
+    #: Accumulated leg-odometry progress used by the move servo. This excludes
+    #: the trailing settle chunk, which cannot make a target become reached.
+    measured_distance_m: float = 0.0
+    #: True only when the relevant closed-loop target was actually reached.
+    #: Contact/fall/budget stops win even if the final chunk crossed the target.
+    target_reached: bool = False
+    #: Persistent contact-machine state at the end of this result.
+    contact_state: str = "free"
+    #: Monotonic trial-scoped ID of the latest sustained contact event.
+    contact_event_id: int | None = None
+    contact_onset_step: int | None = None
+    contact_release_step: int | None = None
+    contact_event_regions: list[str] = field(default_factory=list)
+    #: Ordered summaries for compound macros such as ``turn_and_move``.
+    phase_results: list[dict] = field(default_factory=list)
 
 
 def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecResult":
@@ -455,11 +475,18 @@ def merge_exec_results(total: "ExecResult | None", part: "ExecResult") -> "ExecR
         total.fall_diagnostics["policy_seconds_into_call"] = round(
             total.policy_seconds, 3
         )
-    total.fell = part.fell
+    total.fell = total.fell or part.fell
     total.sampled_xy.extend(part.sampled_xy)
     total.true_pose = part.true_pose
     total.stopped_early = part.stopped_early
     total.stop_reason = part.stop_reason or total.stop_reason
+    total.contact_state = part.contact_state
+    if part.contact_event_id is not None:
+        total.contact_event_id = part.contact_event_id
+        total.contact_onset_step = part.contact_onset_step
+        total.contact_release_step = part.contact_release_step
+        total.contact_event_regions = list(part.contact_event_regions)
+    total.phase_results.extend(part.phase_results)
     for note in part.clamp_notes:
         if note not in total.clamp_notes:
             total.clamp_notes.append(note)
@@ -527,6 +554,16 @@ class PolicyPlayback:
         self._odom_scale = 1.0
         self._last_seed = None
         self._bump_run = 0
+        self._contact_state = "free"
+        self._contact_candidate_onset_step: int | None = None
+        self._contact_clear_run = 0
+        self._contact_candidate_regions: list[str] = []
+        self._contact_event_id_counter = 0
+        self._contact_event_id: int | None = None
+        self._contact_event_onset_step: int | None = None
+        self._contact_event_release_step: int | None = None
+        self._contact_event_regions: list[str] = []
+        self._last_contact_event: dict | None = None
         self._fall_diagnostics: dict | None = None
         # Likewise a persistent control-step counter for pose_trace sampling.
         # doc 06 §5.3 pins that trace to 5 Hz; a per-call index would restart at
@@ -773,6 +810,119 @@ class PolicyPlayback:
             if f > BUMP_FORCE_N
         }
 
+    # -- persistent contact state ------------------------------------------
+
+    def _ensure_contact_state(self) -> None:
+        """Initialise contact fields for lightweight ``__new__`` test doubles."""
+        defaults = {
+            "_bump_run": 0,
+            "_contact_state": "free",
+            "_contact_candidate_onset_step": None,
+            "_contact_clear_run": 0,
+            "_contact_candidate_regions": [],
+            "_contact_event_id_counter": 0,
+            "_contact_event_id": None,
+            "_contact_event_onset_step": None,
+            "_contact_event_release_step": None,
+            "_contact_event_regions": [],
+            "_last_contact_event": None,
+        }
+        for name, value in defaults.items():
+            if not hasattr(self, name):
+                setattr(self, name, value.copy() if isinstance(value, list) else value)
+
+    def _remember_contact_regions(self, groups) -> None:
+        for group in groups:
+            if group not in self._contact_candidate_regions:
+                self._contact_candidate_regions.append(group)
+            if (
+                self._contact_state in ("sustained_contact", "candidate_release")
+                and group not in self._contact_event_regions
+            ):
+                self._contact_event_regions.append(group)
+
+    def _update_last_contact_event(self) -> None:
+        if self._contact_event_id is None:
+            return
+        self._last_contact_event = {
+            "contact_event_id": self._contact_event_id,
+            "onset_step": self._contact_event_onset_step,
+            "release_step": self._contact_event_release_step,
+            "regions": list(self._contact_event_regions),
+            "state": self._contact_state,
+        }
+
+    def _update_contact_state(self, raw_contact: bool, groups) -> None:
+        """Advance the trial-scoped contact machine by one control step."""
+        self._ensure_contact_state()
+
+        if raw_contact:
+            self._bump_run += 1
+            self._contact_clear_run = 0
+            self._remember_contact_regions(groups)
+
+            if self._contact_state == "free":
+                if self._bump_run >= BUMP_DEBOUNCE_STEPS:
+                    self._contact_state = "candidate_contact"
+                    self._contact_candidate_onset_step = (
+                        self._step_counter - self._bump_run + 1
+                    )
+            elif self._contact_state == "candidate_release":
+                # A short force trough belongs to the same physical event.
+                self._contact_state = "sustained_contact"
+                self._contact_event_release_step = None
+
+            if self._contact_state == "candidate_contact":
+                onset = self._contact_candidate_onset_step
+                continuous_steps = (
+                    self._step_counter - onset + 1 if onset is not None else 0
+                )
+                if continuous_steps >= CONTACT_SUSTAINED_STEPS:
+                    self._contact_state = "sustained_contact"
+                    self._contact_event_id_counter += 1
+                    self._contact_event_id = self._contact_event_id_counter
+                    self._contact_event_onset_step = onset
+                    self._contact_event_release_step = None
+                    self._contact_event_regions = list(
+                        self._contact_candidate_regions
+                    )
+            self._update_last_contact_event()
+            return
+
+        self._bump_run = 0
+        if self._contact_state == "candidate_contact":
+            # It cleared before the sustained threshold: a reportable graze,
+            # not a blocking event.
+            self._contact_state = "free"
+            self._contact_candidate_onset_step = None
+            self._contact_candidate_regions = []
+        elif self._contact_state == "sustained_contact":
+            self._contact_state = "candidate_release"
+            self._contact_clear_run = 1
+        elif self._contact_state == "candidate_release":
+            self._contact_clear_run += 1
+            if self._contact_clear_run >= CONTACT_SUSTAINED_STEPS:
+                self._contact_state = "free"
+                self._contact_event_release_step = self._step_counter
+                self._contact_candidate_onset_step = None
+                self._contact_candidate_regions = []
+        self._update_last_contact_event()
+
+    @property
+    def contact_state(self) -> str:
+        self._ensure_contact_state()
+        return self._contact_state
+
+    @property
+    def last_contact_event(self) -> dict | None:
+        """Copy of the latest sustained event, safe for the tools layer."""
+        self._ensure_contact_state()
+        if self._last_contact_event is None:
+            return None
+        event = dict(self._last_contact_event)
+        event["regions"] = list(event["regions"])
+        return event
+
     # -- execution ----------------------------------------------------------
 
     def reset(self, seed: int | None = None):
@@ -792,6 +942,16 @@ class PolicyPlayback:
         # trial's fall to this one.
         self._fall_diagnostics = None
         self._bump_run = 0
+        self._contact_state = "free"
+        self._contact_candidate_onset_step = None
+        self._contact_clear_run = 0
+        self._contact_candidate_regions = []
+        self._contact_event_id_counter = 0
+        self._contact_event_id = None
+        self._contact_event_onset_step = None
+        self._contact_event_release_step = None
+        self._contact_event_regions = []
+        self._last_contact_event = None
         self._step_counter = 0
         return self._obs
 
@@ -828,7 +988,6 @@ class PolicyPlayback:
         contact_groups: list[str] = []
         contact_steps = 0
         in_contact = False
-        release_run = 0
         stopped_early = False
         stop_reason = ""
         steps_done = 0
@@ -838,6 +997,7 @@ class PolicyPlayback:
         # total from the same seed and step sequence.
         odom_dx = 0.0
         odom_dy = 0.0
+        self._ensure_contact_state()
 
         # Last pose observed while the episode was still live. On a fall this is
         # the only trustworthy final pose — see the termination branch below.
@@ -944,64 +1104,21 @@ class PolicyPlayback:
             odom_dy += _ody
 
             step_force = self.bump_contact_force()
+            raw_contact = step_force > BUMP_FORCE_N
+            raw_groups = tuple(self.contact_groups()) if raw_contact else ()
+            self._update_contact_state(raw_contact, raw_groups)
+            in_contact = self._contact_state != "free"
             step_groups: tuple[str, ...] = ()
-            if step_force > BUMP_FORCE_N:
-                self._bump_run += 1
-                release_run = 0
-                if self._bump_run >= BUMP_DEBOUNCE_STEPS:
-                    in_contact = True
-                    bumped = True
-                    # Sampled DURING confirmed contact, never at the end of the
-                    # call: by then the robot has usually separated and the
-                    # regions read empty — which is how `contact_report()` came
-                    # back {} in the T3.5 probe right after a confirmed sofa
-                    # collision. Accumulated as a first-seen-order UNION over
-                    # every confirmed-contact step (under stop_on_bump=False
-                    # the command keeps driving through contact), not
-                    # overwritten with the latest sample: a drive that catches
-                    # the head and then scrapes the torso felt both, and the
-                    # merge layers (`merge_exec_results`) apply the identical
-                    # union rule across chunks.
-                    step_groups = tuple(self.contact_groups())
-                    for group in step_groups:
-                        if group not in contact_groups:
-                            contact_groups.append(group)
-                    if stop_on_bump:
-                        stopped_early = True
-                        stop_reason = "bump"
-                        # NOTE: `contact_steps` is deliberately NOT charged for
-                        # this step — the pre-TR.3 loop broke before the
-                        # accounting below and that is a semantic the audit
-                        # numbers are compared against. Observers, being
-                        # passive, do not get to change it.
-                        self._emit_step(
-                            terminated=False,
-                            true_pose=(
-                                last_live_xy[0],
-                                last_live_xy[1],
-                                last_live_heading,
-                            ),
-                            contact_force_n=step_force,
-                            contact_groups=step_groups,
-                            in_contact=in_contact,
-                        )
-                        break
-            else:
-                self._bump_run = 0
-                # HYSTERESIS. Contact LATCHES until sustained release. Counting
-                # only steps where the rising debounce is already satisfied
-                # under-counts catastrophically: a duck pressed into a sofa
-                # oscillates its contact force as the gait cycles, so
-                # `_bump_run` keeps resetting and re-arming. Measured against
-                # real physics (scripts/smoke_wedge_fix.py, first run): a 2.32 s
-                # full-speed press that truly moved 15 mm registered only 4
-                # confirmed-contact steps of ~116, so 0.448 m of 0.464 m
-                # commanded was still credited — the fix was inert in exactly
-                # the case it exists for. Mock tests could not see this because
-                # FakePlayback reported contact for the whole call.
-                release_run += 1
-                if release_run >= BUMP_DEBOUNCE_STEPS:
-                    in_contact = False
+            if self._contact_state != "free":
+                bumped = True
+                step_groups = tuple(
+                    self._contact_candidate_regions
+                    if self._contact_state == "candidate_contact"
+                    else self._contact_event_regions
+                )
+                for group in step_groups:
+                    if group not in contact_groups:
+                        contact_groups.append(group)
 
             # Charged for every latched step, not just the confirming one.
             if in_contact:
@@ -1017,6 +1134,11 @@ class PolicyPlayback:
                 contact_groups=step_groups,
                 in_contact=in_contact,
             )
+
+            if stop_on_bump and self._contact_state == "sustained_contact":
+                stopped_early = True
+                stop_reason = "sustained_contact"
+                break
 
             if stop_predicate is not None and stop_predicate(step):
                 stopped_early = True
@@ -1067,6 +1189,11 @@ class PolicyPlayback:
             contact_steps=contact_steps,
             odom_dxy=(_ox, _oy),
             odom_distance_m=math.hypot(_ox, _oy),
+            contact_state=self._contact_state,
+            contact_event_id=self._contact_event_id,
+            contact_onset_step=self._contact_event_onset_step,
+            contact_release_step=self._contact_event_release_step,
+            contact_event_regions=list(self._contact_event_regions),
         )
 
     def settle(self, duration_s: float = 0.4) -> None:
@@ -1104,26 +1231,39 @@ class PolicyPlayback:
         # Same post-fall rule as move(): never re-read live state after a
         # termination, because the env has already teleported.
         last_pose = (start_xy[0], start_xy[1], self.compass_deg())
-        fell = False
+        reason = "timeout"
 
         for _ in range(n_chunks):
             err = shortest_angle_diff_deg(target, self.compass_deg())
             if abs(err) <= tol_deg:
                 break
             wz = max(-WZ_RANGE[1], min(WZ_RANGE[1], KP_HEADING * math.radians(err)))
-            part = self.execute(0.0, 0.0, wz, MACRO_CHUNK_S)
+            part = self.execute(
+                0.0, 0.0, wz, MACRO_CHUNK_S, stop_on_bump=True
+            )
             merged = self._merge(merged, part)
             last_pose = part.true_pose
             if on_chunk is not None:
                 on_chunk()
             if part.fell:
-                fell = True
+                reason = "fall"
+                break
+            if part.stop_reason == "budget":
+                reason = "budget"
+                break
+            if (
+                part.stop_reason == "sustained_contact"
+                or part.contact_state == "sustained_contact"
+            ):
+                reason = "sustained_contact"
                 break
 
-        if not fell:
+        if reason not in ("fall", "budget"):
             # Settle so the next capture shows a still robot rather than a turn
             # in progress, and so no command is left armed across the LLM think.
-            settle = self.execute(0.0, 0.0, 0.0, MACRO_CHUNK_S)
+            settle = self.execute(
+                0.0, 0.0, 0.0, MACRO_CHUNK_S, stop_on_bump=True
+            )
             merged = self._merge(merged, settle)
             last_pose = settle.true_pose
             if on_chunk is not None:
@@ -1133,12 +1273,22 @@ class PolicyPlayback:
             # reported stop_reason "reached"/"timeout" — and tools.py derives
             # the model-facing `timed_out` from that exact string, telling the
             # model its turn timed out on a trial that was already over.
-            fell = settle.fell
+            if settle.fell:
+                reason = "fall"
+            elif settle.stop_reason == "budget":
+                reason = "budget"
+            elif (
+                settle.stop_reason == "sustained_contact"
+                or settle.contact_state == "sustained_contact"
+            ):
+                reason = "sustained_contact"
 
-        residual = shortest_angle_diff_deg(last_pose[2], target)
-        merged.stop_reason = (
-            "fell" if fell else ("reached" if abs(residual) <= tol_deg else "timeout")
-        )
+        residual = shortest_angle_diff_deg(target, last_pose[2])
+        if reason not in ("fall", "budget", "sustained_contact"):
+            reason = "reached" if abs(residual) <= tol_deg else "timeout"
+        merged.stop_reason = reason
+        merged.stopped_early = reason in ("fall", "budget", "sustained_contact")
+        merged.target_reached = reason == "reached"
         merged.true_pose = last_pose
         merged.pose_trace = [start_xy, *merged.sampled_xy, (last_pose[0], last_pose[1])]
         merged.true_displacement_m = math.dist(start_xy, (last_pose[0], last_pose[1]))
@@ -1165,14 +1315,27 @@ class PolicyPlayback:
         Auto-stops on collision (this is the tool that does; `send_velocity`
         deliberately does not — doc 05 §4.2).
         """
-        distance, target_dist, n_chunks = move_servo_plan(distance_m)
+        signed_distance = max(
+            -MOVE_MAX_DISTANCE_M, min(distance_m, MOVE_MAX_DISTANCE_M)
+        )
+        requested_distance, timeout_forecast, n_chunks = move_servo_plan(
+            abs(signed_distance)
+        )
+        speed = MOVE_SPEED_MPS if signed_distance >= 0.0 else -REVERSE_MOVE_SPEED_MPS
+        if signed_distance < 0.0:
+            # The public helper forecasts the historical forward macro. Reverse
+            # uses the same k forecast with its deliberately lower speed.
+            ideal_s = timeout_forecast / REVERSE_MOVE_SPEED_MPS
+            n_chunks = max(
+                1,
+                int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)),
+            )
 
         held_heading = self.compass_deg()
         start_xy = self.true_xy()
-        travelled = 0.0
-        bump_chunks = 0
+        measured_distance = 0.0
         merged: ExecResult | None = None
-        reason = "timeout"
+        reason = "reached" if requested_distance == 0.0 else "timeout"
         # The last pose observed while the episode was LIVE. Re-reading
         # self.true_xy() after the loop would report the TELEPORTED pose on a
         # fall, because Isaac auto-resets a terminated env inside step() — the
@@ -1180,48 +1343,44 @@ class PolicyPlayback:
         # a duck that walked 1.1 m into a wall and toppled report 0.02 m.
         last_pose = (start_xy[0], start_xy[1], held_heading)
 
-        for _ in range(n_chunks):
+        for _ in range(0 if requested_distance == 0.0 else n_chunks):
             wz = 0.0
             if hold_heading:
                 err = shortest_angle_diff_deg(held_heading, self.compass_deg())
                 wz = max(-WZ_RANGE[1], min(WZ_RANGE[1], KP_HEADING * math.radians(err)))
 
             part = self.execute(
-                MOVE_SPEED_MPS, 0.0, wz, MACRO_CHUNK_S, stop_on_bump=stop_on_bump
+                speed, 0.0, wz, MACRO_CHUNK_S, stop_on_bump=stop_on_bump
             )
             merged = self._merge(merged, part)
             if on_chunk is not None:
                 on_chunk()
 
-            # SERVO PROGRESS ONLY: commanded arc, the deterministic quantity
-            # the k-adjusted target is defined over. What the model is TOLD it
-            # moved — and what the estimate integrates — is the leg-odometry
-            # measurement (`merged.odom_*`), set after this loop. Aiming and
-            # measuring are deliberately different quantities; conflating them
-            # is what produced the wedge-inflation bug.
-            travelled += MOVE_SPEED_MPS * part.policy_seconds
+            # The move servo closes exclusively on measured leg odometry. The
+            # policy realisation factor only sized n_chunks (the timeout).
+            measured_distance += part.odom_distance_m
             last_pose = part.true_pose
 
             if part.fell:
-                reason = "fell"
+                reason = "fall"
                 break
-            if part.bumped and stop_on_bump:
-                # Sustained-contact gate (see MOVE_ABORT_SUSTAINED_CHUNKS): a
-                # single bumping chunk is a graze — contact is still REPORTED
-                # (merged.bumped, contact_groups survive the merge) but the
-                # command keeps walking. Only consecutive bumping chunks abort.
-                bump_chunks += 1
-                if bump_chunks >= MOVE_ABORT_SUSTAINED_CHUNKS:
-                    reason = "bump"
-                    break
-            else:
-                bump_chunks = 0
-            if travelled >= target_dist:
+            if part.stop_reason == "budget":
+                reason = "budget"
+                break
+            if stop_on_bump and (
+                part.stop_reason == "sustained_contact"
+                or part.contact_state == "sustained_contact"
+            ):
+                reason = "sustained_contact"
+                break
+            if measured_distance >= requested_distance:
                 reason = "reached"
                 break
 
-        if reason != "fell":
-            stop = self.execute(0.0, 0.0, 0.0, MACRO_CHUNK_S)
+        if reason not in ("fall", "budget"):
+            stop = self.execute(
+                0.0, 0.0, 0.0, MACRO_CHUNK_S, stop_on_bump=stop_on_bump
+            )
             merged = self._merge(merged, stop)
             last_pose = stop.true_pose
             if on_chunk is not None:
@@ -1231,28 +1390,84 @@ class PolicyPlayback:
             # the contradiction `fell: true, stop_reason: "reached",
             # stopped_early: false` on the command that ended the trial.
             if stop.fell:
-                reason = "fell"
+                reason = "fall"
+            elif stop.stop_reason == "budget":
+                reason = "budget"
+            elif stop_on_bump and (
+                stop.stop_reason == "sustained_contact"
+                or stop.contact_state == "sustained_contact"
+            ):
+                reason = "sustained_contact"
 
         end_xy = (last_pose[0], last_pose[1])
         merged.stop_reason = reason
-        merged.stopped_early = reason in ("bump", "fell")
+        merged.stopped_early = reason in ("sustained_contact", "fall", "budget")
         merged.true_pose = last_pose
         merged.pose_trace = [start_xy, *merged.sampled_xy, end_xy]
         merged.true_displacement_m = math.dist(start_xy, end_xy)
-        #: What the model is told it covered (dead-reckoned), vs the true
-        #: displacement above, which is scoring-only.
-        #:
-        #: NO k here. `travelled` is already the honest commanded-velocity
-        #: integral (see the accumulation above), and PLAN T1.3's pinned policy
-        #: — repeated in K_VELOCITY_REALISATION's own docstring and in
-        #: configs/benchmark.yaml — says the estimate the model sees is
-        #: commanded velocity with no correction factor. This line used to
-        #: multiply by k, which quietly moved the reported distance 0.4 % toward
-        #: the true displacement and so shrank the drift doc 06 §5.8 exists to
-        #: measure. Fixed by T3.1, which implements the same pin in
-        #: `agent/memory.py::PositionIntegrator`; the two must not disagree.
-        # Reported distance is the ODOMETRY path length, not the commanded
-        # credit: `travelled` (commanded arc) still drives the servo loop above,
-        # but what the model is told it moved is what the legs measured.
-        merged.dead_reckoned_distance_m = merged.odom_distance_m
+        merged.requested_distance_m = signed_distance
+        merged.measured_distance_m = measured_distance
+        merged.target_reached = (
+            reason == "reached" and measured_distance >= requested_distance
+        )
+        merged.dead_reckoned_distance_m = measured_distance
+        return merged
+
+    def move_backward(
+        self,
+        distance_m: float,
+        hold_heading: bool = True,
+        stop_on_bump: bool = True,
+        on_chunk=None,
+    ) -> ExecResult:
+        """Conservative reverse move; accepts a positive distance magnitude."""
+        return self.move(
+            -abs(distance_m),
+            hold_heading=hold_heading,
+            stop_on_bump=stop_on_bump,
+            on_chunk=on_chunk,
+        )
+
+    @staticmethod
+    def _phase_summary(name: str, result: ExecResult) -> dict:
+        return {
+            "phase": name,
+            "stop_reason": result.stop_reason,
+            "target_reached": result.target_reached,
+            "steps": result.steps,
+            "policy_seconds": result.policy_seconds,
+            "requested_distance_m": result.requested_distance_m,
+            "measured_distance_m": result.measured_distance_m,
+        }
+
+    def turn_and_move(
+        self,
+        heading_deg: float,
+        distance_m: float,
+        hold_heading: bool = True,
+        stop_on_bump: bool = True,
+        on_chunk=None,
+    ) -> ExecResult:
+        """Turn first, then move only after a successful heading lock."""
+        turn = self.turn_to_heading(heading_deg, on_chunk=on_chunk)
+        phase_results = [self._phase_summary("turn", turn)]
+        if not turn.target_reached:
+            turn.phase_results = phase_results
+            return turn
+
+        move = self.move(
+            distance_m,
+            hold_heading=hold_heading,
+            stop_on_bump=stop_on_bump,
+            on_chunk=on_chunk,
+        )
+        phase_results.append(self._phase_summary("move", move))
+        merged = self._merge(turn, move)
+        merged.phase_results = phase_results
+        merged.stop_reason = move.stop_reason
+        merged.stopped_early = move.stopped_early
+        merged.target_reached = move.target_reached
+        merged.requested_distance_m = move.requested_distance_m
+        merged.measured_distance_m = move.measured_distance_m
+        merged.dead_reckoned_distance_m = move.dead_reckoned_distance_m
         return merged

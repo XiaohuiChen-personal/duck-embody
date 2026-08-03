@@ -14,7 +14,11 @@ import random
 import pytest
 
 from duck_embody.sim.policy_wrapper import (
+    CONTACT_SUSTAINED_STEPS,
     CONTROL_HZ,
+    ExecResult,
+    PolicyPlayback,
+    REVERSE_MOVE_SPEED_MPS,
     VX_RANGE,
     VY_RANGE,
     WZ_RANGE,
@@ -191,6 +195,172 @@ class TestFallDiagnosticsAreScoringOnly:
             commanded=(0.0, 0.0, 0.0), duration_s=0.0, steps=0,
             policy_seconds=0.0, bumped=False, fell=False,
         ).fall_diagnostics is None
+
+
+def _macro_result(**kw) -> ExecResult:
+    base = dict(
+        commanded=(0.0, 0.0, 0.0),
+        duration_s=0.2,
+        steps=10,
+        policy_seconds=0.2,
+        bumped=False,
+        fell=False,
+        true_pose=(0.0, 0.0, 0.0),
+    )
+    base.update(kw)
+    return ExecResult(**base)
+
+
+class TestMeasuredDistanceMove:
+    @staticmethod
+    def _playback(fake_execute):
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        pb.compass_deg = lambda: 0.0
+        pb.true_xy = lambda: (0.0, 0.0)
+        pb.execute = fake_execute
+        return pb
+
+    def test_point_one_metres_cannot_reach_a_point_four_request(self):
+        """The timeout forecast may use k; completion must use odometry only."""
+        drive_calls = {"n": 0}
+
+        def fake_execute(vx, vy, wz, duration_s, **kwargs):
+            if vx == 0.0:
+                return _macro_result()
+            drive_calls["n"] += 1
+            measured = 0.10 if drive_calls["n"] == 1 else 0.0
+            return _macro_result(
+                commanded=(vx, vy, wz),
+                odom_dxy=(measured, 0.0),
+                odom_distance_m=measured,
+            )
+
+        result = self._playback(fake_execute).move(0.40)
+
+        assert result.measured_distance_m == pytest.approx(0.10)
+        assert result.requested_distance_m == pytest.approx(0.40)
+        assert result.target_reached is False
+        assert result.stop_reason == "timeout"
+
+    def test_reverse_uses_the_conservative_cap_and_measured_progress(self):
+        commands = []
+
+        def fake_execute(vx, vy, wz, duration_s, **kwargs):
+            commands.append(vx)
+            measured = 0.05 if vx < 0.0 else 0.0
+            return _macro_result(
+                commanded=(vx, vy, wz),
+                odom_dxy=(-measured, 0.0),
+                odom_distance_m=measured,
+            )
+
+        result = self._playback(fake_execute).move(-0.10)
+
+        assert commands[:2] == [-REVERSE_MOVE_SPEED_MPS, -REVERSE_MOVE_SPEED_MPS]
+        assert result.requested_distance_m == pytest.approx(-0.10)
+        assert result.measured_distance_m == pytest.approx(0.10)
+        assert result.target_reached is True
+        assert result.stop_reason == "reached"
+
+
+class TestPersistentContactMachine:
+    def test_one_event_spans_calls_then_release_allows_the_next_id(self):
+        pb = _scripted_playback(_curve(80))
+        force = {"n": 500.0}
+        pb.bump_contact_force = lambda: force["n"]
+        pb.contact_groups = lambda: ["head"]
+        chunk_s = (CONTACT_SUSTAINED_STEPS // 2) / CONTROL_HZ
+
+        first = pb.execute(0.0, 0.0, 0.0, chunk_s)
+        second = pb.execute(0.0, 0.0, 0.0, chunk_s)
+
+        assert first.contact_state == "candidate_contact"
+        assert first.contact_event_id is None
+        assert second.contact_state == "sustained_contact"
+        assert second.contact_event_id == 1
+        assert second.contact_onset_step == 1
+        assert second.contact_event_regions == ["head"]
+
+        force["n"] = 0.0
+        releasing = pb.execute(0.0, 0.0, 0.0, chunk_s)
+        released = pb.execute(0.0, 0.0, 0.0, chunk_s)
+        assert releasing.contact_state == "candidate_release"
+        assert released.contact_state == "free"
+        assert released.contact_event_id == 1
+        assert released.contact_release_step == 2 * CONTACT_SUSTAINED_STEPS
+
+        force["n"] = 500.0
+        pb.execute(0.0, 0.0, 0.0, chunk_s)
+        next_event = pb.execute(0.0, 0.0, 0.0, chunk_s)
+        assert next_event.contact_event_id == 2
+        assert pb.last_contact_event["contact_event_id"] == 2
+
+
+class TestTurnAndMoveMacro:
+    def test_turn_aborts_on_sustained_contact_after_a_graze(self):
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        pb.true_xy = lambda: (0.0, 0.0)
+        pb.compass_deg = lambda: 0.0
+        turns = {"n": 0}
+
+        def fake_execute(vx, vy, wz, duration_s, **kwargs):
+            if wz != 0.0:
+                turns["n"] += 1
+                state = (
+                    "candidate_contact"
+                    if turns["n"] == 1
+                    else "sustained_contact"
+                )
+                return _macro_result(
+                    commanded=(vx, vy, wz),
+                    bumped=True,
+                    contact_state=state,
+                    stop_reason=(
+                        "sustained_contact"
+                        if state == "sustained_contact"
+                        else ""
+                    ),
+                )
+            return _macro_result(contact_state="candidate_release")
+
+        pb.execute = fake_execute
+        result = pb.turn_to_heading(90.0)
+
+        assert turns["n"] == 2
+        assert result.target_reached is False
+        assert result.stop_reason == "sustained_contact"
+
+    def test_turn_and_move_runs_in_order_and_returns_phase_summaries(self):
+        pb = PolicyPlayback.__new__(PolicyPlayback)
+        calls = []
+
+        def turn(heading_deg, on_chunk=None):
+            calls.append(("turn", heading_deg))
+            return _macro_result(stop_reason="reached", target_reached=True)
+
+        def move(distance_m, **kwargs):
+            calls.append(("move", distance_m))
+            return _macro_result(
+                commanded=(0.2, 0.0, 0.0),
+                stop_reason="reached",
+                target_reached=True,
+                requested_distance_m=distance_m,
+                measured_distance_m=distance_m,
+                odom_dxy=(distance_m, 0.0),
+                odom_distance_m=distance_m,
+            )
+
+        pb.turn_to_heading = turn
+        pb.move = move
+        result = pb.turn_and_move(90.0, 0.40)
+
+        assert calls == [("turn", 90.0), ("move", 0.40)]
+        assert [phase["phase"] for phase in result.phase_results] == [
+            "turn",
+            "move",
+        ]
+        assert result.target_reached is True
+        assert result.measured_distance_m == pytest.approx(0.40)
 
 
 # ===========================================================================

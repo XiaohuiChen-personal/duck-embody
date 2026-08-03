@@ -292,7 +292,7 @@ class TestSettleFallReporting:
 
         assert result.fell is True
         assert result.fall_diagnostics == diag
-        assert result.stop_reason == "fell"
+        assert result.stop_reason == "fall"
         assert result.stopped_early is True
 
     def test_turn_settle_fall_reports_fell(self):
@@ -308,7 +308,7 @@ class TestSettleFallReporting:
         assert result.fell is True
         assert result.fall_diagnostics == diag
         # tools.py derives the model-facing `timed_out` from this exact string.
-        assert result.stop_reason == "fell"
+        assert result.stop_reason == "fall"
 
 
 class TestMergeContactGroups:
@@ -636,15 +636,14 @@ class TestExecuteEmitsStepObservations:
 
 
 class TestSustainedContactAbort:
-    """`move` aborts on SUSTAINED contact, never on a single-chunk graze.
+    """`move` aborts on persistent sustained state, never on a graze.
 
     MEASURED (gap-hunt S4, 2026-07-27): under abort-on-first-bump, a 60 ms
     right-leg graze stopped a 1.0 m move at 0.347 m with 0.80 m geometrically
     free ahead. The model was told `bumped: true` in open space — the harness
     conflating CONTACT with BLOCKED and refusing a viable command, which is the
-    harness making the model's decision (doc 05 §1). One bumping chunk now
-    reports contact without stopping; MOVE_ABORT_SUSTAINED_CHUNKS (=2)
-    consecutive bumping chunks abort.
+    harness making the model's decision (doc 05 §1). The state is produced by
+    the persistent per-step contact machine, so it can span execute calls.
     """
 
     @staticmethod
@@ -660,12 +659,21 @@ class TestSustainedContactAbort:
         return pb
 
     @staticmethod
-    def _chunk(bumped: bool, x: float, groups=None):
+    def _chunk(contact_state: str, x: float, groups=None):
+        bumped = contact_state != "free"
         return _res(
             steps=10,
             policy_seconds=0.2,
             bumped=bumped,
             contact_groups=list(groups or ([] if not bumped else ["right_leg"])),
+            contact_state=contact_state,
+            stop_reason=(
+                "sustained_contact"
+                if contact_state == "sustained_contact"
+                else ""
+            ),
+            odom_dxy=(0.04, 0.0),
+            odom_distance_m=0.04,
             pose_trace=[(x, 0.0), (x + 0.04, 0.0)],
             true_pose=(x + 0.04, 0.0, 0.0),
         )
@@ -678,9 +686,10 @@ class TestSustainedContactAbort:
 
         def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
             if vx == 0.0:  # settle
-                return self._chunk(False, 0.24)
+                return self._chunk("free", 0.24)
             calls["n"] += 1
-            return self._chunk(calls["n"] == 2, 0.04 * (calls["n"] - 1))
+            state = "candidate_contact" if calls["n"] == 2 else "free"
+            return self._chunk(state, 0.04 * (calls["n"] - 1))
 
         pb = self._playback(fake_execute)
         result = pb.move(0.20, stop_on_bump=True)
@@ -690,21 +699,30 @@ class TestSustainedContactAbort:
         assert "right_leg" in result.contact_groups
         assert calls["n"] >= 5, "the move gave up early on a single graze"
 
-    def test_two_consecutive_bumping_chunks_abort(self):
+    def test_candidate_then_sustained_contact_aborts(self):
         calls = {"n": 0}
 
         def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
             if vx == 0.0:
-                return self._chunk(False, 0.12)
+                return self._chunk("candidate_release", 0.12)
             calls["n"] += 1
-            return self._chunk(calls["n"] >= 2, 0.04 * (calls["n"] - 1))
+            state = (
+                "free"
+                if calls["n"] == 1
+                else (
+                    "candidate_contact"
+                    if calls["n"] == 2
+                    else "sustained_contact"
+                )
+            )
+            return self._chunk(state, 0.04 * (calls["n"] - 1))
 
         pb = self._playback(fake_execute)
         result = pb.move(1.0, stop_on_bump=True)
 
-        assert result.stop_reason == "bump"
+        assert result.stop_reason == "sustained_contact"
         assert result.stopped_early is True
-        assert calls["n"] == 3, f"expected abort on the 3rd chunk (2nd consecutive bump), got {calls['n']}"
+        assert calls["n"] == 3
 
     def test_separated_grazes_never_accumulate(self):
         """bump, clean, bump, clean ... must not count as 'sustained'."""
@@ -712,9 +730,12 @@ class TestSustainedContactAbort:
 
         def fake_execute(vx, vy, wz, duration_s, stop_on_bump=False, **kw):
             if vx == 0.0:
-                return self._chunk(False, 0.4)
+                return self._chunk("free", 0.4)
             calls["n"] += 1
-            return self._chunk(calls["n"] % 2 == 1, 0.04 * (calls["n"] - 1))
+            state = (
+                "candidate_contact" if calls["n"] % 2 == 1 else "free"
+            )
+            return self._chunk(state, 0.04 * (calls["n"] - 1))
 
         pb = self._playback(fake_execute)
         result = pb.move(0.32, stop_on_bump=True)
@@ -722,22 +743,11 @@ class TestSustainedContactAbort:
         assert result.stop_reason == "reached"
         assert result.bumped is True
 
-    def test_send_velocity_semantics_unchanged(self):
-        """The sustained gate is a MOVE policy; execute()'s own per-chunk bump
-        reporting (what send_velocity returns) is untouched — pinned by reading
-        the constant is only consumed inside move()."""
+    def test_execute_stops_only_on_the_sustained_state(self):
+        """The low-level stop flag uses the same state as both macros."""
         import inspect
 
         from duck_embody.sim import policy_wrapper
 
-        src = inspect.getsource(policy_wrapper)
-        uses = [
-            line for line in src.splitlines()
-            if "MOVE_ABORT_SUSTAINED_CHUNKS" in line
-            and not line.strip().startswith("#")
-            and "=" not in line.split("MOVE_ABORT_SUSTAINED_CHUNKS")[0] + "X"
-        ]
-        move_src = inspect.getsource(policy_wrapper.PolicyPlayback.move)
-        assert "MOVE_ABORT_SUSTAINED_CHUNKS" in move_src
         exec_src = inspect.getsource(policy_wrapper.PolicyPlayback.execute)
-        assert "MOVE_ABORT_SUSTAINED_CHUNKS" not in exec_src
+        assert 'self._contact_state == "sustained_contact"' in exec_src
