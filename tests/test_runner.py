@@ -508,17 +508,20 @@ class TestFreezeManifest:
         assert trial_matrix(models, seeds) == [("fable5", 7, "fable5_seed7"), ("fable5", 8, "fable5_seed8")]
 
     def test_the_real_matrix_is_three_models_by_four_seeds(self):
+        # Name retained; live matrix is the 2026-08-04 fable5 companion batch
+        # (1 model x 4 seeds). Certifying L8's 3x4 matrix is frozen under
+        # results/manifests/v5d-r3-final-prod.json, not this live config.
         models, seeds = load_matrix(REPO_ROOT)
-        assert len(models) == 3 and len(seeds) == 4
-        assert len(trial_matrix(models, seeds)) == 12
+        assert list(models) == ["fable5"] and list(seeds) == [101, 102, 103, 104]
+        assert len(trial_matrix(models, seeds)) == 4
 
     def test_trial_ids_are_the_resume_key_convention(self):
         """`{model_config}_seed{seed}` — the shipped convention (run_trial.py,
         the files on disk, and now doc 06 §4's example)."""
         models, seeds = load_matrix(REPO_ROOT)
         ids = [tid for _, _, tid in trial_matrix(models, seeds)]
-        assert "sonnet5_seed101" in ids and "gpt56sol_seed104" in ids
-
+        assert "fable5_seed101" in ids and "fable5_seed104" in ids
+        assert ids == [f"{m}_seed{s}" for m in models for s in seeds]
     def test_the_order_is_model_major(self):
         models, seeds = load_matrix(REPO_ROOT)
         first_block = [m for m, _, _ in trial_matrix(models, seeds)][: len(seeds)]
@@ -840,7 +843,8 @@ class TestDryRunAndRunGuard:
         for _, _, trial_id in trial_matrix(models, seeds):
             assert trial_id in out
         assert STATUS_COMPLETE in out and STATUS_INCOMPLETE in out and STATUS_PENDING in out
-        assert "would run 11, skip 1" in out
+        n = len(trial_matrix(models, seeds))
+        assert f"would run {n - 1}, skip 1" in out
         assert snapshot(root) == before, "--dry-run must not move or write anything"
 
     def test_dry_run_refuses_on_a_frozen_mutation_naming_the_file(self, tmp_path, capsys):
@@ -874,10 +878,12 @@ class TestDryRunAndRunGuard:
         root = make_root(tmp_path)
         git_freeze(root)
         write_freeze(root)
-        write_trial(root / "results" / "raw" / "sonnet5_seed101.json", hash_value="b" * 64)
+        models, seeds = load_matrix(root)
+        drift_id = f"{models[0]}_seed{seeds[0]}"
+        write_trial(root / "results" / "raw" / f"{drift_id}.json", hash_value="b" * 64)
         code = cmd_run(run_args(root), root)
         out = capsys.readouterr().out
-        assert code == 2 and "sonnet5_seed101.json" in out and "pre-freeze" in out
+        assert code == 2 and f"{drift_id}.json" in out and "pre-freeze" in out
 
     def test_format_dry_run_flags_the_refusing_statuses_loudly(self, tmp_path):
         plans = [
@@ -1338,20 +1344,15 @@ class TestSetupPhaseInfraBoundary:
 class TestEveryModelConfigIsAccountedFor:
     """No `configs/models/*.yaml` may sit unguarded and undeclared.
 
-    `judge.yaml` already had an explicit exclusion test. `fable5.yaml` acquired
-    the same status silently on 2026-07-30 when the matrix swapped and it left
-    FROZEN_FILES — its bytes still certify the PUBLISHED v4 batch, so drift
-    there would quietly invalidate results that are already in the repo, with
-    nothing failing.
+    `judge.yaml` is the only deliberate exclusion (out-of-benchmark scene
+    judge, doc 04 §8). `fable5.yaml` returned to FROZEN_FILES on 2026-08-04
+    for the owner-directed v5d-r3-fable5 companion batch (and still certifies
+    the published v4 batch via results/freeze_v4_baseline.json).
     """
 
     #: Not frozen, deliberately, each with the reason it is exempt.
     RETIRED_OR_EXCLUDED = {
         "judge.yaml": "out-of-benchmark scene judge (doc 04 §8)",
-        "fable5.yaml": (
-            "retired contestant (matrix swap 2026-07-30); bytes certify the "
-            "published v4 batch via results/freeze_v4_baseline.json"
-        ),
     }
 
     def test_each_model_config_is_frozen_or_explicitly_exempt(self):

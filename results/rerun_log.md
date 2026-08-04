@@ -91,3 +91,25 @@ re-score **all** models together and be logged here.
   **0 falls**, **$26.56**. Machine+visual audits 12/12 PASS; batch audit
   `results/raw_v5d_r3_batch_audit.json` = PASS. Report:
   `docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Credit quarantine retained.
+
+### 2026-08-04 — companion batch prep: `v5d-r3-fable5` (Fable 5 × seeds 101–104)
+
+- **Why.** Owner-directed L8-equivalent companion to measure Fable 5 on the
+  same v5d-r3 harness discipline. Certifying L8
+  (`results/manifests/v5d-r3-final-prod.json`, out-dir `results/raw_v5d_r3/`,
+  matrix sonnet5/opus5/gpt56sol) stays untouched.
+- **Why a new batch-id, not extending `v5d-r3-final-prod`.** Write-once
+  manifests refuse overwrite; the live matrix also differs (fable5-only vs
+  the three L8 contestants). Extending in place would either mutate an
+  immutable manifest or pool incomparable matrices under one id.
+- **Live matrix.** `configs/benchmark.yaml` → `models: [fable5]`, seeds
+  `[101, 102, 103, 104]`.
+- **Fairness set.** `configs/models/fable5.yaml` re-added to
+  `FROZEN_FILES` (sonnet5/opus5/gpt56sol remain hashed for continuity).
+  Provenance is the existing file: `model_id: claude-fable-5`, pricing
+  $10/$50 per MTok — no invented ids or rates.
+- **Out dirs (planned).** `results/raw_v5d_r3_fable5` +
+  `results/videos_v5d_r3_fable5`. Write-once manifest created on first
+  real launch as `results/manifests/v5d-r3-fable5.json`.
+- **Scope of this entry.** Prep only (matrix/freeze/probe/dry-run). Paid
+  4-trial launch is a later step.

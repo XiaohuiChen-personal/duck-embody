@@ -187,7 +187,7 @@ prompt promises the model verbatim, plus the context policy and the QA exchange<
 change there is a change to what the models were asked</li>
 <li><code>duck_embody/env/camera.py</code>, <code>duck_embody/env/apartment_layout.py</code>,
 <code>duck_embody/tasks/find_kitchen.py</code>, <code>configs/benchmark.yaml</code>,
-<code>configs/models/{sonnet5,opus5,gpt56sol}.yaml</code> <em>(amended 2026-07-30, owner directive: fable5 &rarr; sonnet5 to cut batch cost ~3x; the frozen v4 batch keeps its fable5 column, so sonnet5 has no same-model v4 baseline. Note this places the scene judge's model, claude-sonnet-5, in the contestant set at the MODEL level — accepted because the &sect;judge gate ran once against the frozen batch and is not re-run; the config-name guard `judge is not a contestant` still holds)</em></li>
+<code>configs/models/{fable5,sonnet5,opus5,gpt56sol}.yaml</code> <em>(amended 2026-08-04, owner directive: companion batch re-adds fable5 to the hashed set while the live matrix is fable5-only under batch-id <code>v5d-r3-fable5</code>; certifying L8 remains <code>v5d-r3-final-prod</code> / <code>results/raw_v5d_r3/</code> with sonnet5/opus5/gpt56sol. Prior 2026-07-30 amendment: fable5 &rarr; sonnet5 for cost; the frozen v4 batch keeps its fable5 column. Note that when sonnet5 is in a contestant matrix, the scene judge's model is in the contestant set at the MODEL level — accepted because the &sect;judge gate ran once against the frozen batch and is not re-run; the config-name guard `judge is not a contestant` still holds)</em></li>
 </ul>
 <p>WHY it matters that this is written down: with the first list, an <em>uncommitted</em> edit to
 <code>memory.py</code> mid-batch left both <code>config.freeze_commit</code> and

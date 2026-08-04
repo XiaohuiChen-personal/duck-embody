@@ -2273,6 +2273,15 @@ Machine audits **12/12 PASS** (`results/raw_v5d_r3_audits/`); visual audits
 `docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Prior credit quarantine retained
 (not deleted). No successful trial was re-run.
 
+**Companion batch prep (2026-08-04) — `v5d-r3-fable5`.** Owner-directed
+Fable 5 × seeds 101–104 companion under the same v5d-r3 harness. Live
+`configs/benchmark.yaml` matrix set to `[fable5]` only; certifying L8
+(`v5d-r3-final-prod` / `results/raw_v5d_r3/`) untouched. `fable5.yaml`
+re-added to `FROZEN_FILES` (existing `claude-fable-5` / $10/$50). Planned
+out-dirs `results/raw_v5d_r3_fable5` + `results/videos_v5d_r3_fable5`.
+Decision log: `results/rerun_log.md`. Prep = matrix/freeze/probe/dry-run;
+paid launch deferred.
+
 ---
 
 ## Standing constraints (every task)

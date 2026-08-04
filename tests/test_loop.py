@@ -3275,14 +3275,16 @@ class TestRunTrialCli:
 
     def test_the_required_arguments_are_model_and_seed(self):
         parser = self._module().build_parser()
-        args = parser.parse_args(["--model", "sonnet5", "--seed", "101"])
-        assert args.model == "sonnet5" and args.seed == 101
+        models, _ = self._module().frozen_matrix()
+        model = models[0]
+        args = parser.parse_args(["--model", model, "--seed", "101"])
+        assert args.model == model and args.seed == 101
         assert args.task == "find_kitchen"
         assert args.no_video is False and args.video_every_n == 1
         with pytest.raises(SystemExit):
             parser.parse_args(["--seed", "101"])
         with pytest.raises(SystemExit):
-            parser.parse_args(["--model", "sonnet5"])
+            parser.parse_args(["--model", model])
 
     def test_the_scoring_artifact_is_written_before_the_video_artifacts(self):
         """Source-level, because the trial body needs a kit process — but the
@@ -3343,16 +3345,19 @@ class TestRunTrialCli:
         """``AppLauncher`` parses ``sys.argv`` for its own flags, so ours are
         taken with ``parse_known_args`` and the rest handed back untouched."""
         parser = self._module().build_parser()
+        models, _ = self._module().frozen_matrix()
+        model = models[0]
         args, rest = parser.parse_known_args(
-            ["--model", "opus5", "--seed", "104", "--headless", "--device", "cuda:0"]
+            ["--model", model, "--seed", "104", "--headless", "--device", "cuda:0"]
         )
-        assert args.model == "opus5"
+        assert args.model == model
         assert rest == ["--headless", "--device", "cuda:0"]
 
     def test_every_seed_and_model_in_the_frozen_matrix_is_accepted(self):
         parser = self._module().build_parser()
+        models, _ = self._module().frozen_matrix()
         for seed in LAYOUT["spawn_points"]:
-            for model in ("sonnet5", "opus5", "gpt56sol"):
+            for model in models:
                 args = parser.parse_args(["--model", model, "--seed", str(seed)])
                 assert (args.model, args.seed) == (model, seed)
 

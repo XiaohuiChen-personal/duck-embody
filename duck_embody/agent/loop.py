@@ -224,6 +224,7 @@ FROZEN_FILES: tuple[str, ...] = (
     "duck_embody/env/apartment_layout.py",
     "duck_embody/tasks/find_kitchen.py",
     "configs/benchmark.yaml",
+    "configs/models/fable5.yaml",
     "configs/models/sonnet5.yaml",
     "configs/models/opus5.yaml",
     "configs/models/gpt56sol.yaml",
