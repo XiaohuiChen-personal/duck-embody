@@ -1,0 +1,433 @@
+== batch: 12 trials, one kit session ==
+[INFO][AppLauncher]: Using device: cuda:0
+[INFO][AppLauncher]: Loading experience file: /home/xiaohui_chen/IsaacLab/apps/isaaclab.python.headless.rendering.kit
+Loading user config located at: '/home/xiaohui_chen/.cache/packman/chk/kit-kernel/107.3.3+isaac.229672.69cbf6ad.gl.manylinux_2_35_aarch64.release/data/Kit/Isaac-Sim/5.1/user.config.json'
+[Info] [carb] Logging to file: /home/xiaohui_chen/.cache/packman/chk/kit-kernel/107.3.3+isaac.229672.69cbf6ad.gl.manylinux_2_35_aarch64.release/logs/Kit/Isaac-Sim/5.1/kit_20260803_113121.log
+2026-08-03T16:31:22Z [174ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:22Z [174ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:22Z [191ms] [Warning] [omni.platforminfo.plugin] failed to open the default display.  Can't verify X Server version.
+TU: error: ../src/freedreno/vulkan/tu_knl.cc:387: failed to open device /dev/dri/renderD128 (VK_ERROR_INCOMPATIBLE_DRIVER)
+
+|---------------------------------------------------------------------------------------------|
+| Driver Version: 580.159.03    | Graphics API: Vulkan
+|=============================================================================================|
+| GPU | Name                             | Active | LDA | GPU Memory | Vendor-ID | LUID       |
+|     |                                  |        |     |            | Device-ID | UUID       |
+|     |                                  |        |     |            | Bus-ID    |            |
+|---------------------------------------------------------------------------------------------|
+| 0   | NVIDIA GB10                      | Yes: 0 |     | 93457   MB | 10de      | 0          |
+|     |                                  |        |     |            | 2e12      | 0b5e315d.. |
+|     |                                  |        |     |            | 1         |            |
+|=============================================================================================|
+| OS: 24.04.4 LTS (Noble Numbat) ubuntu, Version: 24.04.4, Kernel: 6.17.0-1021-nvidia
+| Processor: Cortex-A725
+| Cores: 20 | Logical Cores: 20
+|---------------------------------------------------------------------------------------------|
+| Total Memory (MB): 124610 | Free Memory: 118032
+| Total Page/Swap (MB): 16383 | Free Page/Swap: 16383
+|---------------------------------------------------------------------------------------------|
+2026-08-03T16:31:23Z [1,569ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,569ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,594ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,594ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,602ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,602ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,608ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,608ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,609ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,609ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,609ms] [Warning] [carb.windowing-glfw.plugin] GLFW initialization failed.
+2026-08-03T16:31:23Z [1,609ms] [Warning] [carb] Failed to startup plugin carb.windowing-glfw.plugin (interfaces: [carb::windowing::IGLContext v1.0],[carb::windowing::IWindowing v1.5]) (impl: carb.windowing-glfw.plugin)
+2026-08-03T16:31:23Z [1,722ms] [Warning] [omni.log] Source: omni.hydra was already registered.
+2026-08-03T16:31:23Z [1,920ms] [Warning] [carb] Acquiring non optional plugin interface which is not listed as dependency: [omni::physx::IPhysxBenchmarks v1.0] (plugin: <default plugin>), by client: omni.physics.physx.plugin. Add it to CARB_PLUGIN_IMPL_DEPS() macro of a client.
+2026-08-03T16:31:23Z [1,923ms] [Warning] [omni.isaac.dynamic_control] omni.isaac.dynamic_control is deprecated as of Isaac Sim 4.5. No action is needed from end-users.
+2026-08-03T16:31:25Z [3,242ms] [Warning] [pxr.Semantics] pxr.Semantics is deprecated - please use Semantics instead
+2026-08-03T16:31:25Z [3,313ms] [Warning] [omni.graph.core.plugin] Found duplicate of category 'Replicator' - was 'Annotators', adding 'Fabric Reader'
+2026-08-03T16:31:25Z [3,313ms] [Warning] [omni.graph.core.plugin] Category 'Replicator' not accepted on node type 'omni.replicator.core.FabricReader' in extension 'omni.replicator.core'
+2026-08-03T16:31:25Z [3,314ms] [Warning] [omni.replicator.core.scripts.extension] No material configuration file, adding configuration to material settings directly.
+2026-08-03T16:31:27Z [5,702ms] [Warning] [omni.fabric.plugin] Warning: attribute viewportHandle not found for bucket id 7
+
+[INFO]: Parsing configuration from: duck_embody.env.embody_env_cfg:DuckEmbodyApartmentEnvCfg
+/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/torch/cuda/__init__.py:283: UserWarning: 
+    Found GPU0 NVIDIA GB10 which is of cuda capability 12.1.
+    Minimum and Maximum cuda capability supported by this version of PyTorch is
+    (8.0) - (12.0)
+    
+  warnings.warn(
+2026-08-03T16:31:28Z [6,724ms] [Warning] [isaaclab.envs.manager_based_env] Seed not set for the environment. The environment creation may not be deterministic.
+
+[36m======================================================================================[0m
+[36m[1m[INFO][IsaacLab]: Logging to file: /tmp/isaaclab/logs/isaaclab_2026-08-03_11-31-28.log[0m
+[36m======================================================================================[0m
+
+[33m11:31:28 [simulation_context.py] WARNING: The `enable_external_forces_every_iteration` parameter in the PhysxCfg is set to False. If you are experiencing noisy velocities, consider enabling this flag. You may need to slightly increase the number of velocity iterations (setting it to 1 or 2 rather than 0), together with this flag, to improve the accuracy of velocity updates.[0m
+[INFO]: Base environment:
+	Environment device    : cuda:0
+	Environment seed      : None
+	Physics step-size     : 0.005
+	Rendering step-size   : 50.0
+	Environment step-size : 0.02
+[33m11:31:28 [terrain_importer.py] WARNING: Visual material specified for ground plane but no diffuse color found. Using default color: (0.0, 0.0, 0.0)[0m
+[33m11:31:29 [prims.py] WARNING: Could not perform 'modify_collision_properties' on any prims under: '/World/Apartment/furnitures/counter_1'. This might be because of the following reasons:
+	(1) The desired attribute does not exist on any of the prims.
+	(2) The desired attribute exists on an instanced prim.
+		Discovered list of instanced prim paths: ['/World/Apartment/furnitures/counter_1/sektion/visuals', '/World/Apartment/furnitures/counter_1/sektion/collisions', '/World/Apartment/furnitures/counter_1/door_left_link/visuals', '/World/Apartment/furnitures/counter_1/door_left_link/collisions', '/World/Apartment/furnitures/counter_1/door_left_nob_link/visuals', '/World/Apartment/furnitures/counter_1/door_left_nob_link/collisions', '/World/Apartment/furnitures/counter_1/door_right_link/visuals', '/World/Apartment/furnitures/counter_1/door_right_link/collisions', '/World/Apartment/furnitures/counter_1/door_right_nob_link/visuals', '/World/Apartment/furnitures/counter_1/door_right_nob_link/collisions', '/World/Apartment/furnitures/counter_1/drawer_bottom/visuals', '/World/Apartment/furnitures/counter_1/drawer_bottom/collisions', '/World/Apartment/furnitures/counter_1/drawer_handle_bottom/visuals', '/World/Apartment/furnitures/counter_1/drawer_handle_bottom/collisions', '/World/Apartment/furnitures/counter_1/drawer_top/visuals', '/World/Apartment/furnitures/counter_1/drawer_top/collisions', '/World/Apartment/furnitures/counter_1/drawer_handle_top/visuals', '/World/Apartment/furnitures/counter_1/drawer_handle_top/collisions'][0m
+[33m11:31:29 [prims.py] WARNING: Could not perform 'modify_collision_properties' on any prims under: '/World/Apartment/furnitures/counter_2'. This might be because of the following reasons:
+	(1) The desired attribute does not exist on any of the prims.
+	(2) The desired attribute exists on an instanced prim.
+		Discovered list of instanced prim paths: ['/World/Apartment/furnitures/counter_2/sektion/visuals', '/World/Apartment/furnitures/counter_2/sektion/collisions', '/World/Apartment/furnitures/counter_2/door_left_link/visuals', '/World/Apartment/furnitures/counter_2/door_left_link/collisions', '/World/Apartment/furnitures/counter_2/door_left_nob_link/visuals', '/World/Apartment/furnitures/counter_2/door_left_nob_link/collisions', '/World/Apartment/furnitures/counter_2/door_right_link/visuals', '/World/Apartment/furnitures/counter_2/door_right_link/collisions', '/World/Apartment/furnitures/counter_2/door_right_nob_link/visuals', '/World/Apartment/furnitures/counter_2/door_right_nob_link/collisions', '/World/Apartment/furnitures/counter_2/drawer_bottom/visuals', '/World/Apartment/furnitures/counter_2/drawer_bottom/collisions', '/World/Apartment/furnitures/counter_2/drawer_handle_bottom/visuals', '/World/Apartment/furnitures/counter_2/drawer_handle_bottom/collisions', '/World/Apartment/furnitures/counter_2/drawer_top/visuals', '/World/Apartment/furnitures/counter_2/drawer_top/collisions', '/World/Apartment/furnitures/counter_2/drawer_handle_top/visuals', '/World/Apartment/furnitures/counter_2/drawer_handle_top/collisions'][0m
+[33m11:31:30 [prims.py] WARNING: Could not perform 'modify_collision_properties' on any prims under: '/World/Apartment/furnitures/counter_3'. This might be because of the following reasons:
+	(1) The desired attribute does not exist on any of the prims.
+	(2) The desired attribute exists on an instanced prim.
+		Discovered list of instanced prim paths: ['/World/Apartment/furnitures/counter_3/sektion/visuals', '/World/Apartment/furnitures/counter_3/sektion/collisions', '/World/Apartment/furnitures/counter_3/door_left_link/visuals', '/World/Apartment/furnitures/counter_3/door_left_link/collisions', '/World/Apartment/furnitures/counter_3/door_left_nob_link/visuals', '/World/Apartment/furnitures/counter_3/door_left_nob_link/collisions', '/World/Apartment/furnitures/counter_3/door_right_link/visuals', '/World/Apartment/furnitures/counter_3/door_right_link/collisions', '/World/Apartment/furnitures/counter_3/door_right_nob_link/visuals', '/World/Apartment/furnitures/counter_3/door_right_nob_link/collisions', '/World/Apartment/furnitures/counter_3/drawer_bottom/visuals', '/World/Apartment/furnitures/counter_3/drawer_bottom/collisions', '/World/Apartment/furnitures/counter_3/drawer_handle_bottom/visuals', '/World/Apartment/furnitures/counter_3/drawer_handle_bottom/collisions', '/World/Apartment/furnitures/counter_3/drawer_top/visuals', '/World/Apartment/furnitures/counter_3/drawer_top/collisions', '/World/Apartment/furnitures/counter_3/drawer_handle_top/visuals', '/World/Apartment/furnitures/counter_3/drawer_handle_top/collisions'][0m
+[33m11:31:30 [prims.py] WARNING: Could not perform 'modify_collision_properties' on any prims under: '/World/Apartment/furnitures/counter_4'. This might be because of the following reasons:
+	(1) The desired attribute does not exist on any of the prims.
+	(2) The desired attribute exists on an instanced prim.
+		Discovered list of instanced prim paths: ['/World/Apartment/furnitures/counter_4/sektion/visuals', '/World/Apartment/furnitures/counter_4/sektion/collisions', '/World/Apartment/furnitures/counter_4/door_left_link/visuals', '/World/Apartment/furnitures/counter_4/door_left_link/collisions', '/World/Apartment/furnitures/counter_4/door_left_nob_link/visuals', '/World/Apartment/furnitures/counter_4/door_left_nob_link/collisions', '/World/Apartment/furnitures/counter_4/door_right_link/visuals', '/World/Apartment/furnitures/counter_4/door_right_link/collisions', '/World/Apartment/furnitures/counter_4/door_right_nob_link/visuals', '/World/Apartment/furnitures/counter_4/door_right_nob_link/collisions', '/World/Apartment/furnitures/counter_4/drawer_bottom/visuals', '/World/Apartment/furnitures/counter_4/drawer_bottom/collisions', '/World/Apartment/furnitures/counter_4/drawer_handle_bottom/visuals', '/World/Apartment/furnitures/counter_4/drawer_handle_bottom/collisions', '/World/Apartment/furnitures/counter_4/drawer_top/visuals', '/World/Apartment/furnitures/counter_4/drawer_top/collisions', '/World/Apartment/furnitures/counter_4/drawer_handle_top/visuals', '/World/Apartment/furnitures/counter_4/drawer_handle_top/collisions'][0m
+[33m11:31:30 [prims.py] WARNING: Could not perform 'modify_collision_properties' on any prims under: '/World/Apartment/furnitures/counter_5'. This might be because of the following reasons:
+	(1) The desired attribute does not exist on any of the prims.
+	(2) The desired attribute exists on an instanced prim.
+		Discovered list of instanced prim paths: ['/World/Apartment/furnitures/counter_5/sektion/visuals', '/World/Apartment/furnitures/counter_5/sektion/collisions', '/World/Apartment/furnitures/counter_5/door_left_link/visuals', '/World/Apartment/furnitures/counter_5/door_left_link/collisions', '/World/Apartment/furnitures/counter_5/door_left_nob_link/visuals', '/World/Apartment/furnitures/counter_5/door_left_nob_link/collisions', '/World/Apartment/furnitures/counter_5/door_right_link/visuals', '/World/Apartment/furnitures/counter_5/door_right_link/collisions', '/World/Apartment/furnitures/counter_5/door_right_nob_link/visuals', '/World/Apartment/furnitures/counter_5/door_right_nob_link/collisions', '/World/Apartment/furnitures/counter_5/drawer_bottom/visuals', '/World/Apartment/furnitures/counter_5/drawer_bottom/collisions', '/World/Apartment/furnitures/counter_5/drawer_handle_bottom/visuals', '/World/Apartment/furnitures/counter_5/drawer_handle_bottom/collisions', '/World/Apartment/furnitures/counter_5/drawer_top/visuals', '/World/Apartment/furnitures/counter_5/drawer_top/collisions', '/World/Apartment/furnitures/counter_5/drawer_handle_top/visuals', '/World/Apartment/furnitures/counter_5/drawer_handle_top/collisions'][0m
+[INFO]: Time taken for scene creation : 2.552787 seconds
+[INFO]: Scene manager:  <class InteractiveScene>
+	Number of environments: 1
+	Environment spacing   : 2.5
+	Source prim name      : /World/envs/env_0
+	Global prim paths     : ['/World/ground', '/World/Apartment/floors/floor_living_room', '/World/Apartment/floors/floor_kitchen', '/World/Apartment/floors/floor_bedroom', '/World/Apartment/floors/floor_hallway', '/World/Apartment/walls/outer_S_a', '/World/Apartment/walls/outer_S_b', '/World/Apartment/walls/outer_N_a', '/World/Apartment/walls/outer_N_b', '/World/Apartment/walls/outer_W_a', '/World/Apartment/walls/outer_W_b', '/World/Apartment/walls/outer_E_a', '/World/Apartment/walls/outer_E_b', '/World/Apartment/walls/A1_a', '/World/Apartment/walls/A1_b', '/World/Apartment/walls/A2_a', '/World/Apartment/walls/A2_b', '/World/Apartment/walls/A3_a', '/World/Apartment/walls/A3_b', '/World/Apartment/walls/A4_a', '/World/Apartment/walls/A4_b', '/World/Apartment/walls/B1_a', '/World/Apartment/walls/B1_b', '/World/Apartment/walls/B2_a', '/World/Apartment/walls/B2_b', '/World/Apartment/walls/C_a', '/World/Apartment/walls/C_b', '/World/Apartment/ceilings/ceiling', '/World/Apartment/furnitures/sofa', '/World/Apartment/furnitures/coffee_table', '/World/Apartment/furnitures/armchair', '/World/Apartment/furnitures/blue_rug', '/World/Apartment/furnitures/counter_1', '/World/Apartment/furnitures/counter_2', '/World/Apartment/furnitures/counter_3', '/World/Apartment/furnitures/stove', '/World/Apartment/proxys/stove_proxy', '/World/Apartment/furnitures/fridge', '/World/Apartment/proxys/fridge_proxy', '/World/Apartment/furnitures/bar_stool', '/World/Apartment/furnitures/counter_4', '/World/Apartment/furnitures/counter_5', '/World/Apartment/furnitures/microwave', '/World/Apartment/furnitures/bed', '/World/Apartment/proxys/bed_proxy', '/World/Apartment/furnitures/desk', '/World/Apartment/proxys/desk_proxy', '/World/Apartment/furnitures/plant', '/World/Apartment/proxys/plant_proxy', '/World/Apartment/furnitures/planter_w', '/World/Apartment/furnitures/planter_e']
+	Replicate physics     : True
+[INFO]: Starting the simulation. This may take a few seconds. Please wait...
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/sektion/drawer_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/sektion/drawer_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/sektion/door_left_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/sektion/door_right_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/door_left_link/door_left_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/door_right_link/door_right_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/drawer_bottom/drawer_handle_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/drawer_top/drawer_handle_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_1/rootJoint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/sektion/drawer_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/sektion/drawer_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/sektion/door_left_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/sektion/door_right_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/door_left_link/door_left_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/door_right_link/door_right_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/drawer_bottom/drawer_handle_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/drawer_top/drawer_handle_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_2/rootJoint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/sektion/drawer_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/sektion/drawer_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/sektion/door_left_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/sektion/door_right_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/door_left_link/door_left_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/door_right_link/door_right_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/drawer_bottom/drawer_handle_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/drawer_top/drawer_handle_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_3/rootJoint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/sektion/drawer_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/sektion/drawer_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/sektion/door_left_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/sektion/door_right_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/door_left_link/door_left_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/door_right_link/door_right_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/drawer_bottom/drawer_handle_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/drawer_top/drawer_handle_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_4/rootJoint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/sektion/drawer_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/sektion/drawer_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/sektion/door_left_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/sektion/door_right_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/door_left_link/door_left_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/door_right_link/door_right_nob_transform
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/drawer_bottom/drawer_handle_bottom_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/drawer_top/drawer_handle_top_joint
+2026-08-03T16:31:31Z [9,990ms] [Error] [omni.physx.plugin] PhysicsUSD: CreateJoint - cannot create a joint between static bodies, joint prim: /World/Apartment/furnitures/counter_5/rootJoint
+2026-08-03T16:31:31Z [9,991ms] [Warning] [omni.physx.plugin] The rigid body at /World/Apartment/furnitures/desk has a possibly invalid inertia tensor of {1.0, 1.0, 1.0} and a negative mass, small sphere approximated inertia was used. Either specify correct values in the mass properties, or add collider(s) to any shape(s) that you wish to automatically compute mass properties for.
+2026-08-03T16:31:31Z [9,992ms] [Warning] [omni.physx.plugin] The rigid body at /World/envs/env_0/Robot/base/base has a possibly invalid inertia tensor of {1.0, 1.0, 1.0} and a negative mass, small sphere approximated inertia was used. Either specify correct values in the mass properties, or add collider(s) to any shape(s) that you wish to automatically compute mass properties for.
+2026-08-03T16:31:32Z [10,642ms] [Warning] [omni.fabric.plugin] getAttributeCount called on non-existent path /World/envs/env_0/Robot/base/trunk_assembly/visuals/wj_wk00_0124bottomcase_45_2
+2026-08-03T16:31:32Z [10,642ms] [Warning] [omni.fabric.plugin] getTypes called on non-existent path /World/envs/env_0/Robot/base/trunk_assembly/visuals/wj_wk00_0124bottomcase_45_2
+2026-08-03T16:31:33Z [11,597ms] [Error] [rtx.neuraylib.plugin] [MDLC:COMPILER]   1.0   MDLC   comp error: file:/tmp/duck-embody-r3-56bd/assets/Assets/simready_content/materials/SimPBR.mdl(30,7): C120 could not find module '.::SimPBR_Model' in module path
+2026-08-03T16:31:33Z [11,597ms] [Error] [rtx.neuraylib.plugin] [MDLC:COMPILER]   1.0   MDLC   comp error: file:/tmp/duck-embody-r3-56bd/assets/Assets/simready_content/materials/SimPBR.mdl(31,7): C120 could not find module '.::baking_annotations' in module path
+2026-08-03T16:31:33Z [11,597ms] [Error] [rtx.neuraylib.plugin] [MDLC:COMPILER]   1.0   MDLC   comp error: file:/tmp/duck-embody-r3-56bd/assets/Assets/simready_content/materials/SimPBR.mdl(530,6): C109 'SimPBR_Model' has not been declared; did you mean 'SimPBR'?
+2026-08-03T16:31:33Z [11,597ms] [Warning] [rtx.neuraylib.plugin] Loading MdlModule to DB (rtx_scope0) failed: ::Z73file_3A::tmp::Z7Cduck_2Dembody_2Dr3_2D56bd::assets::Assets::simready_content::materials::SimPBR
+2026-08-03T16:31:33Z [11,597ms] [Warning] [rtx.neuraylib.plugin] Loading transaction committed (this thread). MdlModule is NOT in the DB (rtx_scope0): ::Z73file_3A::tmp::Z7Cduck_2Dembody_2Dr3_2D56bd::assets::Assets::simready_content::materials::SimPBR
+2026-08-03T16:31:33Z [11,597ms] [Error] [omni.usd] USD_MDL: in LoadModule at line 313 of ../../source/plugins/omni.usdMdl/neuray.cpp -- 'rtx::neuraylib::MdlModuleId' for '/tmp/duck-embody-r3-56bd/assets/Assets/simready_content/materials/SimPBR.mdl' is Invalid
+
+2026-08-03T16:31:33Z [11,597ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_82745817/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,598ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_840d2c94/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,602ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_a518b4c7/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,605ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_84e703b8/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,621ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_4738a643/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,666ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_41b0bc22/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,666ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_de9a24fe/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,678ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_d873ea14/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,718ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_6a3dcf72/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,791ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_ba1f3380/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,792ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_b3fb6329/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:33Z [11,792ms] [Error] [omni.hydra] Unable to find SdrShaderNode for prim: '/__Fabric_StageInfo/MaterialPool/mat_abd2ee51/Shader' with identifier: '16653760335011829907<SimPBR><mdl>'.
+2026-08-03T16:31:34Z [12,177ms] [Warning] [rtx.postprocessing.plugin] DLSS increasing input dimensions: Render resolution of (297, 297) is below minimal input resolution of 300.
+[INFO]: Time taken for simulation start : 3.078301 seconds
+[33m11:31:34 [velocity_command.py] WARNING: The velocity command has the 'ranges.heading' attribute set to '(-3.141592653589793, 3.141592653589793)' but the heading command is not active. Consider setting the flag for the heading command to True.[0m
+[INFO] Command Manager:  <CommandManager> contains 1 active terms.
++------------------------------------------------+
+|              Active Command Terms              |
++-------+---------------+------------------------+
+| Index | Name          |          Type          |
++-------+---------------+------------------------+
+|   0   | base_velocity | UniformVelocityCommand |
++-------+---------------+------------------------+
+
+[INFO] Event Manager:  <EventManager> contains 2 active terms.
++--------------------------------------+
+| Active Event Terms in Mode: 'startup' |
++----------+---------------------------+
+|  Index   | Name                      |
++----------+---------------------------+
+|    0     | physics_material          |
++----------+---------------------------+
++-------------------------------------+
+| Active Event Terms in Mode: 'reset' |
++---------+---------------------------+
+|  Index  | Name                      |
++---------+---------------------------+
+|    0    | reset_base                |
+|    1    | reset_robot_joints        |
++---------+---------------------------+
+
+[INFO] Recorder Manager:  <RecorderManager> contains 0 active terms.
++---------------------+
+| Active Recorder Terms |
++-----------+---------+
+|   Index   | Name    |
++-----------+---------+
++-----------+---------+
+
+[INFO] Action Manager:  <ActionManager> contains 1 active terms.
++------------------------------------+
+|  Active Action Terms (shape: 16)   |
++--------+-------------+-------------+
+| Index  | Name        |   Dimension |
++--------+-------------+-------------+
+|   0    | joint_pos   |          16 |
++--------+-------------+-------------+
+
+[INFO] Observation Manager: <ObservationManager> contains 2 groups.
++---------------------------------------------------------+
+| Active Observation Terms in Group: 'policy' (shape: (59,)) |
++-----------+---------------------------------+-----------+
+|   Index   | Name                            |   Shape   |
++-----------+---------------------------------+-----------+
+|     0     | base_ang_vel                    |    (3,)   |
+|     1     | projected_gravity               |    (3,)   |
+|     2     | velocity_commands               |    (3,)   |
+|     3     | joint_pos                       |   (16,)   |
+|     4     | joint_vel                       |   (16,)   |
+|     5     | actions                         |   (16,)   |
+|     6     | gait_phase                      |    (2,)   |
++-----------+---------------------------------+-----------+
++---------------------------------------------------------+
+| Active Observation Terms in Group: 'critic' (shape: (62,)) |
++-----------+---------------------------------+-----------+
+|   Index   | Name                            |   Shape   |
++-----------+---------------------------------+-----------+
+|     0     | base_lin_vel                    |    (3,)   |
+|     1     | base_ang_vel                    |    (3,)   |
+|     2     | projected_gravity               |    (3,)   |
+|     3     | velocity_commands               |    (3,)   |
+|     4     | joint_pos                       |   (16,)   |
+|     5     | joint_vel                       |   (16,)   |
+|     6     | actions                         |   (16,)   |
+|     7     | gait_phase                      |    (2,)   |
++-----------+---------------------------------+-----------+
+
+[INFO] Termination Manager:  <TerminationManager> contains 2 active terms.
++------------------------------+
+|   Active Termination Terms   |
++-------+-----------+----------+
+| Index | Name      | Time Out |
++-------+-----------+----------+
+|   0   | fell_over |  False   |
+|   1   | fell_low  |  False   |
++-------+-----------+----------+
+
+[INFO] Reward Manager:  <RewardManager> contains 9 active terms.
++---------------------------------------+
+|          Active Reward Terms          |
++-------+----------------------+--------+
+| Index | Name                 | Weight |
++-------+----------------------+--------+
+|   0   | track_lin_vel_xy_exp |    1.0 |
+|   1   | track_ang_vel_z_exp  |    0.5 |
+|   2   | action_rate_l2       |   -1.0 |
+|   3   | flat_orientation_l2  |   -2.0 |
+|   4   | alive_bonus          |   10.0 |
+|   5   | imitation_reward     |    1.0 |
+|   6   | termination_penalty  | -200.0 |
+|   7   | joint_pos_limits     |   -1.0 |
+|   8   | joint_deviation_head |   -0.1 |
++-------+----------------------+--------+
+
+[INFO] Curriculum Manager:  <CurriculumManager> contains 0 active terms.
++----------------------+
+| Active Curriculum Terms |
++-----------+----------+
+|   Index   | Name     |
++-----------+----------+
++-----------+----------+
+
+[INFO]: Completed setting up the environment...
+[INFO]: Parsing configuration from: isaac_lab_env.open_duck_mini_v2.agents.rsl_rl_ppo_cfg:OpenDuckRobustPPORunnerCfg
+[WARNING]: The `policy` configuration is deprecated for rsl-rl >= 4.0.0. Please use, e.g., `actor` and `critic` model configurations instead.
+[WARNING]: The `policy` configuration is used to infer the `actor` model configuration.
+[WARNING]: The `policy` configuration is used to infer the `critic` model configuration.
+[WARNING]: The `distribution_cfg` configuration is now used to specify the output distribution for stochastic policies. Consider updating the configuration to use `distribution_cfg` instead of `stochastic`, `init_noise_std`, `noise_std_type`, and `state_dependent_std` parameters.
+--------------------------------------------------------------------------------
+Resolved observation sets: 
+	 actor :  ['policy']
+	 critic :  ['critic']
+--------------------------------------------------------------------------------
+Actor Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (distribution): GaussianDistribution()
+  (mlp): MLP(
+    (0): Linear(in_features=59, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=16, bias=True)
+  )
+)
+Critic Model: MLPModel(
+  (obs_normalizer): EmpiricalNormalization()
+  (mlp): MLP(
+    (0): Linear(in_features=62, out_features=512, bias=True)
+    (1): ELU(alpha=1.0)
+    (2): Linear(in_features=512, out_features=256, bias=True)
+    (3): ELU(alpha=1.0)
+    (4): Linear(in_features=256, out_features=128, bias=True)
+    (5): ELU(alpha=1.0)
+    (6): Linear(in_features=128, out_features=1, bias=True)
+  )
+)
+[ 1/12] sonnet5_seed101 SKIP (final present, config_hash matches)
+[ 2/12] sonnet5_seed102 SKIP (final present, config_hash matches)
+[ 3/12] sonnet5_seed103 SKIP (final present, config_hash matches)
+[ 4/12] sonnet5_seed104 SKIP (final present, config_hash matches)
+[ 5/12] opus5_seed101 SKIP (final present, config_hash matches)
+[ 6/12] opus5_seed102 SKIP (final present, config_hash matches)
+[ 7/12] opus5_seed103 SKIP (final present, config_hash matches)
+[ 8/12] opus5_seed104 SKIP (final present, config_hash matches)
+[ 9/12] gpt56sol_seed101 SKIP (final present, config_hash matches)
+[10/12] gpt56sol_seed102 START attempt 1 2026-08-03T16:33:00Z
+  [find_kitchen t01] look_around  |  no motion; look_around  |  budget 1/40 turns, 0.0/240 s
+2026-08-03T16:33:13Z [111,260ms] [Warning] [omni.syntheticdata.plugin] OgnSdPostRenderVarToHost : rendervar copy from texture directly to host buffer is counter-performant. Please use copy from texture to device buffer first.
+2026-08-03T16:33:23Z [121,258ms] [Warning] [carb] Client gpu.foundation.plugin has acquired [gpu::unstable::IMemoryBudgetManagerFactory v0.1] 100 times. Consider accessing this interface with carb::getCachedInterface() (Performance warning)
+  [find_kitchen t02] update_room, set_current_room, record_anchor, mark_exit, update_plan, move  |  move: moved 0.56 m, 3.5 policy-s, collision reported (bump)  |  budget 2/40 turns, 3.5/240 s
+  [find_kitchen t03] turn_to_heading  |  turn_to_heading: turned toward 90 deg, 0.0 policy-s, collision reported (bump)  |  budget 3/40 turns, 3.6/240 s
+  [find_kitchen t04] move  |  move: moved 0.00 m, 0.0 policy-s, collision reported (bump)  |  budget 4/40 turns, 3.6/240 s
+  [find_kitchen t05] send_velocity  |  send_velocity: drove 0.24 m, 2.0 policy-s, collision reported (bump)  |  budget 5/40 turns, 5.6/240 s
+  [find_kitchen t06] turn_to_heading  |  turn_to_heading: turned toward 90 deg, 6.4 policy-s  |  budget 6/40 turns, 12.0/240 s
+  [find_kitchen t07] get_observation  |  no motion; get_observation  |  budget 7/40 turns, 12.0/240 s
+  [find_kitchen t08] turn_and_move  |  turn_and_move: turned toward 120 deg and moved 0.52 m, 3.8 policy-s, collision reported (bump)  |  budget 8/40 turns, 15.8/240 s
+  [find_kitchen t09] look_around  |  no motion; look_around  |  budget 9/40 turns, 15.8/240 s
+  [find_kitchen t10] mark_exit, update_plan, turn_and_move  |  turn_and_move: turned toward 180 deg and moved 0.57 m, 5.8 policy-s, collision reported (bump)  |  budget 10/40 turns, 21.6/240 s
+  [find_kitchen t11] send_velocity  |  send_velocity: drove 0.02 m, 2.0 policy-s, collision reported (bump)  |  budget 11/40 turns, 23.6/240 s
+  [find_kitchen t12] send_velocity  |  send_velocity: drove 0.05 m, 2.0 policy-s, collision reported (bump)  |  budget 12/40 turns, 25.6/240 s
+  [find_kitchen t13] send_velocity  |  send_velocity: drove 0.06 m, 3.0 policy-s, collision reported (bump)  |  budget 13/40 turns, 28.6/240 s
+  [find_kitchen t14] send_velocity  |  send_velocity: drove 0.04 m, 3.0 policy-s, collision reported (bump)  |  budget 14/40 turns, 31.6/240 s
+  [find_kitchen t15] send_velocity  |  send_velocity: drove 0.09 m, 3.0 policy-s, collision reported (bump)  |  budget 15/40 turns, 34.6/240 s
+  [find_kitchen t16] send_velocity  |  send_velocity: drove 0.06 m, 3.0 policy-s, collision reported (bump)  |  budget 16/40 turns, 37.6/240 s
+  [find_kitchen t17] send_velocity  |  send_velocity: drove 0.11 m, 3.0 policy-s, collision reported (bump)  |  budget 17/40 turns, 40.6/240 s
+  [find_kitchen t18] turn_to_heading  |  turn_to_heading: turned toward 270 deg, 0.0 policy-s, collision reported (bump)  |  budget 18/40 turns, 40.6/240 s
+  [find_kitchen t19] send_velocity  |  send_velocity: drove 0.07 m, 3.0 policy-s, collision reported (bump)  |  budget 19/40 turns, 43.6/240 s
+  [find_kitchen t20] get_observation  |  no motion; get_observation  |  budget 20/40 turns, 43.6/240 s
+  [find_kitchen t21] send_velocity  |  send_velocity: drove 0.10 m, 3.0 policy-s, collision reported (bump)  |  budget 21/40 turns, 46.6/240 s
+  [find_kitchen t22] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 22/40 turns, 49.6/240 s
+  [find_kitchen t23] send_velocity  |  send_velocity: drove 0.01 m, 3.0 policy-s, collision reported (bump)  |  budget 23/40 turns, 52.6/240 s
+  [find_kitchen t24] send_velocity  |  send_velocity: drove 0.02 m, 3.0 policy-s, collision reported (bump)  |  budget 24/40 turns, 55.6/240 s
+  [find_kitchen t25] send_velocity  |  send_velocity: drove 0.01 m, 3.0 policy-s, collision reported (bump)  |  budget 25/40 turns, 58.6/240 s
+  [find_kitchen t26] send_velocity  |  send_velocity: drove 0.01 m, 3.0 policy-s, collision reported (bump)  |  budget 26/40 turns, 61.6/240 s
+  [find_kitchen t27] send_velocity  |  send_velocity: drove 0.04 m, 3.0 policy-s, collision reported (bump)  |  budget 27/40 turns, 64.6/240 s
+  [find_kitchen t28] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 28/40 turns, 67.6/240 s
+  [find_kitchen t29] get_observation  |  no motion; get_observation  |  budget 29/40 turns, 67.6/240 s
+  [find_kitchen t30] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 30/40 turns, 70.6/240 s
+  [find_kitchen t31] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 31/40 turns, 73.6/240 s
+  [find_kitchen t32] send_velocity  |  send_velocity: drove 0.02 m, 3.0 policy-s, collision reported (bump)  |  budget 32/40 turns, 76.6/240 s
+  [find_kitchen t33] turn_to_heading  |  turn_to_heading: turned toward 0 deg, 0.0 policy-s, collision reported (bump)  |  budget 33/40 turns, 76.6/240 s
+  [find_kitchen t34] send_velocity  |  send_velocity: drove 0.04 m, 3.0 policy-s, collision reported (bump)  |  budget 34/40 turns, 79.6/240 s
+  [find_kitchen t35] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 35/40 turns, 82.6/240 s
+  [find_kitchen t36] send_velocity  |  send_velocity: drove 0.06 m, 3.0 policy-s, collision reported (bump)  |  budget 36/40 turns, 85.6/240 s
+  [find_kitchen t37] look_around  |  no motion; look_around  |  budget 37/40 turns, 85.6/240 s
+  [find_kitchen t38] send_velocity  |  send_velocity: drove 0.03 m, 3.0 policy-s, collision reported (bump)  |  budget 38/40 turns, 88.6/240 s
+  [find_kitchen t39] send_velocity  |  send_velocity: drove 0.01 m, 3.0 policy-s, collision reported (bump)  |  budget 39/40 turns, 91.6/240 s
+  [find_kitchen t40] declare_done  |  no motion commanded  |  budget 40/40 turns, 91.6/240 s
+  [recorder] gpt56sol_seed102.mp4: 2291 frames @ 25 fps
+  [recorder] gpt56sol_seed102_filmstrip.png
+[10/12] gpt56sol_seed102 END find_kitchen=declared_elsewhere return_home=not_run turns=40 bumps=29 cost=$1.6254 2026-08-03T16:45:32Z
+[11/12] gpt56sol_seed103 START attempt 1 2026-08-03T16:45:33Z
+  [find_kitchen t01] look_around  |  no motion; look_around  |  budget 1/40 turns, 0.0/240 s
+  [find_kitchen t02] update_room, set_current_room, mark_exit, mark_exit, record_anchor, update_plan, turn_and_move  |  turn_and_move: turned toward 0 deg and moved 1.23 m, 5.4 policy-s  |  budget 2/40 turns, 5.4/240 s
+  [find_kitchen t03] get_observation  |  no motion; get_observation  |  budget 3/40 turns, 5.4/240 s
+  [find_kitchen t04] look_around  |  no motion; look_around  |  budget 4/40 turns, 5.4/240 s
+  [find_kitchen t05] move  |  move: moved 1.03 m, 4.6 policy-s  |  budget 5/40 turns, 10.0/240 s
+  [find_kitchen t06] get_observation  |  no motion; get_observation  |  budget 6/40 turns, 10.0/240 s
+  [find_kitchen t07] turn_to_heading  |  turn_to_heading: turned toward 270 deg, 3.2 policy-s  |  budget 7/40 turns, 13.2/240 s
+  [find_kitchen t08] get_observation  |  no motion; get_observation  |  budget 8/40 turns, 13.2/240 s
+  [find_kitchen t09] turn_and_move  |  turn_and_move: turned toward 0 deg and moved 0.75 m, 7.0 policy-s  |  budget 9/40 turns, 20.2/240 s
+  [find_kitchen t10] turn_to_heading  |  turn_to_heading: turned toward 270 deg, 3.4 policy-s  |  budget 10/40 turns, 23.6/240 s
+  [find_kitchen t11] get_observation  |  no motion; get_observation  |  budget 11/40 turns, 23.6/240 s
+  [find_kitchen t12] turn_and_move  |  turn_and_move: turned toward 0 deg and moved 1.20 m, 8.8 policy-s  |  budget 12/40 turns, 32.4/240 s
+  [find_kitchen t13] get_observation  |  no motion; get_observation  |  budget 13/40 turns, 32.4/240 s
+  [find_kitchen t14] turn_and_move  |  turn_and_move: turned toward 180 deg and moved 1.53 m, 12.8 policy-s  |  budget 14/40 turns, 45.2/240 s
+  [find_kitchen t15] move  |  move: moved 1.33 m, 5.8 policy-s  |  budget 15/40 turns, 51.0/240 s
+  [find_kitchen t16] turn_to_heading  |  turn_to_heading: turned toward 270 deg, 4.2 policy-s  |  budget 16/40 turns, 55.2/240 s
+  [find_kitchen t17] get_observation, update_plan, mark_exit  |  no motion; get_observation, update_plan, mark_exit  |  budget 17/40 turns, 55.2/240 s
+  [find_kitchen t18] turn_and_move  |  turn_and_move: turned toward 180 deg and moved 1.01 m, 7.6 policy-s  |  budget 18/40 turns, 62.8/240 s
+  [find_kitchen t19] turn_to_heading, correct_to_anchor  |  turn_to_heading: turned toward 270 deg, 4.0 policy-s, collision reported (bump)  |  budget 19/40 turns, 66.8/240 s
+  [find_kitchen t20] get_observation  |  no motion; get_observation  |  budget 20/40 turns, 66.8/240 s
+  [find_kitchen t21] move, update_room, mark_exit, set_current_room  |  move: moved 0.52 m, 2.6 policy-s, collision reported (bump)  |  budget 21/40 turns, 69.4/240 s
+  [find_kitchen t22] move  |  move: moved 0.00 m, 0.0 policy-s, collision reported (bump)  |  budget 22/40 turns, 69.5/240 s
+  [find_kitchen t23] turn_to_heading  |  turn_to_heading: turned toward 90 deg, 0.0 policy-s, collision reported (bump)  |  budget 23/40 turns, 69.5/240 s
+  [find_kitchen t24] send_velocity  |  send_velocity: drove 0.04 m, 2.0 policy-s, collision reported (bump)  |  budget 24/40 turns, 71.5/240 s
+  [find_kitchen t25] send_velocity  |  send_velocity: drove 0.05 m, 2.5 policy-s, collision reported (bump)  |  budget 25/40 turns, 74.0/240 s
+  [find_kitchen t26] get_observation  |  no motion; get_observation  |  budget 26/40 turns, 74.0/240 s
+  [find_kitchen t27] send_velocity  |  send_velocity: drove 0.10 m, 3.0 policy-s, collision reported (bump)  |  budget 27/40 turns, 77.0/240 s
+  [find_kitchen t28] send_velocity  |  send_velocity: drove 0.07 m, 3.0 policy-s, collision reported (bump)  |  budget 28/40 turns, 80.0/240 s
+  [find_kitchen t29] send_velocity  |  send_velocity: drove 0.05 m, 3.0 policy-s, collision reported (bump)  |  budget 29/40 turns, 83.0/240 s
+  [find_kitchen t30] send_velocity  |  send_velocity: drove 0.03 m, 3.0 policy-s, collision reported (bump)  |  budget 30/40 turns, 86.0/240 s
+  [find_kitchen t31] send_velocity  |  send_velocity: drove 0.01 m, 3.0 policy-s, collision reported (bump)  |  budget 31/40 turns, 89.0/240 s
+  [find_kitchen t32] look_around  |  no motion; look_around  |  budget 32/40 turns, 89.0/240 s
+  [find_kitchen t33] send_velocity  |  send_velocity: drove 0.09 m, 3.0 policy-s, collision reported (bump)  |  budget 33/40 turns, 92.0/240 s
+  [find_kitchen t34] send_velocity  |  send_velocity: drove 0.06 m, 3.0 policy-s, collision reported (bump)  |  budget 34/40 turns, 95.0/240 s
+  [find_kitchen t35] get_observation  |  no motion; get_observation  |  budget 35/40 turns, 95.0/240 s
+  [find_kitchen t36] send_velocity  |  send_velocity: drove 0.09 m, 3.0 policy-s, collision reported (bump)  |  budget 36/40 turns, 98.0/240 s
+  [find_kitchen t37] send_velocity  |  send_velocity: drove 0.11 m, 3.0 policy-s, collision reported (bump)  |  budget 37/40 turns, 101.0/240 s
+  [find_kitchen t38] send_velocity  |  send_velocity: drove 0.09 m, 3.0 policy-s, collision reported (bump)  |  budget 38/40 turns, 104.0/240 s
+  [find_kitchen t39] get_observation  |  no motion; get_observation  |  budget 39/40 turns, 104.0/240 s
+  [find_kitchen t40] declare_done  |  no motion commanded  |  budget 40/40 turns, 104.0/240 s
+  [recorder] gpt56sol_seed103.mp4: 2600 frames @ 25 fps
+  [recorder] gpt56sol_seed103_filmstrip.png
+[11/12] gpt56sol_seed103 END find_kitchen=declared_elsewhere return_home=not_run turns=40 bumps=14 cost=$1.5736 2026-08-03T16:57:57Z
+[12/12] gpt56sol_seed104 START attempt 1 2026-08-03T16:57:57Z
+  [find_kitchen t01] look_around  |  no motion; look_around  |  budget 1/40 turns, 0.0/240 s
+  [find_kitchen t02] update_room, set_current_room, record_anchor, mark_exit, update_plan, turn_and_move  |  turn_and_move: turned toward 270 deg and moved 0.82 m, 7.4 policy-s  |  budget 2/40 turns, 7.4/240 s
+  [find_kitchen t03] look_around  |  no motion; look_around  |  budget 3/40 turns, 7.4/240 s
+  [find_kitchen t04] mark_exit, add_landmark, update_plan, turn_and_move  |  turn_and_move: turned toward 0 deg and moved 0.95 m, 8.8 policy-s, collision reported (bump)  |  budget 4/40 turns, 16.2/240 s
+  [find_kitchen t05] get_observation  |  no motion; get_observation  |  budget 5/40 turns, 16.2/240 s
+  [find_kitchen t06] update_room, set_current_room, mark_exit, mark_exit, record_anchor, update_plan, look_around  |  no motion; update_room, set_current_room, mark_exit, mark_exit, record_anchor, update_plan, look_around  |  budget 6/40 turns, 16.2/240 s
+  [find_kitchen t07] add_landmark, update_plan, turn_and_move  |  turn_and_move: turned toward 270 deg and moved 0.57 m, 5.8 policy-s, collision reported (bump)  |  budget 7/40 turns, 22.0/240 s
+  [find_kitchen t08] look_around  |  no motion; look_around  |  budget 8/40 turns, 22.0/240 s
+  [find_kitchen t09] set_current_room, update_plan, turn_and_move  |  turn_and_move: turned toward 90 deg and moved 0.52 m, 9.4 policy-s  |  budget 9/40 turns, 31.4/240 s
+  [find_kitchen t10] get_observation  |  no motion; get_observation  |  budget 10/40 turns, 31.4/240 s
+  [find_kitchen t11] look_around  |  no motion; look_around  |  budget 11/40 turns, 31.4/240 s
+  [find_kitchen t12] update_plan, turn_and_move  |  turn_and_move: turned toward 300 deg and moved 0.41 m, 8.2 policy-s, collision reported (bump)  |  budget 12/40 turns, 39.6/240 s
+  [find_kitchen t13] get_observation  |  no motion; get_observation  |  budget 13/40 turns, 39.6/240 s
+  [find_kitchen t14] set_current_room, update_plan, turn_and_move  |  turn_and_move: turned toward 320 deg and moved 0.43 m, 4.4 policy-s, collision reported (bump)  |  budget 14/40 turns, 44.0/240 s
+  [find_kitchen t15] update_plan, get_observation  |  no motion; update_plan, get_observation  |  budget 15/40 turns, 44.0/240 s
+  [find_kitchen t16] add_landmark, record_anchor, update_plan, declare_done  |  no motion; add_landmark, record_anchor, update_plan  |  budget 16/40 turns, 44.0/240 s
+  [recorder] gpt56sol_seed104.mp4: 1100 frames @ 25 fps
+  [recorder] gpt56sol_seed104_filmstrip.png
+[12/12] gpt56sol_seed104 END find_kitchen=declared_elsewhere return_home=not_run turns=16 bumps=4 cost=$0.9526 2026-08-03T17:04:06Z
+== batch done: 3 run, 9 skipped, 0 not reached ==
+  closing app (nothing after this line runs)

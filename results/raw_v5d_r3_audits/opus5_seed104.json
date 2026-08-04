@@ -1,0 +1,227 @@
+{
+  "trial_id": "opus5_seed104",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "complete JSON and QA",
+      "status": "PASS",
+      "detail": "qa_answers=5"
+    },
+    {
+      "name": "no infrastructure failure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "write-once manifest SHA",
+      "status": "PASS",
+      "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "trial manifest SHA match",
+      "status": "PASS",
+      "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "request reconstruction",
+      "status": "PASS",
+      "detail": "26 request(s)"
+    },
+    {
+      "name": "frame files and hashes",
+      "status": "PASS",
+      "detail": "349 hashed image(s)"
+    },
+    {
+      "name": "video and filmstrip",
+      "status": "PASS",
+      "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed104_filmstrip.png"
+    },
+    {
+      "name": "scorer replay",
+      "status": "PASS",
+      "detail": "canonical scorer completed"
+    },
+    {
+      "name": "no NaN or Infinity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "corrections accepted/rejected split",
+      "status": "PASS",
+      "detail": "calls=2 accepted=2 rejected=0"
+    },
+    {
+      "name": "drift via canonical parser",
+      "status": "PASS",
+      "detail": "{\"find_kitchen\": 0.19965693075873933, \"return_home\": 0.12089772537148898}"
+    },
+    {
+      "name": "resolved model consistency",
+      "status": "PASS",
+      "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+    },
+    {
+      "name": "provider usage completeness",
+      "status": "PASS",
+      "detail": "25 turn(s)"
+    }
+  ],
+  "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed104.json",
+  "corrections": {
+    "calls": 2,
+    "accepted": 2,
+    "rejected": 0,
+    "worsened": 0,
+    "improved": 2,
+    "error_before_sum_m": 0.3927728380404039,
+    "error_after_sum_m": 0.1773191751933431,
+    "net_added_error_m": -0.21545366284706083,
+    "ledger": [
+      {
+        "trial_id": "opus5_seed104",
+        "stage": "return_home",
+        "turn_idx": 3,
+        "global_turn_idx": 19,
+        "place": null,
+        "accepted": true,
+        "motion_calls_before": 0,
+        "true_xy": [
+          2.1663,
+          1.1963
+        ],
+        "true_xy_source": "prior_turn",
+        "old_xy": [
+          2.0800836365164286,
+          0.974635628655073
+        ],
+        "new_xy": [
+          2.17,
+          1.14
+        ],
+        "error_before_m": 0.23784102853812455,
+        "error_after_m": 0.056421449821854104,
+        "effect_m": -0.18141957871627046,
+        "reason": "Standing on the kitchen/dining threshold again: red bar stool just north of me, stove+dark table mass to the southwest, and the living-room wood floor with red sofa visible through the opening to the west"
+      },
+      {
+        "trial_id": "opus5_seed104",
+        "stage": "return_home",
+        "turn_idx": 9,
+        "global_turn_idx": 25,
+        "place": null,
+        "accepted": true,
+        "motion_calls_before": 0,
+        "true_xy": [
+          1.4899,
+          2.2545
+        ],
+        "true_xy_source": "prior_turn",
+        "old_xy": [
+          1.3380304842214785,
+          2.2238484784578647
+        ],
+        "new_xy": [
+          1.37,
+          2.27
+        ],
+        "error_before_m": 0.15493180950227936,
+        "error_after_m": 0.12089772537148898,
+        "effect_m": -0.034034084130790385,
+        "reason": "Dead reckoning puts me within 0.05 m of the recorded start point and the surroundings match: wood floor, north wall close ahead, red sofa/armchair to the west-southwest, dark table/overhang mass to the south-southeast"
+      }
+    ]
+  },
+  "drift_m": {
+    "find_kitchen": 0.19965693075873933,
+    "return_home": 0.12089772537148898
+  },
+  "score_replay": {
+    "trial_id": "opus5_seed104",
+    "model": "claude-opus-5",
+    "seed": 104,
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "outcome": "success",
+        "end_reason": "declare_done",
+        "success": true,
+        "success_preregistered": true,
+        "outcome_preregistered": "success",
+        "d_nearest_counter_face_m": 0.2105,
+        "d_initial_m": 1.9243,
+        "d_final_m": 0.2033,
+        "progress": 0.8944,
+        "oracle_path_m": 1.8399,
+        "true_path_m": 7.2562,
+        "spl": 0.2536,
+        "time_s": 45.6,
+        "turns_used": 16,
+        "drift_m": 0.1997,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      },
+      "return_home": {
+        "stage": "return_home",
+        "outcome": "success",
+        "end_reason": "declare_done",
+        "success": true,
+        "success_preregistered": true,
+        "outcome_preregistered": "success",
+        "d_nearest_counter_face_m": "—",
+        "d_initial_m": 2.1217,
+        "d_final_m": 0.1209,
+        "progress": 0.943,
+        "oracle_path_m": 2.3642,
+        "true_path_m": 4.5706,
+        "spl": 0.5173,
+        "time_s": 26.8,
+        "turns_used": 9,
+        "drift_m": 0.1209,
+        "corrections": 2,
+        "correction_magnitudes_m": [
+          0.1882,
+          0.0561
+        ]
+      }
+    },
+    "bumps": 4,
+    "falls": 0,
+    "map_accuracy": {
+      "claimed": 2,
+      "matched": 2,
+      "true_rooms_visited": 2,
+      "precision": 1.0,
+      "recall": 1.0,
+      "matches": [
+        [
+          "living_room",
+          "living_room"
+        ],
+        [
+          "kitchen",
+          "kitchen"
+        ]
+      ],
+      "edges_claimed": 1,
+      "edges_correct": 1,
+      "edges_unresolved": 0,
+      "edge_accuracy": 1.0
+    },
+    "qa": {
+      "per_question": [
+        0.5,
+        0.5,
+        0.5,
+        0.0,
+        1.0
+      ],
+      "score": 0.5
+    },
+    "visited_rooms": [
+      "living_room",
+      "kitchen"
+    ]
+  }
+}

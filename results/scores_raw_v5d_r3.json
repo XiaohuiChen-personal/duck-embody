@@ -1,0 +1,1965 @@
+{
+  "schema": "duck-embody-scores-v2",
+  "scoring_criterion": {
+    "name": "v2_any_counter",
+    "changed_post_batch": false,
+    "rerun_log": "results/rerun_log.md",
+    "preregistered_find_kitchen_successes": 2,
+    "v2_find_kitchen_successes": 3
+  },
+  "config_hash": "d30462d03c764c7c8520cae5910ea704eedbe94f96dfbf965d551ba6859ea46b",
+  "freeze_commit": "56bd08a68d922d205992679a403bfb577b5e2194",
+  "source_raw_dir": "results/raw_v5d_r3",
+  "model_roster": [
+    "sonnet5",
+    "opus5",
+    "gpt56sol"
+  ],
+  "batch_manifest": {
+    "path": "results/manifests/v5d-r3-final-prod.json",
+    "schema": "duck-embody-batch-manifest-v1",
+    "manifest_sha256": "17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd",
+    "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "parent_commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "status": "complete"
+  },
+  "batch_last_turn_timestamp": "2026-08-03T17:03:54Z",
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260726,
+    "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
+  },
+  "cost_accounting": {
+    "schema": "normalized-provider-usage-v1",
+    "historical_v5d_r2_gpt": null
+  },
+  "trials": [
+    {
+      "trial_id": "sonnet5_seed101",
+      "model": "claude-sonnet-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.9474,
+          "d_initial_m": 2.0652,
+          "d_final_m": 2.0861,
+          "progress": 0.0,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 4.8031,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0811,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.497,
+          "d_final_m": 0.497,
+          "progress": 0.0,
+          "oracle_path_m": 0.4707,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 21,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.0
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.706799,
+      "cost_usd_original_reported": 1.706799,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 660003,
+        "input_tokens_uncached": 436203,
+        "cache_read_tokens": 223800,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 22070,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T05:34:57Z",
+      "video": "results/videos_v5d_r3/sonnet5_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed102",
+      "model": "claude-sonnet-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.4425,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.2804,
+          "progress": 0.0,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 9.7414,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1961,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.7014,
+          "d_final_m": 1.7014,
+          "progress": 0.0,
+          "oracle_path_m": 1.9571,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 11,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "bedroom",
+            "bedroom"
+          ],
+          [
+            "hallway",
+            "hallway"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 1,
+        "edges_unresolved": 0,
+        "edge_accuracy": 1.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 1.709349,
+      "cost_usd_original_reported": 1.709349,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 675388,
+        "input_tokens_uncached": 451588,
+        "cache_read_tokens": 223800,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 19163,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T05:46:26Z",
+      "video": "results/videos_v5d_r3/sonnet5_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed103",
+      "model": "claude-sonnet-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.2004,
+          "d_initial_m": 3.2022,
+          "d_final_m": 0.3696,
+          "progress": 0.8846,
+          "oracle_path_m": 3.142,
+          "true_path_m": 10.2727,
+          "spl": 0.3059,
+          "time_s": 58.4,
+          "turns_used": 40,
+          "drift_m": 0.0634,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 3.1544,
+          "d_final_m": 2.3763,
+          "progress": 0.2467,
+          "oracle_path_m": 3.6299,
+          "true_path_m": 3.341,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 37,
+          "drift_m": 0.1025,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 21,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          0.5
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "hallway",
+        "kitchen"
+      ],
+      "cost_usd": 3.184522,
+      "cost_usd_original_reported": 3.184522,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 1300766,
+        "input_tokens_uncached": 869951,
+        "cache_read_tokens": 430815,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 29695,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 77,
+      "last_turn_timestamp": "2026-08-03T06:05:42Z",
+      "video": "results/videos_v5d_r3/sonnet5_seed103.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed104",
+      "model": "claude-sonnet-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.6614,
+          "d_initial_m": 1.9243,
+          "d_final_m": 1.601,
+          "progress": 0.168,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 5.9042,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.2381,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.4876,
+          "d_final_m": 0.4876,
+          "progress": 0.0,
+          "oracle_path_m": 0.5207,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 17,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.0
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.618566,
+      "cost_usd_original_reported": 1.618566,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 655587,
+        "input_tokens_uncached": 431787,
+        "cache_read_tokens": 223800,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 17071,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T06:18:37Z",
+      "video": "results/videos_v5d_r3/sonnet5_seed104.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "opus5_seed101",
+      "model": "claude-opus-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.9151,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.9656,
+          "progress": 0.0482,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 6.2206,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0997,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.8572,
+          "d_final_m": 0.8572,
+          "progress": 0.0,
+          "oracle_path_m": 0.8414,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 31,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 2.54345,
+      "cost_usd_original_reported": 2.54345,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 616026,
+        "input_tokens_uncached": 394946,
+        "cache_read_tokens": 215553,
+        "cache_write_tokens": 5527,
+        "output_tokens_total": 17056,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T06:34:58Z",
+      "video": "results/videos_v5d_r3/opus5_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "opus5_seed102",
+      "model": "claude-opus-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 2.0477,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.4292,
+          "progress": 0.0,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 11.5059,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.2104,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 2.9809,
+          "d_final_m": 2.9809,
+          "progress": 0.0,
+          "oracle_path_m": 3.345,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 17,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 2.640395,
+      "cost_usd_original_reported": 2.640395,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 636616,
+        "input_tokens_uncached": 415536,
+        "cache_read_tokens": 221080,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 18087,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T06:49:52Z",
+      "video": "results/videos_v5d_r3/opus5_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "opus5_seed103",
+      "model": "claude-opus-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": 0.2208,
+          "d_initial_m": 3.2022,
+          "d_final_m": 0.1836,
+          "progress": 0.9427,
+          "oracle_path_m": 3.142,
+          "true_path_m": 18.5866,
+          "spl": 0.169,
+          "time_s": 103.4,
+          "turns_used": 36,
+          "drift_m": 0.1149,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 3.3039,
+          "d_final_m": 0.1003,
+          "progress": 0.9696,
+          "oracle_path_m": 3.5163,
+          "true_path_m": 7.2814,
+          "spl": 0.4829,
+          "time_s": 39.4,
+          "turns_used": 12,
+          "drift_m": 0.1003,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.0121
+          ]
+        }
+      },
+      "bumps": 8,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 4,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.25,
+        "recall": 0.5,
+        "matches": [
+          [
+            "kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          1.0,
+          1.0,
+          0.5
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "hallway",
+        "kitchen"
+      ],
+      "cost_usd": 4.754863,
+      "cost_usd_original_reported": 4.754863,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 1008769,
+        "input_tokens_uncached": 743473,
+        "cache_read_tokens": 265296,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 36194,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 48,
+      "last_turn_timestamp": "2026-08-03T07:13:44Z",
+      "video": "results/videos_v5d_r3/opus5_seed103.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "opus5_seed104",
+      "model": "claude-opus-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": 0.2105,
+          "d_initial_m": 1.9243,
+          "d_final_m": 0.2033,
+          "progress": 0.8944,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 7.2562,
+          "spl": 0.2536,
+          "time_s": 45.6,
+          "turns_used": 16,
+          "drift_m": 0.1997,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 2.1217,
+          "d_final_m": 0.1209,
+          "progress": 0.943,
+          "oracle_path_m": 2.3642,
+          "true_path_m": 4.5706,
+          "spl": 0.5173,
+          "time_s": 26.8,
+          "turns_used": 9,
+          "drift_m": 0.1209,
+          "corrections": 2,
+          "correction_magnitudes_m": [
+            0.1882,
+            0.0561
+          ]
+        }
+      },
+      "bumps": 4,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ],
+          [
+            "kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 1,
+        "edges_unresolved": 0,
+        "edge_accuracy": 1.0
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.5,
+          0.5,
+          0.0,
+          1.0
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 2.560588,
+      "cost_usd_original_reported": 2.560588,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 540070,
+        "input_tokens_uncached": 401895,
+        "cache_read_tokens": 138175,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 19281,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 25,
+      "last_turn_timestamp": "2026-08-03T07:27:24Z",
+      "video": "results/videos_v5d_r3/opus5_seed104.mp4",
+      "correction_calls": {
+        "calls": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 2
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed101",
+      "model": "gpt-5.6-sol",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 1.9397,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.993,
+          "progress": 0.0349,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 6.3138,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0982,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.851,
+          "d_final_m": 0.851,
+          "progress": 0.0,
+          "oracle_path_m": 0.8414,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 25,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "score": 0.1
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.691984,
+      "cost_usd_original_reported": 1.691984,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 357714,
+        "input_tokens_uncached": 796,
+        "cache_read_tokens": 120705,
+        "cache_write_tokens": 236213,
+        "output_tokens_total": 5044,
+        "reasoning_tokens": 3463,
+        "provider_reported_total_tokens": 362758,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://developers.openai.com/api/docs/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T07:39:11Z",
+      "video": "results/videos_v5d_r3/gpt56sol_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed102",
+      "model": "gpt-5.6-sol",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.546,
+          "d_initial_m": 2.2727,
+          "d_final_m": 1.5749,
+          "progress": 0.307,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 6.3079,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1058,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.7068,
+          "d_final_m": 0.7068,
+          "progress": 0.0,
+          "oracle_path_m": 0.7364,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 29,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Bedroom",
+            "bedroom"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "bedroom"
+      ],
+      "cost_usd": 1.625376,
+      "cost_usd_original_reported": 1.625376,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 342058,
+        "input_tokens_uncached": 762,
+        "cache_read_tokens": 120705,
+        "cache_write_tokens": 220591,
+        "output_tokens_total": 6084,
+        "reasoning_tokens": 4427,
+        "provider_reported_total_tokens": 348142,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://developers.openai.com/api/docs/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T16:45:21Z",
+      "video": "/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/gpt56sol_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed103",
+      "model": "gpt-5.6-sol",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 2.0397,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.2594,
+          "progress": 0.2944,
+          "oracle_path_m": 3.142,
+          "true_path_m": 13.9751,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.3841,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.416
+          ]
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.9621,
+          "d_final_m": 0.9621,
+          "progress": 0.0,
+          "oracle_path_m": 1.0571,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 14,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 2,
+        "edges_correct": 0,
+        "edges_unresolved": 2,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "hallway",
+        "living_room"
+      ],
+      "cost_usd": 1.573636,
+      "cost_usd_original_reported": 1.573636,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 347598,
+        "input_tokens_uncached": 801,
+        "cache_read_tokens": 123800,
+        "cache_write_tokens": 222997,
+        "output_tokens_total": 3800,
+        "reasoning_tokens": 2151,
+        "provider_reported_total_tokens": 351398,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://developers.openai.com/api/docs/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T16:57:12Z",
+      "video": "/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/gpt56sol_seed103.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 1,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "gpt56sol_seed104",
+      "model": "gpt-5.6-sol",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.7977,
+          "d_initial_m": 1.9243,
+          "d_final_m": 0.6835,
+          "progress": 0.6448,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 6.5851,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 16,
+          "drift_m": 0.1956,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.3411,
+          "d_final_m": 1.3411,
+          "progress": 0.0,
+          "oracle_path_m": 1.4864,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 4,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 1,
+        "true_rooms_visited": 2,
+        "precision": 0.5,
+        "recall": 0.5,
+        "matches": [
+          [
+            "Living room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 0,
+        "edges_unresolved": 1,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          1.0,
+          1.0,
+          0.5,
+          0.5
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 0.952573,
+      "cost_usd_original_reported": 0.952573,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 180221,
+        "input_tokens_uncached": 871,
+        "cache_read_tokens": 49520,
+        "cache_write_tokens": 129830,
+        "output_tokens_total": 3734,
+        "reasoning_tokens": 1994,
+        "provider_reported_total_tokens": 183955,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://developers.openai.com/api/docs/pricing"
+      },
+      "total_turns": 16,
+      "last_turn_timestamp": "2026-08-03T17:03:54Z",
+      "video": "/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/gpt56sol_seed104.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    }
+  ],
+  "per_model": {
+    "sonnet5": {
+      "model": "sonnet5",
+      "n_trials": 4,
+      "trials": [
+        "sonnet5_seed101",
+        "sonnet5_seed102",
+        "sonnet5_seed103",
+        "sonnet5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 1,
+          "n": 4,
+          "rate": 0.25,
+          "printed": "1/4",
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2631,
+          "ci95": [
+            0.0,
+            0.6634
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.084
+        },
+        "spl": {
+          "mean": 0.0765,
+          "ci95": [
+            0.0,
+            0.2294
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 58.4,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 40.0,
+          "ci95": [
+            40.0,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1447,
+          "ci95": [
+            0.0723,
+            0.2171
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0617,
+          "ci95": [
+            0.0,
+            0.185
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 9.25,
+          "ci95": [
+            0.0,
+            27.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1025,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 1,
+          "rate": 0.0,
+          "printed": "0/1",
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 1
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 17.5,
+        "ci95": [
+          13.5,
+          21.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 1.0,
+        "ci95": null,
+        "n_defined": 1,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.275,
+        "ci95": [
+          0.0,
+          0.55
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 2.0548,
+        "ci95": [
+          1.6413,
+          2.8151
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 8.219236
+      },
+      "total_turns": {
+        "mean": 49.25,
+        "ci95": [
+          40.0,
+          67.75
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 197
+      },
+      "find_kitchen_end_reasons": {
+        "turn_cap": 2,
+        "declare_done": 2
+      }
+    },
+    "opus5": {
+      "model": "opus5",
+      "n_trials": 4,
+      "trials": [
+        "opus5_seed101",
+        "opus5_seed102",
+        "opus5_seed103",
+        "opus5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 2,
+          "n": 4,
+          "rate": 0.5,
+          "printed": "2/4",
+          "mean": 0.5,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.4713,
+          "ci95": [
+            0.0241,
+            0.9185
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.4713
+        },
+        "spl": {
+          "mean": 0.1057,
+          "ci95": [
+            0.0,
+            0.2113
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 74.5,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 33.0,
+          "ci95": [
+            22.0,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1561,
+          "ci95": [
+            0.1073,
+            0.205
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 2,
+          "n": 4,
+          "rate": 0.5,
+          "printed": "2/4",
+          "mean": 0.5,
+          "ci95": [
+            0.0,
+            1.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.4782,
+          "ci95": [
+            0.0,
+            0.9563
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.4715
+        },
+        "spl": {
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.5001
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 33.1,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 5.25,
+          "ci95": [
+            0.0,
+            10.5
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1106,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.75,
+          "ci95": [
+            0.0,
+            1.5
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 2,
+          "n": 2,
+          "rate": 1.0,
+          "printed": "2/2",
+          "mean": 1.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 15.0,
+        "ci95": [
+          6.0,
+          25.25
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.5625,
+        "ci95": [
+          0.125,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.625,
+        "ci95": [
+          0.25,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 1.0,
+        "ci95": null,
+        "n_defined": 1,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.625,
+        "ci95": [
+          0.55,
+          0.7
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 3.1248,
+        "ci95": [
+          2.552,
+          4.2063
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 12.499296
+      },
+      "total_turns": {
+        "mean": 38.25,
+        "ci95": [
+          28.75,
+          46.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 153
+      },
+      "find_kitchen_end_reasons": {
+        "turn_cap": 2,
+        "declare_done": 2
+      }
+    },
+    "gpt56sol": {
+      "model": "gpt56sol",
+      "n_trials": 4,
+      "trials": [
+        "gpt56sol_seed101",
+        "gpt56sol_seed102",
+        "gpt56sol_seed103",
+        "gpt56sol_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.3203,
+          "ci95": [
+            0.103,
+            0.5572
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.3007
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 34.0,
+          "ci95": [
+            22.0,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1959,
+          "ci95": [
+            0.102,
+            0.3145
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 4,
+          "rate": 0.0,
+          "printed": "0/4",
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 18.0,
+        "ci95": [
+          9.0,
+          27.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 0.375,
+        "ci95": [
+          0.0,
+          0.75
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.375,
+        "ci95": [
+          0.175,
+          0.55
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 1.4609,
+        "ci95": [
+          1.1208,
+          1.6624
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 5.843569
+      },
+      "total_turns": {
+        "mean": 34.0,
+        "ci95": [
+          22.0,
+          40.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 136
+      },
+      "find_kitchen_end_reasons": {
+        "declare_done": 4
+      }
+    }
+  }
+}

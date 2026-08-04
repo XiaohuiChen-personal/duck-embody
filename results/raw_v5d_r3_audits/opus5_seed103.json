@@ -1,0 +1,196 @@
+{
+  "trial_id": "opus5_seed103",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "complete JSON and QA",
+      "status": "PASS",
+      "detail": "qa_answers=5"
+    },
+    {
+      "name": "no infrastructure failure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "write-once manifest SHA",
+      "status": "PASS",
+      "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "trial manifest SHA match",
+      "status": "PASS",
+      "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "request reconstruction",
+      "status": "PASS",
+      "detail": "49 request(s)"
+    },
+    {
+      "name": "frame files and hashes",
+      "status": "PASS",
+      "detail": "520 hashed image(s)"
+    },
+    {
+      "name": "video and filmstrip",
+      "status": "PASS",
+      "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed103_filmstrip.png"
+    },
+    {
+      "name": "scorer replay",
+      "status": "PASS",
+      "detail": "canonical scorer completed"
+    },
+    {
+      "name": "no NaN or Infinity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "corrections accepted/rejected split",
+      "status": "PASS",
+      "detail": "calls=1 accepted=1 rejected=0"
+    },
+    {
+      "name": "drift via canonical parser",
+      "status": "PASS",
+      "detail": "{\"find_kitchen\": 0.11487684710158103, \"return_home\": 0.10029656026006085}"
+    },
+    {
+      "name": "resolved model consistency",
+      "status": "PASS",
+      "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+    },
+    {
+      "name": "provider usage completeness",
+      "status": "PASS",
+      "detail": "48 turn(s)"
+    }
+  ],
+  "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed103.json",
+  "corrections": {
+    "calls": 1,
+    "accepted": 1,
+    "rejected": 0,
+    "worsened": 1,
+    "improved": 0,
+    "error_before_sum_m": 0.09013806964743416,
+    "error_after_sum_m": 0.10029656026006085,
+    "net_added_error_m": 0.010158490612626692,
+    "ledger": [
+      {
+        "trial_id": "opus5_seed103",
+        "stage": "return_home",
+        "turn_idx": 11,
+        "global_turn_idx": 47,
+        "place": null,
+        "accepted": true,
+        "motion_calls_before": 0,
+        "true_xy": [
+          0.3896,
+          3.0582
+        ],
+        "true_xy_source": "prior_turn",
+        "old_xy": [
+          0.4315799108776881,
+          3.137965648511543
+        ],
+        "new_xy": [
+          0.43,
+          3.15
+        ],
+        "error_before_m": 0.09013806964743416,
+        "error_after_m": 0.10029656026006085,
+        "effect_m": 0.010158490612626692,
+        "reason": "Standing again in the corridor's west-end pocket: west wall ~0.5m ahead, north wall ~0.5m, large dark bulky furniture immediately east with red bucket beside it and brown corridor floor running east — same scene as the start point, and odometry independently agrees at (0.43,3.14)."
+      }
+    ]
+  },
+  "drift_m": {
+    "find_kitchen": 0.11487684710158103,
+    "return_home": 0.10029656026006085
+  },
+  "score_replay": {
+    "trial_id": "opus5_seed103",
+    "model": "claude-opus-5",
+    "seed": 103,
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "outcome": "success",
+        "end_reason": "declare_done",
+        "success": true,
+        "success_preregistered": true,
+        "outcome_preregistered": "success",
+        "d_nearest_counter_face_m": 0.2208,
+        "d_initial_m": 3.2022,
+        "d_final_m": 0.1836,
+        "progress": 0.9427,
+        "oracle_path_m": 3.142,
+        "true_path_m": 18.5866,
+        "spl": 0.169,
+        "time_s": 103.4,
+        "turns_used": 36,
+        "drift_m": 0.1149,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      },
+      "return_home": {
+        "stage": "return_home",
+        "outcome": "success",
+        "end_reason": "declare_done",
+        "success": true,
+        "success_preregistered": true,
+        "outcome_preregistered": "success",
+        "d_nearest_counter_face_m": "—",
+        "d_initial_m": 3.3039,
+        "d_final_m": 0.1003,
+        "progress": 0.9696,
+        "oracle_path_m": 3.5163,
+        "true_path_m": 7.2814,
+        "spl": 0.4829,
+        "time_s": 39.4,
+        "turns_used": 12,
+        "drift_m": 0.1003,
+        "corrections": 1,
+        "correction_magnitudes_m": [
+          0.0121
+        ]
+      }
+    },
+    "bumps": 8,
+    "falls": 0,
+    "map_accuracy": {
+      "claimed": 4,
+      "matched": 1,
+      "true_rooms_visited": 2,
+      "precision": 0.25,
+      "recall": 0.5,
+      "matches": [
+        [
+          "kitchen",
+          "kitchen"
+        ]
+      ],
+      "edges_claimed": 0,
+      "edges_correct": 0,
+      "edges_unresolved": 0,
+      "edge_accuracy": "—"
+    },
+    "qa": {
+      "per_question": [
+        1.0,
+        0.0,
+        1.0,
+        1.0,
+        0.5
+      ],
+      "score": 0.7
+    },
+    "visited_rooms": [
+      "hallway",
+      "kitchen"
+    ]
+  }
+}

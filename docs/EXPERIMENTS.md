@@ -207,3 +207,26 @@ all 12 trials completed under the one freeze hash.
 - `results/scores.json`, `results/summary_table.md` — derived scores (rebuildable, step 5)
 - `results/figures/*.png` — per-metric bars, turns-survived, 3 trajectory-vs-belief figures, 3 audit filmstrips
 - `results/audit_notes.md`, `results/rerun_log.md`, `results/freeze.json`, `results/incomplete/`
+
+---
+
+## Later batch: v5d-r3-final-prod (TR.9 L8)
+
+Separate from the frozen v4 batch above. Same matrix shape (3 models × 4 seeds)
+under write-once manifest
+[`results/manifests/v5d-r3-final-prod.json`](../results/manifests/v5d-r3-final-prod.json).
+
+| Field | Value |
+|---|---|
+| Manifest SHA | `17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd` |
+| Freeze commit | `56bd08a68d922d205992679a403bfb577b5e2194` |
+| Models | `sonnet5`, `opus5`, `gpt56sol` × seeds 101–104 |
+| Policy | `v5d_contact_wrench` `model_5998.pt` (parent pin `7dde4ba…`) |
+| Raw / videos | `results/raw_v5d_r3/`, `results/videos_v5d_r3/` |
+| Scores | `results/scores_raw_v5d_r3.json`, `results/summary_table_raw_v5d_r3.md` |
+| Audits | `results/raw_v5d_r3_audits/`, `results/raw_v5d_r3_visual_audits/`, batch `results/raw_v5d_r3_batch_audit.json` (**PASS**) |
+| Report | [`docs/research/V5D_R3_PERFORMANCE_REPORT.md`](research/V5D_R3_PERFORMANCE_REPORT.md) |
+| Headline | **3/12** find_kitchen (v2), **2/12** return_home, **0 falls**, **$26.56** |
+
+Resume after a credit-block pause is logged in
+[`results/rerun_log.md`](../results/rerun_log.md). Do not re-run completed cells.

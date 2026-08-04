@@ -1,0 +1,166 @@
+{
+  "trial_id": "opus5_seed101",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "complete JSON and QA",
+      "status": "PASS",
+      "detail": "qa_answers=5"
+    },
+    {
+      "name": "no infrastructure failure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "write-once manifest SHA",
+      "status": "PASS",
+      "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "trial manifest SHA match",
+      "status": "PASS",
+      "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "request reconstruction",
+      "status": "PASS",
+      "detail": "41 request(s)"
+    },
+    {
+      "name": "frame files and hashes",
+      "status": "PASS",
+      "detail": "180 hashed image(s)"
+    },
+    {
+      "name": "video and filmstrip",
+      "status": "PASS",
+      "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/opus5_seed101_filmstrip.png"
+    },
+    {
+      "name": "scorer replay",
+      "status": "PASS",
+      "detail": "canonical scorer completed"
+    },
+    {
+      "name": "no NaN or Infinity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "corrections accepted/rejected split",
+      "status": "PASS",
+      "detail": "calls=0 accepted=0 rejected=0"
+    },
+    {
+      "name": "drift via canonical parser",
+      "status": "PASS",
+      "detail": "{\"find_kitchen\": 0.09965846677528213, \"return_home\": \"\\u2014\"}"
+    },
+    {
+      "name": "resolved model consistency",
+      "status": "PASS",
+      "detail": "turns=['claude-opus-5'] config=claude-opus-5"
+    },
+    {
+      "name": "provider usage completeness",
+      "status": "PASS",
+      "detail": "40 turn(s)"
+    }
+  ],
+  "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/opus5_seed101.json",
+  "corrections": {
+    "calls": 0,
+    "accepted": 0,
+    "rejected": 0,
+    "worsened": 0,
+    "improved": 0,
+    "error_before_sum_m": 0.0,
+    "error_after_sum_m": 0.0,
+    "net_added_error_m": 0.0,
+    "ledger": []
+  },
+  "drift_m": {
+    "find_kitchen": 0.09965846677528213,
+    "return_home": "—"
+  },
+  "score_replay": {
+    "trial_id": "opus5_seed101",
+    "model": "claude-opus-5",
+    "seed": 101,
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "outcome": "timeout_turns",
+        "end_reason": "turn_cap",
+        "success": false,
+        "success_preregistered": false,
+        "outcome_preregistered": "timeout_turns",
+        "d_nearest_counter_face_m": 1.9151,
+        "d_initial_m": 2.0652,
+        "d_final_m": 1.9656,
+        "progress": 0.0482,
+        "oracle_path_m": 2.0521,
+        "true_path_m": 6.2206,
+        "spl": 0.0,
+        "time_s": "—",
+        "turns_used": 40,
+        "drift_m": 0.0997,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      },
+      "return_home": {
+        "stage": "return_home",
+        "outcome": "not_run",
+        "end_reason": "not_run",
+        "success": false,
+        "success_preregistered": false,
+        "outcome_preregistered": "not_run",
+        "d_nearest_counter_face_m": "—",
+        "d_initial_m": 0.8572,
+        "d_final_m": 0.8572,
+        "progress": 0.0,
+        "oracle_path_m": 0.8414,
+        "true_path_m": 0,
+        "spl": 0.0,
+        "time_s": "—",
+        "turns_used": 0,
+        "drift_m": "—",
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      }
+    },
+    "bumps": 31,
+    "falls": 0,
+    "map_accuracy": {
+      "claimed": 1,
+      "matched": 1,
+      "true_rooms_visited": 1,
+      "precision": 1.0,
+      "recall": 1.0,
+      "matches": [
+        [
+          "living_room",
+          "living_room"
+        ]
+      ],
+      "edges_claimed": 0,
+      "edges_correct": 0,
+      "edges_unresolved": 0,
+      "edge_accuracy": "—"
+    },
+    "qa": {
+      "per_question": [
+        0.0,
+        1.0,
+        1.0,
+        0.5,
+        1.0
+      ],
+      "score": 0.7
+    },
+    "visited_rooms": [
+      "living_room"
+    ]
+  }
+}

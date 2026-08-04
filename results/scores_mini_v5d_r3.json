@@ -1,0 +1,489 @@
+{
+  "schema": "duck-embody-scores-v2",
+  "scoring_criterion": {
+    "name": "v2_any_counter",
+    "changed_post_batch": false,
+    "rerun_log": "results/rerun_log.md",
+    "preregistered_find_kitchen_successes": 0,
+    "v2_find_kitchen_successes": 0,
+    "v2_find_kitchen_successes_among_completed": "0/2"
+  },
+  "config_hash": "d30462d03c764c7c8520cae5910ea704eedbe94f96dfbf965d551ba6859ea46b",
+  "freeze_commit": "56bd08a68d922d205992679a403bfb577b5e2194",
+  "source_raw_dir": "results/mini_v5d_r3",
+  "model_roster": [
+    "sonnet5",
+    "opus5",
+    "gpt56sol"
+  ],
+  "present_models": [
+    "sonnet5"
+  ],
+  "matrix_completeness": {
+    "present": 2,
+    "expected": 12,
+    "missing_trial_ids": [
+      "sonnet5_seed103",
+      "sonnet5_seed104",
+      "opus5_seed101",
+      "opus5_seed102",
+      "opus5_seed103",
+      "opus5_seed104",
+      "gpt56sol_seed101",
+      "gpt56sol_seed102",
+      "gpt56sol_seed103",
+      "gpt56sol_seed104"
+    ],
+    "status": "incomplete"
+  },
+  "batch_manifest": {
+    "path": "results/manifests/v5d-r3-final-prod.json",
+    "schema": "duck-embody-batch-manifest-v1",
+    "manifest_sha256": "17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd",
+    "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "parent_commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "status": "complete"
+  },
+  "batch_last_turn_timestamp": "2026-08-03T05:20:39Z",
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260726,
+    "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
+  },
+  "cost_accounting": {
+    "schema": "normalized-provider-usage-v1",
+    "historical_v5d_r2_gpt": null
+  },
+  "trials": [
+    {
+      "trial_id": "sonnet5_seed101",
+      "model": "claude-sonnet-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.5039,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.4862,
+          "progress": 0.2803,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 5.9633,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.0666,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.0943,
+          "d_final_m": 1.0943,
+          "progress": 0.0,
+          "oracle_path_m": 1.0692,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 20,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 1,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          1.0,
+          0.0,
+          0.5,
+          0.0
+        ],
+        "score": 0.3
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 1.599258,
+      "cost_usd_original_reported": 1.599258,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 634571,
+        "input_tokens_uncached": 410771,
+        "cache_read_tokens": 223800,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 19987,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T05:06:00Z",
+      "video": "results/mini_v5d_r3_videos/sonnet5_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "sonnet5_seed102",
+      "model": "claude-sonnet-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.5113,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.6199,
+          "progress": 0.0,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 3.8012,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1754,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.5887,
+          "d_final_m": 0.5887,
+          "progress": 0.0,
+          "oracle_path_m": 0.7621,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 25,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 0,
+        "true_rooms_visited": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "matches": [],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "score": 0.0
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 1.840686,
+      "cost_usd_original_reported": 1.840686,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 684997,
+        "input_tokens_uncached": 461197,
+        "cache_read_tokens": 223800,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 25997,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-03T05:20:39Z",
+      "video": "results/mini_v5d_r3_videos/sonnet5_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    }
+  ],
+  "per_model": {
+    "sonnet5": {
+      "model": "sonnet5",
+      "n_trials": 2,
+      "trials": [
+        "sonnet5_seed101",
+        "sonnet5_seed102"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 0,
+          "n": 2,
+          "rate": 0.0,
+          "printed": "0/2",
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "progress": {
+          "mean": 0.1402,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2,
+          "median": 0.1402
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 2
+        },
+        "turns_used": {
+          "mean": 40.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "drift_m": {
+          "mean": 0.121,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 0,
+          "n": 2,
+          "rate": 0.0,
+          "printed": "0/2",
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "progress": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "time_s": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 2
+        },
+        "turns_used": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "drift_m": {
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 2
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": null,
+          "n_defined": 2,
+          "n_total": 2
+        },
+        "success_rate_given_stage1": {
+          "successes": 0,
+          "n": 0,
+          "rate": "—",
+          "printed": "—",
+          "mean": "—",
+          "ci95": null,
+          "n_defined": 0,
+          "n_total": 0
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 22.5,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2
+      },
+      "map_precision": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2
+      },
+      "map_recall": {
+        "mean": 0.0,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2
+      },
+      "edge_accuracy": {
+        "mean": "—",
+        "ci95": null,
+        "n_defined": 0,
+        "n_total": 2
+      },
+      "qa": {
+        "mean": 0.15,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2
+      },
+      "cost_usd": {
+        "mean": 1.72,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2,
+        "sum": 3.439944
+      },
+      "total_turns": {
+        "mean": 40.0,
+        "ci95": null,
+        "n_defined": 2,
+        "n_total": 2,
+        "sum": 80
+      },
+      "find_kitchen_end_reasons": {
+        "turn_cap": 2
+      }
+    }
+  },
+  "disposition": {
+    "status": "INCOMPLETE",
+    "complete_trials": 2,
+    "matrix_cells": 12,
+    "missing_trials": [
+      {
+        "trial_id": "sonnet5_seed103",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/sonnet5_seed103.json"
+      },
+      {
+        "trial_id": "sonnet5_seed104",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/sonnet5_seed104.json"
+      },
+      {
+        "trial_id": "opus5_seed101",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/opus5_seed101.json"
+      },
+      {
+        "trial_id": "opus5_seed102",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/opus5_seed102.json"
+      },
+      {
+        "trial_id": "opus5_seed103",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/opus5_seed103.json"
+      },
+      {
+        "trial_id": "opus5_seed104",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/opus5_seed104.json"
+      },
+      {
+        "trial_id": "gpt56sol_seed101",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/gpt56sol_seed101.json"
+      },
+      {
+        "trial_id": "gpt56sol_seed102",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/gpt56sol_seed102.json"
+      },
+      {
+        "trial_id": "gpt56sol_seed103",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/gpt56sol_seed103.json"
+      },
+      {
+        "trial_id": "gpt56sol_seed104",
+        "reason": "absent_from_raw_dir",
+        "path": "results/mini_v5d_r3/gpt56sol_seed104.json"
+      }
+    ],
+    "note": "Incomplete matrix: 2/12 cells scored. Metrics use duck_embody.scoring on complete cells only. Missing gpt56sol seeds 102-104 (when absent) are infra blockers (OpenAI credit_balance_exhausted / insufficient_quota), not model failures. Not a full-batch publication artifact until 12/12.",
+    "blocker": "missing matrix cells (present-subset / mini batch)"
+  }
+}

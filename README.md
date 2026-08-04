@@ -73,6 +73,23 @@ from the frozen trial logs by [`scripts/build_scores.py`](scripts/build_scores.p
 and lives in [`results/scores.json`](results/scores.json) /
 [`results/summary_table.md`](results/summary_table.md).
 
+### Later v5d-r3-final-prod batch (TR.9 L8, complete)
+
+Remediated harness + `v5d_contact_wrench` policy under write-once manifest
+[`v5d-r3-final-prod`](results/manifests/v5d-r3-final-prod.json)
+(`manifest_sha256` `17a79cc37604c551…`, freeze `56bd08a`). Models:
+`sonnet5` / `opus5` / `gpt56sol` × seeds 101–104. Full report:
+[`docs/research/V5D_R3_PERFORMANCE_REPORT.md`](docs/research/V5D_R3_PERFORMANCE_REPORT.md);
+scores [`results/scores_raw_v5d_r3.json`](results/scores_raw_v5d_r3.json) /
+[`results/summary_table_raw_v5d_r3.md`](results/summary_table_raw_v5d_r3.md);
+batch audit **PASS** [`results/raw_v5d_r3_batch_audit.json`](results/raw_v5d_r3_batch_audit.json).
+
+**Headline: 3/12 `find_kitchen` (v2); 2/12 pre-registered; 2/12 `return_home`; 0 falls; $26.56.**
+Opus 5 leads (2/4 kitchen, 2/2 return-home given stage-1 success). Sonnet 5
+has one v2-only kitchen success that failed return-home. GPT 5.6 sol declared
+elsewhere in all four cells. Not a controlled single-lever ablation versus the
+v4 batch below (different policy + harness remediation).
+
 ### Later v5d_r2 remediation batch (provisional)
 
 The 2026-07-30 `sonnet5` / `opus5` / `gpt56sol` v5d_r2 run is a separate,

@@ -2113,7 +2113,7 @@ structured visual verdicts, zero machine FAIL checks**, as required for missing
 legacy evidence. Regenerated artifacts:
 `results/{scores_raw_v5d_r2.json,summary_table_raw_v5d_r2.md}`.
 
-### TR.9 `[~]` Validation ladder and new benchmark
+### TR.9 `[x]` Validation ladder and new benchmark
 
 Definition remains in `docs/research/GROK45_V5D_R2_REMEDIATION_PLAN.md` (T9
 canary/mini-batch/full batch).
@@ -2252,28 +2252,26 @@ Visual audits PASS on every checklist field:
 expected; **trial-level PASS certifies L7**. Prior refused attempts remain
 preserved under `results/incomplete/` and are not this gate.
 
-**L8 in progress / hard-blocked on OpenAI credits (2026-08-03).** Same
-manifest `v5d-r3-final-prod` /
-`17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd`:
-`results/raw_v5d_r3/` has **9/12** trials with `final` (sonnet5 101–104,
-opus5 101–104, gpt56sol_seed101). Missing: gpt56sol seeds 102–104.
-Quarantine `results/incomplete/gpt56sol_seed102.20260803-074608.json` =
-infra `openai.RateLimitError` 429 /
-`code: credit_balance_exhausted` /
-`type: insufficient_quota` (also logged in `results/rerun_log.md`). Live
-OpenAI probe 2026-08-03 still 429 insufficient_quota. GPU idle — resume is
-credits-blocked, not Kit-blocked. Resume (exact):
+**L8 credit pause (2026-08-03, preserved).** Same manifest paused at **9/12**
+after `gpt56sol_seed102` hit OpenAI 429 `credit_balance_exhausted`
+(quarantine `results/incomplete/gpt56sol_seed102.20260803-074608.json`;
+`results/rerun_log.md`). Not a model failure.
 
-```
-PYTHONUNBUFFERED=1 ~/IsaacLab/isaaclab.sh -p duck_embody/runner.py \
-  --batch-id v5d-r3-final-prod \
-  --checkpoint /home/xiaohui_chen/Projects/Open_Duck_Mini_Jetson/exported_policies/v5d_contact_wrench_ppo/model_5998.pt \
-  --calibration /home/xiaohui_chen/Projects/duck-embody/results/calibrations/v5d_contact_wrench.json \
-  --out-dir results/raw_v5d_r3 \
-  --video-dir results/videos_v5d_r3
-```
-
-TR.9 stays `[~]` until L8 12/12 + audits + report.
+**L8 COMPLETE (2026-08-03/04).** Credits restored; same write-once manifest
+resumed into `results/raw_v5d_r3` / `results/videos_v5d_r3`. Cells 10–12
+(`gpt56sol` seeds 102–104) wrote `final` (runner evidence:
+`results/incomplete/l8_resume_runner.log`; last turn
+`2026-08-03T17:03:54Z` / seed 104 end `2026-08-03T17:04:06Z`). Full matrix
+**12/12** with `final`. Scores:
+`results/scores_raw_v5d_r3.json` +
+`results/summary_table_raw_v5d_r3.md` — headline **3/12** find_kitchen (v2),
+**2/12** pre-registered, **2/12** return_home, **0 falls**, cost **$26.56**.
+Machine audits **12/12 PASS** (`results/raw_v5d_r3_audits/`); visual audits
+**12/12 PASS** (`results/raw_v5d_r3_visual_audits/`); batch audit
+`results/raw_v5d_r3_batch_audit.json` = **PASS**
+(`publication_gate` 12/12). Performance report:
+`docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Prior credit quarantine retained
+(not deleted). No successful trial was re-run.
 
 ---
 

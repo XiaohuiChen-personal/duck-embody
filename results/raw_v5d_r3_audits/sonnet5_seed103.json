@@ -1,0 +1,167 @@
+{
+  "trial_id": "sonnet5_seed103",
+  "status": "PASS",
+  "checks": [
+    {
+      "name": "complete JSON and QA",
+      "status": "PASS",
+      "detail": "qa_answers=5"
+    },
+    {
+      "name": "no infrastructure failure",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "write-once manifest SHA",
+      "status": "PASS",
+      "detail": "stored=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd actual=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "trial manifest SHA match",
+      "status": "PASS",
+      "detail": "trial=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd manifest=17a79cc37604c55119cd25a949858bb2d947db2ae7f1e7b57fb5e19500ac16cd"
+    },
+    {
+      "name": "request reconstruction",
+      "status": "PASS",
+      "detail": "78 request(s)"
+    },
+    {
+      "name": "frame files and hashes",
+      "status": "PASS",
+      "detail": "697 hashed image(s)"
+    },
+    {
+      "name": "video and filmstrip",
+      "status": "PASS",
+      "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3/sonnet5_seed103_filmstrip.png"
+    },
+    {
+      "name": "scorer replay",
+      "status": "PASS",
+      "detail": "canonical scorer completed"
+    },
+    {
+      "name": "no NaN or Infinity",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "name": "corrections accepted/rejected split",
+      "status": "PASS",
+      "detail": "calls=0 accepted=0 rejected=0"
+    },
+    {
+      "name": "drift via canonical parser",
+      "status": "PASS",
+      "detail": "{\"find_kitchen\": 0.06343153789716878, \"return_home\": 0.10252121731622195}"
+    },
+    {
+      "name": "resolved model consistency",
+      "status": "PASS",
+      "detail": "turns=['claude-sonnet-5'] config=claude-sonnet-5"
+    },
+    {
+      "name": "provider usage completeness",
+      "status": "PASS",
+      "detail": "77 turn(s)"
+    }
+  ],
+  "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3/sonnet5_seed103.json",
+  "corrections": {
+    "calls": 0,
+    "accepted": 0,
+    "rejected": 0,
+    "worsened": 0,
+    "improved": 0,
+    "error_before_sum_m": 0.0,
+    "error_after_sum_m": 0.0,
+    "net_added_error_m": 0.0,
+    "ledger": []
+  },
+  "drift_m": {
+    "find_kitchen": 0.06343153789716878,
+    "return_home": 0.10252121731622195
+  },
+  "score_replay": {
+    "trial_id": "sonnet5_seed103",
+    "model": "claude-sonnet-5",
+    "seed": 103,
+    "stages": {
+      "find_kitchen": {
+        "stage": "find_kitchen",
+        "outcome": "success",
+        "end_reason": "declare_done",
+        "success": true,
+        "success_preregistered": false,
+        "outcome_preregistered": "declared_elsewhere",
+        "d_nearest_counter_face_m": 0.2004,
+        "d_initial_m": 3.2022,
+        "d_final_m": 0.3696,
+        "progress": 0.8846,
+        "oracle_path_m": 3.142,
+        "true_path_m": 10.2727,
+        "spl": 0.3059,
+        "time_s": 58.4,
+        "turns_used": 40,
+        "drift_m": 0.0634,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      },
+      "return_home": {
+        "stage": "return_home",
+        "outcome": "declared_elsewhere",
+        "end_reason": "declare_done",
+        "success": false,
+        "success_preregistered": false,
+        "outcome_preregistered": "declared_elsewhere",
+        "d_nearest_counter_face_m": "—",
+        "d_initial_m": 3.1544,
+        "d_final_m": 2.3763,
+        "progress": 0.2467,
+        "oracle_path_m": 3.6299,
+        "true_path_m": 3.341,
+        "spl": 0.0,
+        "time_s": "—",
+        "turns_used": 37,
+        "drift_m": 0.1025,
+        "corrections": 0,
+        "correction_magnitudes_m": []
+      }
+    },
+    "bumps": 21,
+    "falls": 0,
+    "map_accuracy": {
+      "claimed": 2,
+      "matched": 1,
+      "true_rooms_visited": 2,
+      "precision": 0.5,
+      "recall": 0.5,
+      "matches": [
+        [
+          "Kitchen",
+          "kitchen"
+        ]
+      ],
+      "edges_claimed": 0,
+      "edges_correct": 0,
+      "edges_unresolved": 0,
+      "edge_accuracy": "—"
+    },
+    "qa": {
+      "per_question": [
+        1.0,
+        0.0,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "score": 0.5
+    },
+    "visited_rooms": [
+      "hallway",
+      "kitchen"
+    ]
+  }
+}

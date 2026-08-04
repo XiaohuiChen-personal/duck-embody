@@ -77,3 +77,17 @@ re-score **all** models together and be logged here.
   into `results/raw_v5d_r3` / `results/videos_v5d_r3` (exact command in
   `docs/PLAN.md` TR.9 L8 block). Do not invent a new manifest unless a frozen
   file changes.
+
+### 2026-08-03/04 — v5d-r3-final-prod L8 resume complete (gpt56sol 102–104)
+
+- **Same manifest.** No new freeze; no `--force`; successful cells not re-run.
+- **Cells added.** `gpt56sol_seed{102,103,104}.json` with `final` under
+  `results/raw_v5d_r3/` + videos/filmstrips under `results/videos_v5d_r3/`.
+  Outcomes (v2): all three `declared_elsewhere` / `return_home=not_run`
+  (costs $1.625 / $1.574 / $0.953). Seed 102 video/filmstrip replaced the
+  aborted credit-block attempt's partial media.
+- **Closure.** Scores 12/12 (`results/scores_raw_v5d_r3.json`): headline
+  **3/12** find_kitchen (v2), **2/12** preregistered, **2/12** return_home,
+  **0 falls**, **$26.56**. Machine+visual audits 12/12 PASS; batch audit
+  `results/raw_v5d_r3_batch_audit.json` = PASS. Report:
+  `docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Credit quarantine retained.
