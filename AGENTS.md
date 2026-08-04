@@ -6,7 +6,7 @@ never duplicate rules there. **Update this file whenever a decision changes**; i
 the project's institutional memory and is deliberately context-rich so a fresh agent
 can pick up work with no other briefing.
 
-Last updated: 2026-08-04 (TR.9 L7+L8 complete under v5d-r3-final-prod; see §8).
+Last updated: 2026-08-04 (TR.9 L8 complete; companion v5d-r3-fable5 4/4 scored; see §8).
 
 ---
 
@@ -524,6 +524,15 @@ results/         raw JSON · figures · videos (committed)
       `docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Credit-block quarantine
       for the paused gpt56sol_seed102 attempt retained under
       `results/incomplete/`.
+- [x] Companion batch `v5d-r3-fable5` (2026-08-04): Fable 5 × seeds 101–104,
+      **4/4** under `results/manifests/v5d-r3-fable5.json`
+      (`manifest_sha256`
+      `1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416`).
+      Headline: **1/4** find_kitchen (v2), **0/4** prereg, **1/4**
+      return_home (seed104), **0 falls**, cost **$27.37**. Batch audit PASS;
+      scores `results/scores_raw_v5d_r3_fable5.json`; report
+      `docs/research/V5D_R3_FABLE5_PERFORMANCE_REPORT.md`. Certifying L8
+      untouched.
 
 Owner deadline: Sunday night 2026-07-26. Cut order if behind: return_home stage →
 GPT 5.6 sol (preserve the two-Claude comparison) → N→3 → panorama tool.

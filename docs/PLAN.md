@@ -2273,14 +2273,17 @@ Machine audits **12/12 PASS** (`results/raw_v5d_r3_audits/`); visual audits
 `docs/research/V5D_R3_PERFORMANCE_REPORT.md`. Prior credit quarantine retained
 (not deleted). No successful trial was re-run.
 
-**Companion batch prep (2026-08-04) — `v5d-r3-fable5`.** Owner-directed
-Fable 5 × seeds 101–104 companion under the same v5d-r3 harness. Live
-`configs/benchmark.yaml` matrix set to `[fable5]` only; certifying L8
-(`v5d-r3-final-prod` / `results/raw_v5d_r3/`) untouched. `fable5.yaml`
-re-added to `FROZEN_FILES` (existing `claude-fable-5` / $10/$50). Planned
-out-dirs `results/raw_v5d_r3_fable5` + `results/videos_v5d_r3_fable5`.
-Decision log: `results/rerun_log.md`. Prep = matrix/freeze/probe/dry-run;
-paid launch deferred.
+**Companion batch complete (2026-08-04) — `v5d-r3-fable5`.** Fable 5 ×
+seeds 101–104 under write-once manifest
+`results/manifests/v5d-r3-fable5.json`
+(`manifest_sha256=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416`),
+config_hash `7fbce2573c184a10…` (differs from L8 `d30462d0…` as expected —
+fable5 matrix/freeze). Headline: **1/4** find_kitchen (v2), **0/4** prereg,
+**1/4** return_home (seed104), **0 falls**, **$27.37**. Machine+visual 4/4
+PASS; batch audit `results/raw_v5d_r3_fable5_batch_audit.json` = PASS.
+Scores `results/scores_raw_v5d_r3_fable5.json`; report
+`docs/research/V5D_R3_FABLE5_PERFORMANCE_REPORT.md`. Certifying L8 untouched.
+Decision log: `results/rerun_log.md`.
 
 ---
 

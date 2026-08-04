@@ -1,0 +1,737 @@
+{
+  "schema": "duck-embody-batch-audit-v1",
+  "status": "PASS",
+  "batch_dir": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3_fable5",
+  "manifest_path": "/home/xiaohui_chen/Projects/duck-embody/results/manifests/v5d-r3-fable5.json",
+  "publication_gate": {
+    "expected": 4,
+    "written": 4,
+    "pending": []
+  },
+  "trials": [
+    {
+      "trial_id": "fable5_seed101",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 actual=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 manifest=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "220 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed101.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed101_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.13340719620770086, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-fable-5'] config=claude-fable-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3_fable5/fable5_seed101.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.13340719620770086,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "fable5_seed101",
+        "model": "claude-fable-5",
+        "seed": 101,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 1.9197,
+            "d_initial_m": 2.0652,
+            "d_final_m": 1.9699,
+            "progress": 0.0461,
+            "oracle_path_m": 2.0521,
+            "true_path_m": 5.412,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.1334,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 0.859,
+            "d_final_m": 0.859,
+            "progress": 0.0,
+            "oracle_path_m": 0.8414,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 34,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 1,
+          "matched": 1,
+          "true_rooms_visited": 1,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "living_room",
+              "living_room"
+            ]
+          ],
+          "edges_claimed": 0,
+          "edges_correct": 0,
+          "edges_unresolved": 0,
+          "edge_accuracy": "—"
+        },
+        "qa": {
+          "per_question": [
+            0.5,
+            0.0,
+            0.5,
+            0.5,
+            1.0
+          ],
+          "score": 0.5
+        },
+        "visited_rooms": [
+          "living_room"
+        ]
+      },
+      "visual_audit": {
+        "status": "PASS",
+        "missing": []
+      }
+    },
+    {
+      "trial_id": "fable5_seed102",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 actual=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 manifest=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "453 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed102.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed102_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.21236169616953057, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-fable-5'] config=claude-fable-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3_fable5/fable5_seed102.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.21236169616953057,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "fable5_seed102",
+        "model": "claude-fable-5",
+        "seed": 102,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "declared_elsewhere",
+            "end_reason": "declare_done",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 2.2379,
+            "d_initial_m": 2.2727,
+            "d_final_m": 2.5809,
+            "progress": 0.0,
+            "oracle_path_m": 3.1071,
+            "true_path_m": 17.5352,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.2124,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 3.1822,
+            "d_final_m": 3.1822,
+            "progress": 0.0,
+            "oracle_path_m": 3.5364,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 17,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 3,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 0.6667,
+          "recall": 1.0,
+          "matches": [
+            [
+              "Hallway",
+              "hallway"
+            ],
+            [
+              "Bedroom",
+              "bedroom"
+            ]
+          ],
+          "edges_claimed": 2,
+          "edges_correct": 0,
+          "edges_unresolved": 2,
+          "edge_accuracy": 0.0
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            0.5,
+            0.5,
+            1.0
+          ],
+          "score": 0.6
+        },
+        "visited_rooms": [
+          "bedroom",
+          "hallway"
+        ]
+      },
+      "visual_audit": {
+        "status": "PASS",
+        "missing": []
+      }
+    },
+    {
+      "trial_id": "fable5_seed103",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 actual=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 manifest=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "41 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "210 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed103.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed103_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=0 accepted=0 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.15768642934634544, \"return_home\": \"\\u2014\"}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-fable-5'] config=claude-fable-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "40 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3_fable5/fable5_seed103.json",
+      "corrections": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0,
+        "error_before_sum_m": 0.0,
+        "error_after_sum_m": 0.0,
+        "net_added_error_m": 0.0,
+        "ledger": []
+      },
+      "drift_m": {
+        "find_kitchen": 0.15768642934634544,
+        "return_home": "—"
+      },
+      "score_replay": {
+        "trial_id": "fable5_seed103",
+        "model": "claude-fable-5",
+        "seed": 103,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "timeout_turns",
+            "end_reason": "turn_cap",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "timeout_turns",
+            "d_nearest_counter_face_m": 1.633,
+            "d_initial_m": 3.2022,
+            "d_final_m": 2.721,
+            "progress": 0.1503,
+            "oracle_path_m": 3.142,
+            "true_path_m": 8.7315,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 40,
+            "drift_m": 0.1577,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "not_run",
+            "end_reason": "not_run",
+            "success": false,
+            "success_preregistered": false,
+            "outcome_preregistered": "not_run",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 4.2598,
+            "d_final_m": 4.2598,
+            "progress": 0.0,
+            "oracle_path_m": 4.5278,
+            "true_path_m": 0,
+            "spl": 0.0,
+            "time_s": "—",
+            "turns_used": 0,
+            "drift_m": "—",
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          }
+        },
+        "bumps": 27,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "bedroom",
+              "bedroom"
+            ],
+            [
+              "hallway",
+              "hallway"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 1,
+          "edges_unresolved": 0,
+          "edge_accuracy": 1.0
+        },
+        "qa": {
+          "per_question": [
+            1.0,
+            0.0,
+            0.5,
+            0.0,
+            0.5
+          ],
+          "score": 0.4
+        },
+        "visited_rooms": [
+          "hallway",
+          "bedroom"
+        ]
+      },
+      "visual_audit": {
+        "status": "PASS",
+        "missing": []
+      }
+    },
+    {
+      "trial_id": "fable5_seed104",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "complete JSON and QA",
+          "status": "PASS",
+          "detail": "qa_answers=5"
+        },
+        {
+          "name": "no infrastructure failure",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "write-once manifest SHA",
+          "status": "PASS",
+          "detail": "stored=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 actual=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "trial manifest SHA match",
+          "status": "PASS",
+          "detail": "trial=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416 manifest=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416"
+        },
+        {
+          "name": "request reconstruction",
+          "status": "PASS",
+          "detail": "19 request(s)"
+        },
+        {
+          "name": "frame files and hashes",
+          "status": "PASS",
+          "detail": "161 hashed image(s)"
+        },
+        {
+          "name": "video and filmstrip",
+          "status": "PASS",
+          "detail": "video=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed104.mp4 filmstrip=/home/xiaohui_chen/Projects/duck-embody/results/videos_v5d_r3_fable5/fable5_seed104_filmstrip.png"
+        },
+        {
+          "name": "scorer replay",
+          "status": "PASS",
+          "detail": "canonical scorer completed"
+        },
+        {
+          "name": "no NaN or Infinity",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "corrections accepted/rejected split",
+          "status": "PASS",
+          "detail": "calls=1 accepted=1 rejected=0"
+        },
+        {
+          "name": "drift via canonical parser",
+          "status": "PASS",
+          "detail": "{\"find_kitchen\": 0.24607951966793173, \"return_home\": 0.13793929824382928}"
+        },
+        {
+          "name": "resolved model consistency",
+          "status": "PASS",
+          "detail": "turns=['claude-fable-5'] config=claude-fable-5"
+        },
+        {
+          "name": "provider usage completeness",
+          "status": "PASS",
+          "detail": "18 turn(s)"
+        }
+      ],
+      "trial_path": "/home/xiaohui_chen/Projects/duck-embody/results/raw_v5d_r3_fable5/fable5_seed104.json",
+      "corrections": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 1,
+        "error_before_sum_m": 0.16212597490108557,
+        "error_after_sum_m": 0.14191634860015254,
+        "net_added_error_m": -0.020209626300933037,
+        "ledger": [
+          {
+            "trial_id": "fable5_seed104",
+            "stage": "return_home",
+            "turn_idx": 3,
+            "global_turn_idx": 14,
+            "place": null,
+            "accepted": true,
+            "motion_calls_before": 0,
+            "true_xy": [
+              1.9196,
+              1.3303
+            ],
+            "true_xy_source": "prior_turn",
+            "old_xy": [
+              1.9226492005339175,
+              1.1682027017074887
+            ],
+            "new_xy": [
+              2.02,
+              1.23
+            ],
+            "error_before_m": 0.16212597490108557,
+            "error_after_m": 0.14191634860015254,
+            "effect_m": -0.020209626300933037,
+            "reason": "Standing beside the red bar stool with fridge east and brown-floor hallway north — matches kitchen_entry scene recorded on outbound leg; estimate only ~0.12m off."
+          }
+        ]
+      },
+      "drift_m": {
+        "find_kitchen": 0.24607951966793173,
+        "return_home": 0.13793929824382928
+      },
+      "score_replay": {
+        "trial_id": "fable5_seed104",
+        "model": "claude-fable-5",
+        "seed": 104,
+        "stages": {
+          "find_kitchen": {
+            "stage": "find_kitchen",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": false,
+            "outcome_preregistered": "declared_elsewhere",
+            "d_nearest_counter_face_m": 0.2976,
+            "d_initial_m": 1.9243,
+            "d_final_m": 0.6108,
+            "progress": 0.6826,
+            "oracle_path_m": 1.8399,
+            "true_path_m": 4.9761,
+            "spl": 0.3698,
+            "time_s": 29.2,
+            "turns_used": 11,
+            "drift_m": 0.2461,
+            "corrections": 0,
+            "correction_magnitudes_m": []
+          },
+          "return_home": {
+            "stage": "return_home",
+            "outcome": "success",
+            "end_reason": "declare_done",
+            "success": true,
+            "success_preregistered": true,
+            "outcome_preregistered": "success",
+            "d_nearest_counter_face_m": "—",
+            "d_initial_m": 1.9538,
+            "d_final_m": 0.157,
+            "progress": 0.9196,
+            "oracle_path_m": 2.1778,
+            "true_path_m": 5.3288,
+            "spl": 0.4087,
+            "time_s": 32.6,
+            "turns_used": 7,
+            "drift_m": 0.1379,
+            "corrections": 1,
+            "correction_magnitudes_m": [
+              0.1153
+            ]
+          }
+        },
+        "bumps": 4,
+        "falls": 0,
+        "map_accuracy": {
+          "claimed": 2,
+          "matched": 2,
+          "true_rooms_visited": 2,
+          "precision": 1.0,
+          "recall": 1.0,
+          "matches": [
+            [
+              "living_room",
+              "living_room"
+            ],
+            [
+              "kitchen",
+              "kitchen"
+            ]
+          ],
+          "edges_claimed": 1,
+          "edges_correct": 1,
+          "edges_unresolved": 0,
+          "edge_accuracy": 1.0
+        },
+        "qa": {
+          "per_question": [
+            0.5,
+            1.0,
+            1.0,
+            0.0,
+            1.0
+          ],
+          "score": 0.7
+        },
+        "visited_rooms": [
+          "living_room",
+          "kitchen"
+        ]
+      },
+      "visual_audit": {
+        "status": "PASS",
+        "missing": []
+      }
+    }
+  ]
+}

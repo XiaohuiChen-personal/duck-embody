@@ -1,0 +1,701 @@
+{
+  "schema": "duck-embody-scores-v2",
+  "scoring_criterion": {
+    "name": "v2_any_counter",
+    "changed_post_batch": false,
+    "rerun_log": "results/rerun_log.md",
+    "preregistered_find_kitchen_successes": 0,
+    "v2_find_kitchen_successes": 1
+  },
+  "config_hash": "7fbce2573c184a10b42359bafc44cc084da94044d20b6e034b7d4b082fd67d10",
+  "freeze_commit": "29e433f8ef141b7ce1e2988513c59eb93c323cf7",
+  "source_raw_dir": "results/raw_v5d_r3_fable5",
+  "model_roster": [
+    "fable5"
+  ],
+  "batch_manifest": {
+    "path": "results/manifests/v5d-r3-fable5.json",
+    "schema": "duck-embody-batch-manifest-v1",
+    "manifest_sha256": "1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416",
+    "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "parent_commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "status": "complete"
+  },
+  "batch_last_turn_timestamp": "2026-08-04T16:33:37Z",
+  "bootstrap": {
+    "resamples": 10000,
+    "seed": 20260726,
+    "method": "percentile, mean over N=4 resamples, no CI when n_defined < 3"
+  },
+  "cost_accounting": {
+    "schema": "normalized-provider-usage-v1",
+    "historical_v5d_r2_gpt": null
+  },
+  "trials": [
+    {
+      "trial_id": "fable5_seed101",
+      "model": "claude-fable-5",
+      "seed": 101,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.9197,
+          "d_initial_m": 2.0652,
+          "d_final_m": 1.9699,
+          "progress": 0.0461,
+          "oracle_path_m": 2.0521,
+          "true_path_m": 5.412,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1334,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 0.859,
+          "d_final_m": 0.859,
+          "progress": 0.0,
+          "oracle_path_m": 0.8414,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 34,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 1,
+        "matched": 1,
+        "true_rooms_visited": 1,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ]
+        ],
+        "edges_claimed": 0,
+        "edges_correct": 0,
+        "edges_unresolved": 0,
+        "edge_accuracy": "—"
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "score": 0.5
+      },
+      "visited_rooms": [
+        "living_room"
+      ],
+      "cost_usd": 8.751256,
+      "cost_usd_original_reported": 8.751256,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 875646,
+        "input_tokens_uncached": 654406,
+        "cache_read_tokens": 215709,
+        "cache_write_tokens": 5531,
+        "output_tokens_total": 38447,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-04T15:38:45Z",
+      "video": "results/videos_v5d_r3_fable5/fable5_seed101.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "fable5_seed102",
+      "model": "claude-fable-5",
+      "seed": 102,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "declared_elsewhere",
+          "end_reason": "declare_done",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 2.2379,
+          "d_initial_m": 2.2727,
+          "d_final_m": 2.5809,
+          "progress": 0.0,
+          "oracle_path_m": 3.1071,
+          "true_path_m": 17.5352,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.2124,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 3.1822,
+          "d_final_m": 3.1822,
+          "progress": 0.0,
+          "oracle_path_m": 3.5364,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 17,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 3,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 0.6667,
+        "recall": 1.0,
+        "matches": [
+          [
+            "Hallway",
+            "hallway"
+          ],
+          [
+            "Bedroom",
+            "bedroom"
+          ]
+        ],
+        "edges_claimed": 2,
+        "edges_correct": 0,
+        "edges_unresolved": 2,
+        "edge_accuracy": 0.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.5,
+          0.5,
+          1.0
+        ],
+        "score": 0.6
+      },
+      "visited_rooms": [
+        "bedroom",
+        "hallway"
+      ],
+      "cost_usd": 7.67823,
+      "cost_usd_original_reported": 7.67823,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 806599,
+        "input_tokens_uncached": 585359,
+        "cache_read_tokens": 221240,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 32068,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-04T16:00:43Z",
+      "video": "results/videos_v5d_r3_fable5/fable5_seed102.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "fable5_seed103",
+      "model": "claude-fable-5",
+      "seed": 103,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "timeout_turns",
+          "end_reason": "turn_cap",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "timeout_turns",
+          "d_nearest_counter_face_m": 1.633,
+          "d_initial_m": 3.2022,
+          "d_final_m": 2.721,
+          "progress": 0.1503,
+          "oracle_path_m": 3.142,
+          "true_path_m": 8.7315,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 40,
+          "drift_m": 0.1577,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "not_run",
+          "end_reason": "not_run",
+          "success": false,
+          "success_preregistered": false,
+          "outcome_preregistered": "not_run",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 4.2598,
+          "d_final_m": 4.2598,
+          "progress": 0.0,
+          "oracle_path_m": 4.5278,
+          "true_path_m": 0,
+          "spl": 0.0,
+          "time_s": "—",
+          "turns_used": 0,
+          "drift_m": "—",
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        }
+      },
+      "bumps": 27,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "bedroom",
+            "bedroom"
+          ],
+          [
+            "hallway",
+            "hallway"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 1,
+        "edges_unresolved": 0,
+        "edge_accuracy": 1.0
+      },
+      "qa": {
+        "per_question": [
+          1.0,
+          0.0,
+          0.5,
+          0.0,
+          0.5
+        ],
+        "score": 0.4
+      },
+      "visited_rooms": [
+        "hallway",
+        "bedroom"
+      ],
+      "cost_usd": 8.34508,
+      "cost_usd_original_reported": 8.34508,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 832679,
+        "input_tokens_uncached": 611439,
+        "cache_read_tokens": 221240,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 40189,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 40,
+      "last_turn_timestamp": "2026-08-04T16:23:55Z",
+      "video": "results/videos_v5d_r3_fable5/fable5_seed103.mp4",
+      "correction_calls": {
+        "calls": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 0
+      }
+    },
+    {
+      "trial_id": "fable5_seed104",
+      "model": "claude-fable-5",
+      "seed": 104,
+      "stages": {
+        "find_kitchen": {
+          "stage": "find_kitchen",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": false,
+          "outcome_preregistered": "declared_elsewhere",
+          "d_nearest_counter_face_m": 0.2976,
+          "d_initial_m": 1.9243,
+          "d_final_m": 0.6108,
+          "progress": 0.6826,
+          "oracle_path_m": 1.8399,
+          "true_path_m": 4.9761,
+          "spl": 0.3698,
+          "time_s": 29.2,
+          "turns_used": 11,
+          "drift_m": 0.2461,
+          "corrections": 0,
+          "correction_magnitudes_m": []
+        },
+        "return_home": {
+          "stage": "return_home",
+          "outcome": "success",
+          "end_reason": "declare_done",
+          "success": true,
+          "success_preregistered": true,
+          "outcome_preregistered": "success",
+          "d_nearest_counter_face_m": "—",
+          "d_initial_m": 1.9538,
+          "d_final_m": 0.157,
+          "progress": 0.9196,
+          "oracle_path_m": 2.1778,
+          "true_path_m": 5.3288,
+          "spl": 0.4087,
+          "time_s": 32.6,
+          "turns_used": 7,
+          "drift_m": 0.1379,
+          "corrections": 1,
+          "correction_magnitudes_m": [
+            0.1153
+          ]
+        }
+      },
+      "bumps": 4,
+      "falls": 0,
+      "map_accuracy": {
+        "claimed": 2,
+        "matched": 2,
+        "true_rooms_visited": 2,
+        "precision": 1.0,
+        "recall": 1.0,
+        "matches": [
+          [
+            "living_room",
+            "living_room"
+          ],
+          [
+            "kitchen",
+            "kitchen"
+          ]
+        ],
+        "edges_claimed": 1,
+        "edges_correct": 1,
+        "edges_unresolved": 0,
+        "edge_accuracy": 1.0
+      },
+      "qa": {
+        "per_question": [
+          0.5,
+          1.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "score": 0.7
+      },
+      "visited_rooms": [
+        "living_room",
+        "kitchen"
+      ],
+      "cost_usd": 2.596478,
+      "cost_usd_original_reported": 2.596478,
+      "cost_exact": true,
+      "cost_basis": "normalized_usage",
+      "tokens": {
+        "input_tokens_total": 296420,
+        "input_tokens_uncached": 196862,
+        "cache_read_tokens": 99558,
+        "cache_write_tokens": 0,
+        "output_tokens_total": 10566,
+        "reasoning_tokens": null,
+        "provider_reported_total_tokens": null,
+        "pricing_version": "2026-08-02",
+        "pricing_source": "https://platform.claude.com/docs/en/about-claude/pricing"
+      },
+      "total_turns": 18,
+      "last_turn_timestamp": "2026-08-04T16:33:37Z",
+      "video": "results/videos_v5d_r3_fable5/fable5_seed104.mp4",
+      "correction_calls": {
+        "calls": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "worsened": 0,
+        "improved": 1
+      }
+    }
+  ],
+  "per_model": {
+    "fable5": {
+      "model": "fable5",
+      "n_trials": 4,
+      "trials": [
+        "fable5_seed101",
+        "fable5_seed102",
+        "fable5_seed103",
+        "fable5_seed104"
+      ],
+      "find_kitchen": {
+        "success_rate": {
+          "successes": 1,
+          "n": 4,
+          "rate": 0.25,
+          "printed": "1/4",
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2198,
+          "ci95": [
+            0.0231,
+            0.5235
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0982
+        },
+        "spl": {
+          "mean": 0.0924,
+          "ci95": [
+            0.0,
+            0.2773
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 29.2,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 32.75,
+          "ci95": [
+            18.25,
+            40.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1874,
+          "ci95": [
+            0.1455,
+            0.2292
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        }
+      },
+      "return_home": {
+        "success_rate": {
+          "successes": 1,
+          "n": 4,
+          "rate": 0.25,
+          "printed": "1/4",
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "progress": {
+          "mean": 0.2299,
+          "ci95": [
+            0.0,
+            0.6897
+          ],
+          "n_defined": 4,
+          "n_total": 4,
+          "median": 0.0
+        },
+        "spl": {
+          "mean": 0.1022,
+          "ci95": [
+            0.0,
+            0.3065
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "time_s": {
+          "mean": 32.6,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "turns_used": {
+          "mean": 1.75,
+          "ci95": [
+            0.0,
+            5.25
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "drift_m": {
+          "mean": 0.1379,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 4
+        },
+        "corrections": {
+          "mean": 0.25,
+          "ci95": [
+            0.0,
+            0.75
+          ],
+          "n_defined": 4,
+          "n_total": 4
+        },
+        "success_rate_given_stage1": {
+          "successes": 1,
+          "n": 1,
+          "rate": 1.0,
+          "printed": "1/1",
+          "mean": 1.0,
+          "ci95": null,
+          "n_defined": 1,
+          "n_total": 1
+        },
+        "stage1_successes_never_offered_return": 0
+      },
+      "bumps": {
+        "mean": 20.5,
+        "ci95": [
+          9.75,
+          30.5
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "falls": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_precision": {
+        "mean": 0.9167,
+        "ci95": [
+          0.75,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "map_recall": {
+        "mean": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "edge_accuracy": {
+        "mean": 0.6667,
+        "ci95": [
+          0.0,
+          1.0
+        ],
+        "n_defined": 3,
+        "n_total": 4
+      },
+      "qa": {
+        "mean": 0.55,
+        "ci95": [
+          0.45,
+          0.65
+        ],
+        "n_defined": 4,
+        "n_total": 4
+      },
+      "cost_usd": {
+        "mean": 6.8428,
+        "ci95": [
+          4.0336,
+          8.5482
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 27.371044
+      },
+      "total_turns": {
+        "mean": 34.5,
+        "ci95": [
+          23.5,
+          40.0
+        ],
+        "n_defined": 4,
+        "n_total": 4,
+        "sum": 138
+      },
+      "find_kitchen_end_reasons": {
+        "turn_cap": 2,
+        "declare_done": 2
+      }
+    }
+  }
+}

@@ -113,3 +113,20 @@ re-score **all** models together and be logged here.
   real launch as `results/manifests/v5d-r3-fable5.json`.
 - **Scope of this entry.** Prep only (matrix/freeze/probe/dry-run). Paid
   4-trial launch is a later step.
+
+### 2026-08-04 — companion batch complete: `v5d-r3-fable5`
+
+- **Batch.** 4/4 `final` under write-once manifest
+  `results/manifests/v5d-r3-fable5.json`
+  (`manifest_sha256=1d4249e73fce0fc3b7f0104af64034828cfcf9244f2e8275b6d12983cf53b416`),
+  config_hash `7fbce2573c184a10…`, checkpoint SHA identical to L8
+  (`301e24e336b2…`). Raw `results/raw_v5d_r3_fable5/`, videos
+  `results/videos_v5d_r3_fable5/`.
+- **Headline.** find_kitchen v2 **1/4**, prereg **0/4**, return_home **1/4**
+  (seed104 only; 1/1 given stage-1 success), **0 falls**, cost **$27.37**.
+  Scores: `results/scores_raw_v5d_r3_fable5.json`.
+- **Audits.** Machine 4/4 PASS (`results/raw_v5d_r3_fable5_audits/`);
+  visual 4/4 PASS (`results/raw_v5d_r3_fable5_visual_audits/`); batch audit
+  `results/raw_v5d_r3_fable5_batch_audit.json` = PASS.
+- **Report.** `docs/research/V5D_R3_FABLE5_PERFORMANCE_REPORT.md`.
+  Certifying L8 (`v5d-r3-final-prod` / `results/raw_v5d_r3/`) untouched.
