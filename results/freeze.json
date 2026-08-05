@@ -1,12 +1,12 @@
 {
   "schema": "duck-embody-freeze-v1",
-  "frozen_at": "2026-08-04T15:09:53Z",
-  "freeze_commit": "31c44bedbbc1b2a8b7abc9f8e63ddf434ddb4f0b",
-  "config_hash": "7fbce2573c184a10b42359bafc44cc084da94044d20b6e034b7d4b082fd67d10",
+  "frozen_at": "2026-08-05T06:42:20Z",
+  "freeze_commit": "5d8502e9c59a307297d44020ee036724eecb5907",
+  "config_hash": "7260ee9a788968fb2f85c622a88114c34cd89cc480cb5bae20b6afb609d3b02b",
   "success_criterion": "v2_any_counter",
   "matrix": {
     "models": [
-      "fable5"
+      "opus5"
     ],
     "seeds": [
       101,
@@ -17,13 +17,13 @@
   },
   "files": {
     "duck_embody/agent/prompts.py": "760825f46ec14b7db5244cc9a4954c4dfb152c64ec660eabb4d101cf26e909af",
-    "duck_embody/agent/tools.py": "8bc9e95f27a5193164d5a1025232e542aa02d11788b93e6ef43141e25413fdaa",
+    "duck_embody/agent/tools.py": "a1f3992d87a31f642099a40db58d30ff11c632da85b5c3e684566a1d59bf6847",
     "duck_embody/agent/memory.py": "c22420320933e3aec9253174b73945e655d4d25fb6bd375e4842f6013d101f1a",
     "duck_embody/agent/loop.py": "a5ffa3bff1e8e077d91ef0883ff5247b8bd78e69848ae8ecf1692b06224d8ed8",
     "duck_embody/agent/providers/base.py": "c7c914a567b26dd1f9c88ef2883c5ece6d595873e0024678f78990ae9f1aefef",
     "duck_embody/agent/providers/anthropic.py": "493c1659e5e5e587407c3f5ca9348fdbdd4d0242a4e84c4e8332420981eda866",
     "duck_embody/agent/providers/openai.py": "7747ad04591e9b4a3aa0914fea02c709f191558266ee88bbddea54cd5a11de21",
-    "duck_embody/sim/policy_wrapper.py": "ec807a8f8816a270285dbdec62742b4124c7f33acf3b47d0f5e49d184347858e",
+    "duck_embody/sim/policy_wrapper.py": "944cd1a42f73f22b5870493b104a927599f353af0ed650ffe66a559abc8ae244",
     "duck_embody/sim/recorder.py": "1237d0271195e1cf57b88f60017f82893079d090509489c81398ad5050cd75d8",
     "duck_embody/sim/session.py": "dc86a43905753ea8c2186a6b2d5940b75f6154aa5ec13197c5bdb7b8ee27fec7",
     "duck_embody/env/embody_env_cfg.py": "92ddbf1f3503ed251af36cd39e68799f2b97927ca8ad1a7ba6280a366ea4cc5b",
@@ -31,7 +31,7 @@
     "duck_embody/env/camera.py": "3a307e09980dac6ef8e45698626f22f7b819f69f9870a03a613b16bad11bd945",
     "duck_embody/env/apartment_layout.py": "6b254f23dbb182d15eca8483f9f03b649fdb4227cfe3c52ef37784d752f5642a",
     "duck_embody/tasks/find_kitchen.py": "fb40cbdd4c012d286374f60f002ee98bfc904c48ffb6d8c0909a78642b6f53ea",
-    "configs/benchmark.yaml": "da030f84999b92817af789f84b3fce425c5c63052a36bbe575b58e6ee14e4f56",
+    "configs/benchmark.yaml": "86014dcdc962d0abe5c6eae0e8565757903896b67a46d1bbe4149b0c85996667",
     "configs/models/fable5.yaml": "115781aeb0434379fef82158fa3adc8d69aa393e9dafdaeb74acea5790bcd790",
     "configs/models/sonnet5.yaml": "2827fc7ef241df047f054a7f20b65476bfb6c02c57cf1735ab2783c70bca95a4",
     "configs/models/opus5.yaml": "fa86cb51729d22cd448bc63c47c80c7f13bef437f54cfffae8e3ea861e59a3f1",
