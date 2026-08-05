@@ -2285,6 +2285,15 @@ Scores `results/scores_raw_v5d_r3_fable5.json`; report
 `docs/research/V5D_R3_FABLE5_PERFORMANCE_REPORT.md`. Certifying L8 untouched.
 Decision log: `results/rerun_log.md`.
 
+**Companion batch prep (2026-08-05) — `v5d-r3-opus5-b3a1`.** Opus 5 × seeds
+101–104 under the B3+A1 wedge harness freeze. Live matrix
+`configs/benchmark.yaml` → `models: [opus5]`. Planned out-dirs
+`results/raw_v5d_r3_opus5_b3a1` + `results/videos_v5d_r3_opus5_b3a1`;
+write-once manifest `results/manifests/v5d-r3-opus5-b3a1.json`. Smoke
+disposition: B3 stop-predicate PASS / clearance FAIL (plant-limited) —
+`docs/research/V5D_R3_FURNITURE_WEDGE_HARNESS_IMPROVEMENTS.md`. Certifying L8
+untouched. Decision log: `results/rerun_log.md`.
+
 ---
 
 ## Standing constraints (every task)

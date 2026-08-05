@@ -130,3 +130,20 @@ re-score **all** models together and be logged here.
   `results/raw_v5d_r3_fable5_batch_audit.json` = PASS.
 - **Report.** `docs/research/V5D_R3_FABLE5_PERFORMANCE_REPORT.md`.
   Certifying L8 (`v5d-r3-final-prod` / `results/raw_v5d_r3/`) untouched.
+
+### 2026-08-05 — companion batch prep: `v5d-r3-opus5-b3a1` (Opus 5 × seeds 101–104)
+
+- **Why.** Measure B3+A1 furniture-wedge harness fix (rising-edge / reverse
+  grace + `status.progress`) vs historical L8 Opus timeouts on seeds 101/102.
+  Kit smoke: B3 stop-predicate PASS (90 steps); physical sofa clearance FAIL
+  (plant-limited) — see
+  `docs/research/V5D_R3_FURNITURE_WEDGE_HARNESS_IMPROVEMENTS.md` §7#4.
+- **Why a new batch-id.** Write-once manifests refuse overwrite; live matrix is
+  opus5-only under a new freeze (harness files changed). Certifying L8
+  (`v5d-r3-final-prod` / `results/raw_v5d_r3/`) stays untouched.
+- **Live matrix.** `configs/benchmark.yaml` → `models: [opus5]`, seeds
+  `[101, 102, 103, 104]`.
+- **Out dirs (planned).** `results/raw_v5d_r3_opus5_b3a1` +
+  `results/videos_v5d_r3_opus5_b3a1`. Write-once manifest
+  `results/manifests/v5d-r3-opus5-b3a1.json` on first real launch.
+- **Scope of this entry.** Prep + harness freeze. Paid 4-trial launch follows.

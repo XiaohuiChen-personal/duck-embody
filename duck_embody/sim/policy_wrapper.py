@@ -65,6 +65,14 @@ BUMP_DEBOUNCE_STEPS = 3
 #: gait-cycle force troughs cannot split one physical contact into many events.
 CONTACT_SUSTAINED_S = 0.4
 CONTACT_SUSTAINED_STEPS = round(CONTACT_SUSTAINED_S * CONTROL_HZ)
+#: Pre-latched reverse grace (B3 kit smoke 2026-08-05): macro chunks are
+#: 0.2 s and forward reconfirm is 0.4 s, so a still-touching reverse was
+#: capped at ~0.04 m at REVERSE_MOVE_SPEED_MPS — below the advertised
+#: backup's ≫0.05 m clearance bar. Rising-edge abort is unchanged; only
+#: the *reconfirm* path for reverse (vx < 0) uses this longer window so
+#: the robot can unload furniture contact when free space exists behind.
+CONTACT_REVERSE_GRACE_S = 1.5
+CONTACT_REVERSE_GRACE_STEPS = round(CONTACT_REVERSE_GRACE_S * CONTROL_HZ)
 CONTACT_STATES = (
     "free",
     "candidate_contact",
@@ -998,6 +1006,14 @@ class PolicyPlayback:
         odom_dx = 0.0
         odom_dy = 0.0
         self._ensure_contact_state()
+        # B3 (furniture-wedge): do not abort solely because the prior command
+        # left the machine latched. Rising-edge into sustained_contact during
+        # THIS call still stops immediately (forward into a new face); a call
+        # that began already latched must reconfirm sustained contact for
+        # CONTACT_SUSTAINED_STEPS of this call's own steps before stopping
+        # (so a signed reverse gets a real window to unload contact).
+        began_in_sustained = self._contact_state == "sustained_contact"
+        sustained_steps_this_call = 0
 
         # Last pose observed while the episode was still live. On a fall this is
         # the only trustworthy final pose — see the termination branch below.
@@ -1106,6 +1122,7 @@ class PolicyPlayback:
             step_force = self.bump_contact_force()
             raw_contact = step_force > BUMP_FORCE_N
             raw_groups = tuple(self.contact_groups()) if raw_contact else ()
+            state_before = self._contact_state
             self._update_contact_state(raw_contact, raw_groups)
             in_contact = self._contact_state != "free"
             step_groups: tuple[str, ...] = ()
@@ -1123,6 +1140,8 @@ class PolicyPlayback:
             # Charged for every latched step, not just the confirming one.
             if in_contact:
                 contact_steps += 1
+            if self._contact_state == "sustained_contact":
+                sustained_steps_this_call += 1
 
             if self._step_counter % POSE_TRACE_EVERY == 0:
                 sampled_xy.append(last_live_xy)
@@ -1136,9 +1155,32 @@ class PolicyPlayback:
             )
 
             if stop_on_bump and self._contact_state == "sustained_contact":
-                stopped_early = True
-                stop_reason = "sustained_contact"
-                break
+                # Rising-edge means a NEW sustained onset this call (free /
+                # candidate_contact → sustained). candidate_release → sustained
+                # is the contact machine's same-event hysteresis after a short
+                # force trough — treating that as rising-edge re-aborts a
+                # pre-latched reverse on the first gait-cycle blip (measured:
+                # trough at step 4 → stop at step 5), which is exactly the
+                # bouncing-contact wedge B3 exists to unblock.
+                rose_into_sustained = state_before in (
+                    "free",
+                    "candidate_contact",
+                )
+                # Reverse gets a longer reconfirm window so pre-latched backup
+                # can physically unload contact (see CONTACT_REVERSE_GRACE_S).
+                reconfirm_steps = (
+                    CONTACT_REVERSE_GRACE_STEPS
+                    if cvx < 0.0
+                    else CONTACT_SUSTAINED_STEPS
+                )
+                reconfirmed = (
+                    began_in_sustained
+                    and sustained_steps_this_call >= reconfirm_steps
+                )
+                if rose_into_sustained or reconfirmed:
+                    stopped_early = True
+                    stop_reason = "sustained_contact"
+                    break
 
             if stop_predicate is not None and stop_predicate(step):
                 stopped_early = True
@@ -1232,6 +1274,11 @@ class PolicyPlayback:
         # termination, because the env has already teleported.
         last_pose = (start_xy[0], start_xy[1], self.compass_deg())
         reason = "timeout"
+        # MACRO_CHUNK_S (0.2 s) is shorter than CONTACT_SUSTAINED_STEPS (0.4 s),
+        # so a pre-latched abort cannot be decided inside one execute chunk.
+        # Accumulate sustained steps across chunks; rising-edge stops arrive via
+        # part.stop_reason from execute().
+        sustained_run_steps = 0
 
         for _ in range(n_chunks):
             err = shortest_angle_diff_deg(target, self.compass_deg())
@@ -1251,12 +1298,16 @@ class PolicyPlayback:
             if part.stop_reason == "budget":
                 reason = "budget"
                 break
-            if (
-                part.stop_reason == "sustained_contact"
-                or part.contact_state == "sustained_contact"
-            ):
+            if part.stop_reason == "sustained_contact":
                 reason = "sustained_contact"
                 break
+            if part.contact_state == "sustained_contact":
+                sustained_run_steps += part.steps
+                if sustained_run_steps >= CONTACT_SUSTAINED_STEPS:
+                    reason = "sustained_contact"
+                    break
+            else:
+                sustained_run_steps = 0
 
         if reason not in ("fall", "budget"):
             # Settle so the next capture shows a still robot rather than a turn
@@ -1277,11 +1328,12 @@ class PolicyPlayback:
                 reason = "fall"
             elif settle.stop_reason == "budget":
                 reason = "budget"
-            elif (
-                settle.stop_reason == "sustained_contact"
-                or settle.contact_state == "sustained_contact"
-            ):
+            elif settle.stop_reason == "sustained_contact":
                 reason = "sustained_contact"
+            elif settle.contact_state == "sustained_contact":
+                sustained_run_steps += settle.steps
+                if sustained_run_steps >= CONTACT_SUSTAINED_STEPS:
+                    reason = "sustained_contact"
 
         residual = shortest_angle_diff_deg(target, last_pose[2])
         if reason not in ("fall", "budget", "sustained_contact"):
@@ -1300,6 +1352,7 @@ class PolicyPlayback:
         hold_heading: bool = True,
         stop_on_bump: bool = True,
         on_chunk=None,
+        hold_heading_deg: float | None = None,
     ) -> ExecResult:
         """Walk forward, servoing on dead-reckoned distance AND heading.
 
@@ -1311,6 +1364,12 @@ class PolicyPlayback:
         0.39 deg over the same distance. AGENTS.md rule 5 declares closed-loop
         macros servoing on compass + dead reckoning a sensor-realistic exception,
         so this is in scope by design, not a workaround.
+
+        ``hold_heading_deg`` (optional): hold this absolute compass heading
+        instead of the yaw sampled at call start. Default ``None`` preserves
+        the historical behaviour (hold whatever the compass reads now). Smoke
+        uses it so a bump-yawed duck can still reverse along the approach axis
+        into free space behind — without changing the tool schema.
 
         Auto-stops on collision (this is the tool that does; `send_velocity`
         deliberately does not — doc 05 §4.2).
@@ -1331,7 +1390,11 @@ class PolicyPlayback:
                 int(math.ceil(ideal_s * MACRO_TIME_MARGIN / MACRO_CHUNK_S)),
             )
 
-        held_heading = self.compass_deg()
+        held_heading = (
+            wrap_deg(float(hold_heading_deg))
+            if hold_heading_deg is not None
+            else self.compass_deg()
+        )
         start_xy = self.true_xy()
         measured_distance = 0.0
         merged: ExecResult | None = None
@@ -1342,6 +1405,13 @@ class PolicyPlayback:
         # same trap execute() already guards against, reintroduced here. It made
         # a duck that walked 1.1 m into a wall and toppled report 0.02 m.
         last_pose = (start_xy[0], start_xy[1], held_heading)
+        # See turn_to_heading: chunk duration < CONTACT_SUSTAINED_STEPS, so
+        # pre-latched reconfirm is accumulated across chunks when stop_on_bump.
+        # Reverse uses CONTACT_REVERSE_GRACE_STEPS (execute agrees).
+        sustained_run_steps = 0
+        reconfirm_steps = (
+            CONTACT_REVERSE_GRACE_STEPS if speed < 0.0 else CONTACT_SUSTAINED_STEPS
+        )
 
         for _ in range(0 if requested_distance == 0.0 else n_chunks):
             wz = 0.0
@@ -1367,12 +1437,16 @@ class PolicyPlayback:
             if part.stop_reason == "budget":
                 reason = "budget"
                 break
-            if stop_on_bump and (
-                part.stop_reason == "sustained_contact"
-                or part.contact_state == "sustained_contact"
-            ):
+            if stop_on_bump and part.stop_reason == "sustained_contact":
                 reason = "sustained_contact"
                 break
+            if stop_on_bump and part.contact_state == "sustained_contact":
+                sustained_run_steps += part.steps
+                if sustained_run_steps >= reconfirm_steps:
+                    reason = "sustained_contact"
+                    break
+            elif stop_on_bump:
+                sustained_run_steps = 0
             if measured_distance >= requested_distance:
                 reason = "reached"
                 break
@@ -1393,11 +1467,14 @@ class PolicyPlayback:
                 reason = "fall"
             elif stop.stop_reason == "budget":
                 reason = "budget"
-            elif stop_on_bump and (
-                stop.stop_reason == "sustained_contact"
-                or stop.contact_state == "sustained_contact"
-            ):
+            elif stop_on_bump and stop.stop_reason == "sustained_contact":
                 reason = "sustained_contact"
+            elif stop_on_bump and stop.contact_state == "sustained_contact":
+                # Settle is zero-vx; keep the drive-phase reconfirm budget so a
+                # reverse grace is not collapsed by the settle chunk alone.
+                sustained_run_steps += stop.steps
+                if sustained_run_steps >= reconfirm_steps:
+                    reason = "sustained_contact"
 
         end_xy = (last_pose[0], last_pose[1])
         merged.stop_reason = reason

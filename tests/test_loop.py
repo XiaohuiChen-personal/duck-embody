@@ -2680,7 +2680,7 @@ class TestTrialLogSchema:
             assert set(record["obs"]["position_estimate"]) == {"x", "y"}
             assert set(record["obs"]["status"]) == {
                 "last_motion", "current_contact", "fell",
-                "bumped", "contact", "distance_moved_m",
+                "bumped", "contact", "distance_moved_m", "progress",
             }
             assert set(record["true_pose"]) == {"x", "y", "heading_deg"}
             assert re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", record["timestamp"])

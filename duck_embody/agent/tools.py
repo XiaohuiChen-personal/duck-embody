@@ -119,6 +119,13 @@ LOOK_AROUND_BEARINGS_DEG = (0.0, 90.0, 180.0, 270.0)
 #: precedent set by the caps.
 DURATION_RANGE_S = (0.2, 3.0)
 
+#: A1 no-progress streak: measured distance at or below this AND blocked
+#: (bumped and/or ``sustained_contact``) increments ``consecutive_no_progress``;
+#: measured above this without that block condition resets it. Model-facing
+#: aggregate only — derived from fields already reported per call.
+NO_PROGRESS_EPSILON_M = 0.05
+NO_PROGRESS_STREAK_THRESHOLD = 3
+
 #: The stage signal. ``declare_done`` is not dispatched like the other tools:
 #: doc 05 §3.1's loop branches on this name *before* :func:`dispatch` is reached,
 #: because the result is the stage OUTCOME, not something a tool can compute.
@@ -460,6 +467,9 @@ class ToolContext:
     #: there is no boundary at which un-latching it would be correct. See
     #: :func:`observed_compass_deg` for why the live sensor cannot be trusted afterwards.
     compass_at_fall: float | None = None
+    #: Consecutive blocked no-progress motions (A1). STAGE-scoped: a fresh stage
+    #: must not inherit a stuck streak from find_kitchen.
+    consecutive_no_progress: int = 0
 
     def reset_for_stage(self) -> None:
         """Zero exactly the STAGE-scoped fields (doc 05 §3.3, §4.1).
@@ -485,6 +495,7 @@ class ToolContext:
         self.last_distance_moved_m = 0.0
         self.last_motion = None
         self.current_contact = None
+        self.consecutive_no_progress = 0
         self.counters.turns = 0
         self.counters.policy_seconds = 0.0
 
@@ -739,6 +750,18 @@ def observed_compass_deg(context: ToolContext) -> float:
 
 def status_payload(context: ToolContext) -> dict:
     """The model-facing status schema shared by tools, memory, and trial logs."""
+    streak = int(context.consecutive_no_progress)
+    no_progress = streak >= NO_PROGRESS_STREAK_THRESHOLD
+    progress: dict = {
+        "consecutive_no_progress": streak,
+        "no_progress": no_progress,
+        "last_measured_m": round(context.last_distance_moved_m, 3),
+    }
+    if no_progress:
+        # Built only from already-reported fields (streak + measured + block).
+        progress["hint"] = (
+            "no progress over consecutive blocked motions"
+        )
     return {
         "last_motion": (
             None if context.last_motion is None else dict(context.last_motion)
@@ -758,6 +781,7 @@ def status_payload(context: ToolContext) -> dict:
         "bumped": context.last_bumped,
         "contact": list(context.last_contact_groups),
         "distance_moved_m": round(context.last_distance_moved_m, 3),
+        "progress": progress,
     }
 
 
@@ -824,6 +848,17 @@ def _record_motion(
     context.last_bumped = bool(result.bumped)
     context.last_contact_groups = list(result.contact_groups)
     context.last_distance_moved_m = distance_moved_m
+    # A1: aggregate stuck streak from already-reported distance + block flags.
+    # Only translational bump-counting tools update the streak. turn_to_heading
+    # always reports distance_moved_m=0 and may still surface bumped=true from
+    # a sticky latch (counts_bump=False by design) — counting it would mark
+    # no_progress after bump→turn→backup with only two translational attempts.
+    if counts_bump:
+        blocked = bool(result.bumped) or result.contact_state == "sustained_contact"
+        if distance_moved_m <= NO_PROGRESS_EPSILON_M and blocked:
+            context.consecutive_no_progress += 1
+        elif distance_moved_m > NO_PROGRESS_EPSILON_M and not blocked:
+            context.consecutive_no_progress = 0
     context.motion_id_counter += 1
     motion_id = context.motion_id_counter
     contact_event_id = result.contact_event_id

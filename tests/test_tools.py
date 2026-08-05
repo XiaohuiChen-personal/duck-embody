@@ -780,10 +780,16 @@ class TestToolNamesMatchTheFrozenPrompt:
             "bumped",
             "contact",
             "distance_moved_m",
+            "progress",
         }
         assert status["last_motion"]["tool"] == "turn_to_heading"
         assert set(status["current_contact"]) == {
             "state", "contact_event_id", "regions",
+        }
+        assert set(status["progress"]) >= {
+            "consecutive_no_progress",
+            "no_progress",
+            "last_measured_m",
         }
 
     def test_the_contact_regions_the_prompt_names_are_the_ones_the_code_groups(self):
@@ -1918,7 +1924,7 @@ class TestObservationPayload:
         # `status.contact` in T3.5 is exactly the change that would have done it.
         assert set(outcome.payload["status"]) == (
             set(doc_04_frozen_payload()["status"])
-            | {"last_motion", "current_contact"}
+            | {"last_motion", "current_contact", "progress"}
         )
 
     def test_the_estimate_note_is_doc_04s_frozen_string_verbatim(self):
@@ -1954,6 +1960,7 @@ class TestObservationPayload:
             "bumped",
             "contact",
             "distance_moved_m",
+            "progress",
         ]
         # And the SERIALISED form keeps it — that string is what reaches the
         # model, and `json.dumps(..., sort_keys=True)` reorders only there. The
@@ -1970,6 +1977,7 @@ class TestObservationPayload:
             "bumped",
             "contact",
             "distance_moved_m",
+            "progress",
         ]
 
     def test_the_compass_keeps_the_docs_one_decimal_of_precision(self):
@@ -2049,6 +2057,11 @@ class TestObservationPayload:
             # the same shape on turn 1 as on every turn after it.
             "contact": [],
             "distance_moved_m": 0.0,
+            "progress": {
+                "consecutive_no_progress": 0,
+                "no_progress": False,
+                "last_measured_m": 0.0,
+            },
         }
 
     def test_the_status_block_describes_the_previous_motion_command(self):
@@ -2224,6 +2237,7 @@ class TestBudgetAndCounters:
         # `bumped` flag it refines (doc 05 §4.1, amended in the same commit).
         assert context.last_contact_groups == []
         assert context.last_distance_moved_m == 0.0
+        assert context.consecutive_no_progress == 0
         assert context.counters.turns == 0
         assert context.counters.policy_seconds == 0.0
 

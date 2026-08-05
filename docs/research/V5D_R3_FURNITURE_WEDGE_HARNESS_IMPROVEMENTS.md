@@ -1,9 +1,12 @@
 # V5D R3 — Furniture-wedge harness improvements
 
-**Status:** RESEARCH NOTE (read-only on trial JSON; no harness code changed)  
+**Status:** RESEARCH NOTE (trial JSON untouched) — B3+A1 harness fix landed 2026-08-05 (`policy_wrapper.execute` rising-edge/reconfirm + macro cross-chunk sustained accumulation; `tools.status.progress`). Adversarial review same day fixed two confirmed defects: (1) rising-edge must be free/candidate_contact→sustained only — candidate_release→sustained is same-event hysteresis and was re-aborting pre-latched reverse on gait-cycle force troughs; (2) A1 streak updates only on `counts_bump` tools so sticky-latch `turn_to_heading` cannot inflate `no_progress`. Note: `MACRO_CHUNK_S` (0.2 s) < `CONTACT_SUSTAINED_STEPS` (0.4 s), so execute-only reconfirm is insufficient for macros — they must accumulate sustained steps across chunks or a single chunk reintroduces early abort. Kit smoke 2026-08-05 found a third defect: still-touching reverse reconfirm at 0.4 s caps backup at ~0.04 m (`REVERSE_MOVE_SPEED_MPS`); fixed with `CONTACT_REVERSE_GRACE_S=1.5` for `vx<0` only (forward reconfirm unchanged). Smoke script: `scripts/smoke_wedge_reverse.py`.
+
+**§7#4 kit smoke verdict (2026-08-05):** B3 stop-predicate **PASS** (pre-latched reverse runs full grace, steps=90 ≠ step-0 abort). Physical clearance **FAIL** — **plant-limited**, not the old mm no-op. Definitive reverse-phase artifact `results/logs/wedge_reverse_20260805-013345/`: latch (0.31, 0.88, h≈86°), `hold_heading_deg=90`, true_disp=0.012 m, axis_progress=−0.010 m, contact stays `sustained_contact` (head+torso), measured=0.060 m (phantom odom). Layout south free ≥0.78 m exists; filmstrip shows west-wall+sofa-arm corner involvement. Follow-ups: outer-west wall / sofa@x=0.50 bump but never latch sustained; do **not** extend `CONTACT_REVERSE_GRACE_S` past 2.0 s. Clearance fail root cause = **plant/gait under sustained furniture press** (+ corner geometry), not the old step-0 macro no-op.  
+**Next measurement:** companion batch `v5d-r3-opus5-b3a1` (Opus 5 × 101–104 under B3+A1) — out-dir `results/raw_v5d_r3_opus5_b3a1/`; certifying L8 untouched.  
 **Date:** 2026-08-05  
 **Scope:** The six `timeout_turns` / turn-cap find_kitchen failures attributed to furniture (or wall-adjacent) wedges  
-**Batches:** L8 `results/raw_v5d_r3/` + companion `results/raw_v5d_r3_fable5/`  
+**Batches:** L8 `results/raw_v5d_r3/` + companion `results/raw_v5d_r3_fable5/` + planned `results/raw_v5d_r3_opus5_b3a1/`  
 **Constraints:** AGENTS.md §3 rules 4–5 (FIX reporting/harness defects; LEAVE bad model choices; no decision-making pathfinding tools)  
 **Related:** [`V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md`](V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md), [`V5D_R2_HARNESS_FORENSICS.md`](V5D_R2_HARNESS_FORENSICS.md) F-04, design doc `docs/designs/05-agent-harness.html` §4.2, prompt `duck_embody/agent/prompts.py`
 

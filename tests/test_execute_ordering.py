@@ -744,10 +744,18 @@ class TestSustainedContactAbort:
         assert result.bumped is True
 
     def test_execute_stops_only_on_the_sustained_state(self):
-        """The low-level stop flag uses the same state as both macros."""
+        """B3: stop is rising-edge into sustained, or reconfirm while pre-latched.
+
+        The old pin required a bare ``_contact_state == "sustained_contact"``
+        break — that aborted pre-latched reverse on step 0/1. Behavioural pins
+        live in ``tests/test_wedge_harness.py``; this keeps a source-level
+        guard that the gated predicate (not the bare latch) is what breaks.
+        """
         import inspect
 
         from duck_embody.sim import policy_wrapper
 
         exec_src = inspect.getsource(policy_wrapper.PolicyPlayback.execute)
-        assert 'self._contact_state == "sustained_contact"' in exec_src
+        assert "began_in_sustained" in exec_src
+        assert "rose_into_sustained or reconfirmed" in exec_src
+        assert "sustained_steps_this_call" in exec_src

@@ -9,19 +9,21 @@
 
 # --- Trial matrix -----------------------------------------------------------
 seeds: [101, 102, 103, 104]          # DESIGN doc 06 §2; identical for every model
-models: [fable5]                     # OWNER-DIRECTED companion batch 2026-08-04:
-                                     # measure Fable 5 on the v5d-r3 harness under
+models: [opus5]                      # OWNER-DIRECTED companion batch 2026-08-05:
+                                     # measure Opus 5 × seeds 101–104 on the
+                                     # B3+A1 furniture-wedge harness fix under
                                      # the same discipline as certifying L8.
+                                     # Companion batch-id: v5d-r3-opus5-b3a1
+                                     # (see results/rerun_log.md).
                                      # Certifying L8 remains untouched:
                                      #   batch-id  v5d-r3-final-prod
                                      #   out-dir   results/raw_v5d_r3/
                                      #   matrix    [sonnet5, opus5, gpt56sol]
-                                     # This file's live matrix is NOT that L8
-                                     # matrix — companion batch-id will be
-                                     # v5d-r3-fable5 (see results/rerun_log.md).
-                                     # Prior amendment 2026-07-30 swapped
-                                     # fable5 -> sonnet5 for cost; v4 freeze
-                                     # still carries its fable5 column.
+                                     # Prior companion v5d-r3-fable5 used
+                                     # models: [fable5]; prior amendment
+                                     # 2026-07-30 swapped fable5 -> sonnet5
+                                     # for cost; v4 freeze still carries its
+                                     # fable5 column.
 
 # --- Caps (per stage) -------------------------------------------------------
 caps:
