@@ -72,6 +72,7 @@ Notes:
 - On the same seeds, Fable 5 matches Sonnet 5's v2 kitchen rate (1/4) and is the
   only non-Opus cell here that also completed return_home (seed 104). Opus 5
   remains the strongest L8 contestant (2/4 kitchen + 2/2 return).
+- Trace-level why (Opus vs Fable/GPT/Sonnet on shared seeds): [`V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md`](V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md).
 
 ---
 

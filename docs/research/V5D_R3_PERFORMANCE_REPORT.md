@@ -68,6 +68,8 @@ Source: `results/summary_table_raw_v5d_r3.md` / `results/scores_raw_v5d_r3.json`
 
 Opus 5 is the only model that both reached the kitchen and returned home (2/2 of its stage-1 successes). GPT 5.6 sol declared done in every cell without ever meeting the counter-face radius. Sonnet 5's single kitchen success (seed 103) is v2-only; its return-home declare was outside the home disc.
 
+Forensic success-vs-fail trace comparison (within-Opus + same-seed cross-model, primary JSON): [`V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md`](V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md).
+
 ---
 
 ## Audit package
