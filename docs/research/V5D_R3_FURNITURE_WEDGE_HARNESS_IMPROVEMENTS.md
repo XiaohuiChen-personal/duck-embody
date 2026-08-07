@@ -274,10 +274,14 @@ Per-seed (`distance_to_success_region_m` from each trial's
 
 | Seed | L8 | B3+A1 | Reading |
 |---|---|---|---|
-| 101 | timeout_turns, dist_region=1.616, bumps=31 | timeout_turns, dist_region=1.644, bumps=31 | **No rescue** of sofa-pinch turn-cap |
-| 102 | timeout_turns, dist_region=2.079, bumps=17 | timeout_turns, dist_region=1.812, bumps=25 | **No rescue** of hallway latch turn-cap |
+| 101 | timeout_turns, turns=40, policy_s=99.38, dist_region=1.616, bumps=31 | timeout_turns, turns=40, policy_s=103.6, dist_region=1.644, bumps=31 | **No rescue** of sofa-pinch turn-cap |
+| 102 | timeout_turns, turns=40, policy_s=88.72, dist_region=2.079, bumps=17 | timeout_turns, turns=40, policy_s=120.06, dist_region=1.812, bumps=25 | **No rescue** of hallway latch turn-cap |
 | 103 | **success** + return_home success, dist_region=0 | declared_elsewhere, dist_region=1.761, bumps=10 | **Regression** |
 | 104 | **success** + return_home success, dist_region=0 | timeout_turns, dist_region=1.586, bumps=22 | **Regression** |
+
+`policy_seconds_used` / `turns_used` from `final.stages.find_kitchen` on each
+trial JSON (`results/raw_v5d_r3/opus5_seed10{1,2}.json` vs
+`results/raw_v5d_r3_opus5_b3a1/opus5_seed10{1,2}.json`).
 
 **Verdict (measured, not hypothesized):** B3+A1 did **not** mitigate the
 furniture-wedge failure mode on the target timeout seeds, and it **lost** the

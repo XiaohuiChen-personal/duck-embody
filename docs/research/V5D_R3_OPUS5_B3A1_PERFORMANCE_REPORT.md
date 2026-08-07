@@ -64,12 +64,15 @@ Same seeds; L8 paths `results/raw_v5d_r3/opus5_seed{101..104}.json`
 L8 distances from the same `score.distance_to_success_region_m` field;
 L8 outcomes from trial `final.stages.find_kitchen`.
 
-| Seed | L8 find_kitchen | L8 dist_region_m | B3+A1 find_kitchen | B3+A1 dist_region_m | Verdict |
+| Seed | L8 find_kitchen | L8 turns / policy_s / dist_region_m | B3+A1 find_kitchen | B3+A1 turns / policy_s / dist_region_m | Verdict |
 |---|---|---|---|---|---|
-| 101 | timeout_turns (bumps=31) | 1.616 | timeout_turns (bumps=31) | 1.644 | **No mitigation** of target failure mode (still turn-cap wedge) |
-| 102 | timeout_turns (bumps=17) | 2.079 | timeout_turns (bumps=25) | 1.812 | **No mitigation** (still turn-cap; slightly closer region dist, more bumps) |
-| 103 | **success** + return_home success | 0.0 | declared_elsewhere | 1.761 | **Regression** vs L8 success |
-| 104 | **success** + return_home success | 0.0 | timeout_turns | 1.586 | **Regression** vs L8 success |
+| 101 | timeout_turns (bumps=31) | 40 / **99.38** / 1.616 | timeout_turns (bumps=31) | 40 / **103.6** / 1.644 | **No mitigation** of target failure mode (still turn-cap wedge) |
+| 102 | timeout_turns (bumps=17) | 40 / **88.72** / 2.079 | timeout_turns (bumps=25) | 40 / **120.06** / 1.812 | **No mitigation** (still turn-cap; more policy-s burned, more bumps) |
+| 103 | **success** + return_home success | 36 / 103.4 / 0.0 | declared_elsewhere | 40 / 134.3 / 1.761 | **Regression** vs L8 success |
+| 104 | **success** + return_home success | 16 / 45.6 / 0.0 | timeout_turns | 40 / 80.12 / 1.586 | **Regression** vs L8 success |
+
+Policy seconds from each trial's `final.stages.find_kitchen.policy_seconds_used`
+(same field L8 used for the ~99.4 s / ~88.7 s timeout baselines).
 
 ### Honest wedge verdict
 
