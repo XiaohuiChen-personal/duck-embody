@@ -1,0 +1,60 @@
+{
+  "trial_id": "opus5_seed101",
+  "config": {
+    "freeze_commit": "fb134f29dafd5e5424a2fc770ec5a054d2dfdbe9",
+    "config_hash": "7260ee9a788968fb2f85c622a88114c34cd89cc480cb5bae20b6afb609d3b02b",
+    "model": "claude-opus-5",
+    "model_config": "opus5",
+    "seed": 101,
+    "success_criterion": "v2_any_counter",
+    "spawn": {
+      "xy": [
+        0.5,
+        0.5
+      ],
+      "heading_deg": 90.0
+    },
+    "batch_manifest_sha256": "0d3dd82e81ff9b798704a3915e9ab4ca6ee22fd72f894d5a0bcaa547ca473738",
+    "checkpoint_sha256": "301e24e336b2eab0ba387beb50fc16b03e6062b26622bc9a3e98588216a12c54",
+    "parent_commit": "7dde4ba952fb40c5ffb29441a1895f6f8863fdcc",
+    "resolved_model": null
+  },
+  "requests": [
+    {
+      "schema": "duck-embody.neutral-request.v1",
+      "request_index": 0,
+      "kind": "episode",
+      "stage": "find_kitchen",
+      "stage_turn_index": 1,
+      "global_turn_index": 1,
+      "system_prompt": {
+        "frozen_id": "duck-embody.navigation-system.v1",
+        "sha256": "81e7e76473b27dc9be0081beb065b5a2d1efa83ca7b5f883b57d063c1d28467d"
+      },
+      "tool_schema_sha256": "521bc24cd9a5023180ca91ec93831a5ead634d1e525655c1c0b23262d7ec2757",
+      "messages": [
+        {
+          "role": "user",
+          "blocks": [
+            {
+              "type": "text",
+              "source": "memory",
+              "text": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 89 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nMotion/contact status: {\"last_motion\":null,\"current_contact\":null,\"fell\":false,\"bumped\":false,\"contact\":[],\"distance_moved_m\":0.0,\"progress\":{\"consecutive_no_progress\":0,\"no_progress\":false,\"last_measured_m\":0.0}}\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)"
+            }
+          ]
+        }
+      ],
+      "memory_block": "== YOUR MAP (authored by you; rendered verbatim by the harness) ==\n(none yet)\n\n== STATE (sensor-derived; the declared exceptions) ==\nPosition estimate: x=0.50, y=0.50  (leg-odometry dead reckoning; error grows with distance walked)\nCompass heading: 89 deg\nCurrent room (your assertion): (none yet)\nBreadcrumbs (last 5): (none yet)\nMotion/contact status: {\"last_motion\":null,\"current_contact\":null,\"fell\":false,\"bumped\":false,\"contact\":[],\"distance_moved_m\":0.0,\"progress\":{\"consecutive_no_progress\":0,\"no_progress\":false,\"last_measured_m\":0.0}}\nRe-anchored: never \u2014 record_anchor at points you could recognize, then correct_to_anchor when you stand on one again\nBudget: turns 0/40, policy-seconds 0.0/240\n\n== YOUR PLAN (update_plan to change; carried forward otherwise) ==\n(none yet)",
+      "context": {
+        "k": 10,
+        "indexes": [],
+        "global_turn_indexes": [],
+        "image_policy": []
+      },
+      "request_sha256": "7ba7164af93f8e3704f8669f4b8a3b2840b8d3a6ee68d322c10905dafa4439d3"
+    }
+  ],
+  "turns": [],
+  "video_path": null,
+  "infra_failure": "Traceback (most recent call last):\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/runner.py\", line 1216, in run_one_trial\n    final = runner.run()\n            ^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1740, in run\n    stage1 = self.run_stage(stage1_spec)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1818, in run_stage\n    result = self._run_turn(spec)\n             ^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/loop.py\", line 1871, in _run_turn\n    turn = self.provider.send(self.system_prompt, messages, self.tool_schemas)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/Projects/duck-embody/duck_embody/agent/providers/anthropic.py\", line 252, in send\n    response = self.client.messages.create(\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_utils/_utils.py\", line 294, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/resources/messages/messages.py\", line 1050, in create\n    return self._post(\n           ^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_base_client.py\", line 1536, in post\n    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))\n                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/xiaohui_chen/IsaacLab/_isaac_sim/kit/python/lib/python3.11/site-packages/anthropic/_base_client.py\", line 1195, in request\n    raise self._make_status_error_from_response(response) from None\nanthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjBAhYoRiKX8qRF5sTce'}\n"
+}

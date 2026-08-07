@@ -147,3 +147,41 @@ re-score **all** models together and be logged here.
   `results/videos_v5d_r3_opus5_b3a1`. Write-once manifest
   `results/manifests/v5d-r3-opus5-b3a1.json` on first real launch.
 - **Scope of this entry.** Prep + harness freeze. Paid 4-trial launch follows.
+
+### 2026-08-06 — companion batch complete: `v5d-r3-opus5-b3a1`
+
+- **Batch.** 4/4 `final` under write-once manifest
+  `results/manifests/v5d-r3-opus5-b3a1.json`
+  (`manifest_sha256=0d3dd82e81ff9b798704a3915e9ab4ca6ee22fd72f894d5a0bcaa547ca473738`),
+  config_hash `7260ee9a7889…`, freeze commit `fb134f29dafd…`, checkpoint SHA
+  identical to L8 (`301e24e336b2…`). Raw `results/raw_v5d_r3_opus5_b3a1/`,
+  videos `results/videos_v5d_r3_opus5_b3a1/`. Runner log
+  `results/incomplete/opus5_b3a1_runner_20260806-184445.log`.
+- **Headline.** find_kitchen v2 **0/4**, prereg **0/4**, return_home **0/4**,
+  **0 falls**, cost **$13.14**. Scores:
+  `results/scores_raw_v5d_r3_opus5_b3a1.json`.
+- **Wedge before/after vs L8 Opus** (`results/raw_v5d_r3/opus5_seed{101..104}.json`):
+  - 101: L8 `timeout_turns` dist_region=1.616 → b3a1 `timeout_turns` 1.644
+    (**no mitigation**).
+  - 102: L8 `timeout_turns` dist_region=2.079 → b3a1 `timeout_turns` 1.812
+    (**no mitigation**).
+  - 103: L8 **success**+return_home → b3a1 `declared_elsewhere` dist_region=1.761
+    (**regression**).
+  - 104: L8 **success**+return_home → b3a1 `timeout_turns` dist_region=1.586
+    (**regression**).
+  Overall: B3+A1 did **not** mitigate; companion 0/4 vs L8 Opus 2/4. Plant
+  clearance FAIL remains LEAVE (no Tier C / furniture edit). Measured note:
+  `docs/research/V5D_R3_FURNITURE_WEDGE_HARNESS_IMPROVEMENTS.md` §11.
+- **Audits.** Machine 4/4 PASS (`results/raw_v5d_r3_opus5_b3a1_audits/`);
+  visual 4/4 PASS (`results/raw_v5d_r3_opus5_b3a1_visual_audits/`); batch audit
+  `results/raw_v5d_r3_opus5_b3a1_batch_audit.json` = PASS.
+- **Report.** `docs/research/V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md`.
+  Certifying L8 untouched (mtime baseline
+  `results/incomplete/l8_opus5_mtime_pre_b3a1.txt`).
+| opus5_seed101 | 2026-08-05T07:02:48Z | infra failure (attempt 1): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjB1BJd749WmUu92g8Gx'} | results/incomplete/opus5_seed101.20260805-070248.json |
+| opus5_seed101 | 2026-08-05T07:03:51Z | infra failure (attempt 2): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjB62VgintkeiwaZXXcn'} | results/incomplete/opus5_seed101.20260805-070351.json |
+| opus5_seed101 | 2026-08-05T07:04:55Z | infra failure (attempt 3): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjBAhYoRiKX8qRF5sTce'} | results/incomplete/opus5_seed101.20260805-070455.json |
+| opus5_seed101 | 2026-08-05T07:20:29Z | infra failure (attempt 1): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjCMZMrG5pyVYUjGi9sA'} | results/incomplete/opus5_seed101.20260805-072029.json |
+| opus5_seed101 | 2026-08-05T07:23:37Z | infra failure (attempt 2): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjCbLQNvuy46vLoSBvXZ'} | results/incomplete/opus5_seed101.20260805-072337.json |
+| opus5_seed101 | 2026-08-05T07:24:40Z | infra failure (attempt 3): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjCg3hBaz9njVDRE3uM2'} | results/incomplete/opus5_seed101.20260805-072440.json |
+| opus5_seed101 | 2026-08-05T07:25:42Z | infra failure (attempt 4): anthropic.OverloadedError: Error code: 529 - {'type': 'error', 'error': {'type': 'overloaded_error', 'message': 'Overloaded'}, 'request_id': 'req_011CdjCkdrcKAbvgpJqC1XE4'} | results/incomplete/opus5_seed101.20260805-072542.json |

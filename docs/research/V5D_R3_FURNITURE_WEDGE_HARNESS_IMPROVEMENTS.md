@@ -3,12 +3,12 @@
 **Status:** RESEARCH NOTE (trial JSON untouched) — B3+A1 harness fix landed 2026-08-05 (`policy_wrapper.execute` rising-edge/reconfirm + macro cross-chunk sustained accumulation; `tools.status.progress`). Adversarial review same day fixed two confirmed defects: (1) rising-edge must be free/candidate_contact→sustained only — candidate_release→sustained is same-event hysteresis and was re-aborting pre-latched reverse on gait-cycle force troughs; (2) A1 streak updates only on `counts_bump` tools so sticky-latch `turn_to_heading` cannot inflate `no_progress`. Note: `MACRO_CHUNK_S` (0.2 s) < `CONTACT_SUSTAINED_STEPS` (0.4 s), so execute-only reconfirm is insufficient for macros — they must accumulate sustained steps across chunks or a single chunk reintroduces early abort. Kit smoke 2026-08-05 found a third defect: still-touching reverse reconfirm at 0.4 s caps backup at ~0.04 m (`REVERSE_MOVE_SPEED_MPS`); fixed with `CONTACT_REVERSE_GRACE_S=1.5` for `vx<0` only (forward reconfirm unchanged). Smoke script: `scripts/smoke_wedge_reverse.py`.
 
 **§7#4 kit smoke verdict (2026-08-05):** B3 stop-predicate **PASS** (pre-latched reverse runs full grace, steps=90 ≠ step-0 abort). Physical clearance **FAIL** — **plant-limited**, not the old mm no-op. Definitive reverse-phase artifact `results/logs/wedge_reverse_20260805-013345/`: latch (0.31, 0.88, h≈86°), `hold_heading_deg=90`, true_disp=0.012 m, axis_progress=−0.010 m, contact stays `sustained_contact` (head+torso), measured=0.060 m (phantom odom). Layout south free ≥0.78 m exists; filmstrip shows west-wall+sofa-arm corner involvement. Follow-ups: outer-west wall / sofa@x=0.50 bump but never latch sustained; do **not** extend `CONTACT_REVERSE_GRACE_S` past 2.0 s. Clearance fail root cause = **plant/gait under sustained furniture press** (+ corner geometry), not the old step-0 macro no-op.  
-**Next measurement:** companion batch `v5d-r3-opus5-b3a1` (Opus 5 × 101–104 under B3+A1) — out-dir `results/raw_v5d_r3_opus5_b3a1/`; certifying L8 untouched.  
-**Date:** 2026-08-05  
+**Measured companion (2026-08-06):** `v5d-r3-opus5-b3a1` COMPLETE — see §11. Headline **0/4** find_kitchen vs L8 Opus **2/4**; no Tier C / furniture-gap change (LEAVE).  
+**Date:** 2026-08-06 (measured §11); smoke 2026-08-05  
 **Scope:** The six `timeout_turns` / turn-cap find_kitchen failures attributed to furniture (or wall-adjacent) wedges  
-**Batches:** L8 `results/raw_v5d_r3/` + companion `results/raw_v5d_r3_fable5/` + planned `results/raw_v5d_r3_opus5_b3a1/`  
+**Batches:** L8 `results/raw_v5d_r3/` + companion `results/raw_v5d_r3_fable5/` + companion `results/raw_v5d_r3_opus5_b3a1/`  
 **Constraints:** AGENTS.md §3 rules 4–5 (FIX reporting/harness defects; LEAVE bad model choices; no decision-making pathfinding tools)  
-**Related:** [`V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md`](V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md), [`V5D_R2_HARNESS_FORENSICS.md`](V5D_R2_HARNESS_FORENSICS.md) F-04, design doc `docs/designs/05-agent-harness.html` §4.2, prompt `duck_embody/agent/prompts.py`
+**Related:** [`V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md`](V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md), [`V5D_R2_HARNESS_FORENSICS.md`](V5D_R2_HARNESS_FORENSICS.md) F-04, design doc `docs/designs/05-agent-harness.html` §4.2, prompt `duck_embody/agent/prompts.py`, report [`V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md`](V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md)
 
 Frozen trial JSON was not modified. Every quantitative claim below names a trial path + turn / field.
 
@@ -249,3 +249,39 @@ Honest bottom line: **B3 repairs a broken advertised recovery tool; it does not 
 - Visual: `results/raw_v5d_r3_visual_audits/opus5_seed101.md`
 - Prior forensics: `docs/research/V5D_R2_HARNESS_FORENSICS.md` §F-04
 - Cross-model narrative: `docs/research/V5D_R3_OPUS_SUCCESS_VS_FAIL_TRACE_COMPARISON.md` §2.1 / §5
+
+---
+
+## 11. Measured results — companion `v5d-r3-opus5-b3a1` (2026-08-06)
+
+**Batch:** Opus 5 × seeds 101–104 under B3+A1 freeze  
+(`manifest_sha256=0d3dd82e81ff9b798704a3915e9ab4ca6ee22fd72f894d5a0bcaa547ca473738`,
+config_hash `7260ee9a7889…`). Raw `results/raw_v5d_r3_opus5_b3a1/`; scores
+`results/scores_raw_v5d_r3_opus5_b3a1.json`; report
+[`V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md`](V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md).
+Certifying L8 `results/raw_v5d_r3/` mtimes match
+`results/incomplete/l8_opus5_mtime_pre_b3a1.txt` (untouched).
+
+| Metric | L8 Opus (`raw_v5d_r3`) | B3+A1 companion |
+|---|---|---|
+| find_kitchen SR (v2) | **2 / 4** | **0 / 4** |
+| return_home SR | **2 / 4** | **0 / 4** |
+| falls | 0 | 0 |
+| cost sum | $12.50 | $13.14 |
+
+Per-seed (`distance_to_success_region_m` from each trial's
+`final.stages.find_kitchen.score`):
+
+| Seed | L8 | B3+A1 | Reading |
+|---|---|---|---|
+| 101 | timeout_turns, dist_region=1.616, bumps=31 | timeout_turns, dist_region=1.644, bumps=31 | **No rescue** of sofa-pinch turn-cap |
+| 102 | timeout_turns, dist_region=2.079, bumps=17 | timeout_turns, dist_region=1.812, bumps=25 | **No rescue** of hallway latch turn-cap |
+| 103 | **success** + return_home success, dist_region=0 | declared_elsewhere, dist_region=1.761, bumps=10 | **Regression** |
+| 104 | **success** + return_home success, dist_region=0 | timeout_turns, dist_region=1.586, bumps=22 | **Regression** |
+
+**Verdict (measured, not hypothesized):** B3+A1 did **not** mitigate the
+furniture-wedge failure mode on the target timeout seeds, and it **lost** the
+two L8 successes. Consistent with §7#4 smoke: stop-predicate honesty can PASS
+while plant clearance under sustained press remains FAIL. Do **not** claim
+wedge success. Explicit non-actions retained: no Tier C auto-backup / path
+assist; no furniture-gap widening (C4 / scene LEAVE).

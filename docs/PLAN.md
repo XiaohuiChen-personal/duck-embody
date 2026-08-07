@@ -2294,6 +2294,21 @@ disposition: B3 stop-predicate PASS / clearance FAIL (plant-limited) —
 `docs/research/V5D_R3_FURNITURE_WEDGE_HARNESS_IMPROVEMENTS.md`. Certifying L8
 untouched. Decision log: `results/rerun_log.md`.
 
+**Companion batch complete (2026-08-06) — `v5d-r3-opus5-b3a1`.** Opus 5 ×
+seeds 101–104 under write-once manifest
+`results/manifests/v5d-r3-opus5-b3a1.json`
+(`manifest_sha256=0d3dd82e81ff9b798704a3915e9ab4ca6ee22fd72f894d5a0bcaa547ca473738`),
+config_hash `7260ee9a7889…` (B3+A1 freeze; differs from L8 as expected).
+Headline: **0/4** find_kitchen (v2), **0/4** prereg, **0/4** return_home,
+**0 falls**, **$13.14**. Wedge before/after vs L8 Opus: 101–102 still
+`timeout_turns` (no mitigation of target failure mode); 103–104
+**regressed** from L8 success+return_home. Machine+visual 4/4 PASS; batch
+audit `results/raw_v5d_r3_opus5_b3a1_batch_audit.json` = PASS. Scores
+`results/scores_raw_v5d_r3_opus5_b3a1.json`; report
+`docs/research/V5D_R3_OPUS5_B3A1_PERFORMANCE_REPORT.md`. Measured note:
+`docs/research/V5D_R3_FURNITURE_WEDGE_HARNESS_IMPROVEMENTS.md` §11.
+Certifying L8 untouched. Decision log: `results/rerun_log.md`.
+
 ---
 
 ## Standing constraints (every task)

@@ -1,0 +1,10 @@
+{
+  "launched_at": "2026-08-06T18:44:45",
+  "pid": 3578183,
+  "log": "results/incomplete/opus5_b3a1_runner_20260806-184445.log",
+  "batch_id": "v5d-r3-opus5-b3a1",
+  "out_dir": "results/raw_v5d_r3_opus5_b3a1",
+  "video_dir": "results/videos_v5d_r3_opus5_b3a1",
+  "head": "fb134f29dafd5e5424a2fc770ec5a054d2dfdbe9",
+  "assume_unchanged_rerun_log": true
+}
